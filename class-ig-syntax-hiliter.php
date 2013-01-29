@@ -1,7 +1,7 @@
 <?php
 
 /**
- * iG Syntax Hiliter Class base class
+ * iG Syntax Hiliter base class
  * This is an abstract class which contains some common functionality and is to be
  * inherited, on its own it doesn't do anything
  */

@@ -14,9 +14,7 @@
 	border: 1px solid #CCCCCC; border-left: none; border-right: none;
 }
 .syntax_hilite ol, .syntax_hilite .pre {
-	width: 94%;
-}
-.syntax_hilite ol, .syntax_hilite .pre {
+	width: 94%; line-height: 1.5em;
 	margin-bottom: 0px; padding-top: 5px; font-size: 0.85em;
 }
 .syntax_hilite .pre {
