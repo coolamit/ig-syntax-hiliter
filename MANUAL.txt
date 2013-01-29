@@ -8,7 +8,10 @@ Author: Amit Gupta
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 License: GNU GPL v2
 
-REQUIREMENTS: WordPress 3.4 or later, PHP 5.2 or better
+Github: https://github.com/coolamit/ig-syntax-hiliter
+WordPress.org plugin repo: http://plugins.svn.wordpress.org/igsyntax-hiliter/
+
+REQUIREMENTS: WordPress 3.3 or later, PHP 5.2 or better
 
 ======================================================================
 1. INTRODUCTION
@@ -23,7 +26,7 @@ REQUIREMENTS: WordPress 3.4 or later, PHP 5.2 or better
 
 1. INTRODUCTION
 -----------------------------------------------------------------------------------------
-This is a WordPress plugin (for versions 3.4 and above) for syntax hiliting of your code. This is an update to v3.5 and is a complete rewrite. It supports all languages supported by GeSHi. This release has a new improved GeSHi Core (v 1.0.8.11).
+This is a WordPress plugin (for versions 3.3 and above) for syntax hiliting of your code. This is an update to iG:Syntax Hiliter v3.5 and is a complete rewrite. It supports all languages supported by GeSHi. This release has a new improved GeSHi Core (v 1.0.8.11).
 
 iG:Syntax Hiliter is ready to go as soon as you activate the plugin. You can change the settings on the plugin options page located under the OPTIONS menu in WordPress admin.
 
@@ -31,7 +34,7 @@ This version of plugin has new tag format for hiliting the code but old format t
 
 One of the many new features in the plugin is the ability to highlight any line (or multiple lines) in the code block differently, to emphasize them. This along with the ability to show line numbers makes for a powerful combination. The plain text view of the code has been improved and old quirks are no more.
 
-iG:Syntax Hiliter has not been tested for WordPress versions below 3.4, so it might work or it might not work. There is no support if it has any problems running on those versions. If you are using an older version of WordPress, then you are better off using the older version of iG:Syntax Hiliter. This version is not for you.
+iG:Syntax Hiliter has not been tested for WordPress versions below 3.3, so it might work or it might not work. There is no support if it has any problems running on those versions. If you are using an older version of WordPress, then you are better off using the older version of iG:Syntax Hiliter. This version is not for you.
 
 You are required to have ability to edit WordPress options to be able to install and configure iG:Syntax Hiliter.
 
@@ -144,18 +147,12 @@ Upgrading from an old version? No problem, its as easy as popping a candy in you
 
 UPGRADING from v3.x
 ---------------------------------
-Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & ig_syntax hiliter plugin directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
+Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & "ig-syntax-hiliter" directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
 
 
 UPGRADING from v2.1 or lower 
 ---------------------------------
-Deactivate the plugin in WordPress admin and then remove the following files and directory:
-
-geshi directory
-geshi.php
-syntax_hilite.php
-
-Now just follow the INSTALLATION process again. Easy & Tasty, just like a Candy, no? ;)
+Just deactivate plugin in WordPress admin, delete the syntax_hilite.php and geshi.php files & "geshi" directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
 
 
 

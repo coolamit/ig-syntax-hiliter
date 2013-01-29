@@ -1,18 +1,8 @@
 iG:Syntax Hiliter
-===================
+====================
 
-Version: 4.0
-Author: Amit Gupta
-License: GNU GPL v2
-License URL: http://www.gnu.org/copyleft/gpl.html
+A WordPress plugin which colourizes source code for various supported programming languages. See the MANUAL for more instructions.
 
-@since 2004-08
-@lastModified 2013-01
+Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 
-This plugin is a syntax hiliter for various programming/scripting languages. This plugin uses GeSHi for hiliting the code. You can find GeSHi at http://qbnz.com/highlighter/
-
-Read the accompanying MANUAL for installation/upgrade/usage instructions and other important stuff.
-
-If you find any bugs or issues with this plugin, you can find my contact info at http://amitgupta.in/
-
-
+WordPress.org plugin repo: http://plugins.svn.wordpress.org/igsyntax-hiliter/
