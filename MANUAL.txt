@@ -1,0 +1,238 @@
+﻿iG:Syntax Hiliter
+
+A WordPress plugin for syntax hiliting of Actionscript, PHP, Java, C#, CSS, HTML, Javascript, MySQL, Python, Ruby & many other languages.
+
+
+Version: 4.0
+Author: Amit Gupta
+Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
+License: GNU GPL v2
+
+REQUIREMENTS: WordPress 3.4 or later, PHP 5.2 or better
+
+======================================================================
+1. INTRODUCTION
+2. WHAT's NEW
+3. INSTALLATION
+4. UPGRADING
+5. CONFIGURATION
+6. USAGE
+7. IMPORTANT
+======================================================================
+
+
+1. INTRODUCTION
+-----------------------------------------------------------------------------------------
+This is a WordPress plugin (for versions 3.4 and above) for syntax hiliting of your code. This is an update to v3.5 and is a complete rewrite. It supports all languages supported by GeSHi. This release has a new improved GeSHi Core (v 1.0.8.11).
+
+iG:Syntax Hiliter is ready to go as soon as you activate the plugin. You can change the settings on the plugin options page located under the OPTIONS menu in WordPress admin.
+
+This version of plugin has new tag format for hiliting the code but old format tags are also supported, so there is no need to convert them in old posts or database. But its best to use the new tag format from now onwards.
+
+One of the many new features in the plugin is the ability to highlight any line (or multiple lines) in the code block differently, to emphasize them. This along with the ability to show line numbers makes for a powerful combination. The plain text view of the code has been improved and old quirks are no more.
+
+iG:Syntax Hiliter has not been tested for WordPress versions below 3.4, so it might work or it might not work. There is no support if it has any problems running on those versions. If you are using an older version of WordPress, then you are better off using the older version of iG:Syntax Hiliter. This version is not for you.
+
+You are required to have ability to edit WordPress options to be able to install and configure iG:Syntax Hiliter.
+
+
+
+2. WHAT's NEW
+-----------------------------------------------------------------------------------------
+v4.0
+-------------
+NEW: Ability to embed Github Gist in post and comments (configurable)
+NEW: Ability to highlight one or multiple lines in a code block to show them as different
+NEW: New code box layout
+NEW: Ability to escape plugin tags to prevent their processing
+NEW: New GeSHi core (v 1.0.8.11)
+IMPROVED: Removed quirks from plain text view & its now much more smoother
+IMPROVED: Handling of how code is prevented from beautification. The rest of the post/comment text is not affected as wptexturize is not removed anymore.
+IMPROVED: Simpler and faster options page in wp-admin
+
+
+v3.5
+-------------
+BUGFIX:- BB Tags except the ones of iG:Syntax Hiliter are allowed. The language file's existence is checked before parsing the code. If the language file does not exist then the code is not parsed.
+BUGFIX:- 'C' code hiliting is now fixed.
+BUGFIX:- 'Plain Text' has been improved to strip the extra blank lines and spaces in Opera and FireFox.
+The latest stable GeSHi core(v1.0.7.6).
+NEW:- Code Hiliting for Comments has been implemented. This feature can be Enabled/Disabled from the admin interface for iG:Syntax Hiliter. The tags are same for hiliting the code.
+NEW:- A cross-browser Colour Picker(tested in IE6, FireFox1.5 and Opera8.5) is now available to easily set the line colours displayed in the code box.
+NEW:- A new type of view implemented for seeing "Plain Text" code. Besides opening the plain text code in a new window, you can have it displayed in the code box itself with an option to display the hilited HTML code back again. The "Plain Text" view type can be set in the admin interface.
+The language file for Ruby that I created a while back is now bundled with the plugin and its also a part of the default GeSHi package.
+
+
+v3.1
+-------------
+BUGFIX:- Critical bug, which broke the plugin when the square brackets([ & ]) were used in the posts in places other than tags, has been fixed.
+BUGFIX:- Another bug, which allowed any attribute in the tags besides the 'num' and also allowed any attribute value for it, affecting the processing. Now only the 'num' attribute is accepted and if you specify the 'num' attribute then its value must be a positive number otherwise your code won't be hilited. The 'num' attribute is optional and you can leave it out without any problems.
+BUGFIX:- Fixed the unclosed <select> tags in the Plugin GUI code.
+GeSHi BUGFIX:- Fixed a bug in GeSHi where the first line colour was not used when using FANCY LINE NUMBERS thus resulting in just one colour being used for the alternate lines.
+There's a problem in WordPress due to which the starting delimiters of ASP, PHP were not displayed correctly, as whitespace was inserted between the '<' and the rest of the delimiter. This has been patched so that its displayed correctly, but its not saved in the database, so the database still contains the delimiters as formatted by WordPress.
+
+
+v3.0
+-------------
+NEW LICENSE:-- iG:Syntax Hiliter is now licensed under GNU GPL.
+Complete re-write of the plugin resulting in reduction of code from 750+ lines to about 400 Lines.
+New GeSHi Core(v1.0.7) which has some bug-fixes, please see GeSHi Website for its changelog.
+New languages added are C#, Delphi, Smarty & VB.NET.
+ASP language file structure updated & more keywords added.
+Drag-n-Drop usage of new languages. The plugin now supports all languages that GeSHi(v1.0.7) supports. You just need to drop the language file in the "geshi" directory & use the filename as the tag for the language(like if file is "pascal.php", then the filename is "pascal" & the tags will be [pascal] & [/pascal]).
+Language name which is displayed in the Code-Box can now be turned ON or OFF easily.
+No more need to set the physical-path to the "geshi" directory if you are doing a default installation.
+Plain-Text View of the code hilited in the code-box is now possible. This feature can be enabled/disabled easily in the Configuration Interface in WordPress Administration.
+NO NEED TO EDIT THE PLUGIN FILE ANYMORE. You can now configure the plugin settings from a GUI located under the OPTIONS menu in your WordPress Administration(WordPress 1.5 & above only).
+
+
+v2.01
+-------------
+BUGFIX:- Fixed a bug by removing a <br /> tag from the function pFix() which lead to closing of an unnecessary <p> tag making the code not xHTML valid(as per my desires).
+
+
+v2.0 Final 
+-------------
+Implemented the new version of GeSHi core, v1.0.2 which has some bug fixes & which uses OL(Ordered Lists) for Line Numbering and supports starting of a Line Number from any given number.
+The ASP(Active Server Pages) language file has been updated to the new Language File structure of GeSHi as well as more keywords added & hiliting is more effective now.
+iG:Syntax Hiliter now also supports ActionScript, C, C++, JavaScript, Perl, Python, Visual Basic & XML.
+The whole plugin has been re-written & all the hiliting code is now in a class. You can just use the class anywhere else too for hiliting the code. But to also use the Code Tags to wrap your code & then hilite them, you will need to use all other functions. You can remove the WordPress Filter calls at the end of the plugin & use the rest of the code as you want somewhere else.
+BUGFIX:- The issue of multi-line comments not being hilited properly in v2.0 Preview has been sorted out.
+
+
+v2.0 Preview 
+-------------
+Implemented the new version of GeSHi core, v1.0.1 which has some bug fixes including the extra quote(") bug that broke the xHTML validation of the code.
+I've created a new language file for ASP(Active Server Pages) which has been added to this release & will also be a part of the next GeSHi release.
+Line numbering is now done through Ordered Lists(<OL>) & the code is xHTML compliant.
+Auto-Formatting disabled for posts that contain the iG:Syntax Hiliter code tags so that your code is good for copy-paste operations.
+
+
+v1.1
+-------------
+Implemented the line numbering of code.
+The code box is now of fixed dimensions without word-wrap & with scrollbars(if required).
+
+
+v1.0
+-------------
+hilites code between the special tags, all of them differently.
+Uses GeSHi for syntax hiliting.
+Supports HTML, CSS, PHP, JAVA & SQL codes.
+
+
+
+3. INSTALLATION
+-----------------------------------------------------------------------------------------
+
+Installation is fairly easy. Just follow the steps:-
+
+Extract the contents of zip file and upload its contents as they are to your WordPress plugins directory, or just install directly from WordPress plugins repository.
+
+Go to the Plugins page in your WordPress administration and activate iG:Syntax Hiliter. It'll auto-install on activation.
+
+That's all, your iG:Syntax Hiliter plugin is installed. Did you expect more? ;)
+
+
+
+4. UPGRADING
+-----------------------------------------------------------------------------------------
+Note: One click upgrades will be supported from this release onwards.
+
+Upgrading from an old version? No problem, its as easy as popping a candy in your mouth.
+
+
+UPGRADING from v3.x
+---------------------------------
+Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & ig_syntax hiliter plugin directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
+
+
+UPGRADING from v2.1 or lower 
+---------------------------------
+Deactivate the plugin in WordPress admin and then remove the following files and directory:
+
+geshi directory
+geshi.php
+syntax_hilite.php
+
+Now just follow the INSTALLATION process again. Easy & Tasty, just like a Candy, no? ;)
+
+
+
+5. CONFIGURATION
+-----------------------------------------------------------------------------------------
+Configuring iG:Syntax Hiliter is a piece of cake. Login to your WordPress admin section & under the Options menu you'll see iG:Syntax Hiliter in the sub-menu.
+
+When you click the iG:Syntax Hiliter configuration page, you are offered 6 configuration settings which you can set to your liking. Lets go through each of them.
+
+[SHOW TOOLBAR] : This option allows you to tell the plugin whether to show the toolbar (which shows plain text option, file name, language name) above the code box or not. The option can be overridden for any code block using 'toolbar' attribute in the tag.
+
+[SHOW PLAIN TEXT OPTION] : This option allows you to tell the plugin whether to show the Plain Text view option on the code box or not. The option can be overridden for any code block using 'plaintext' attribute in the tag.
+
+[SHOW LINE NUMBERS IN CODE] : This option allows you to tell the plugin whether to show the line numbers along with code in the code box. Line numbers along with code looks great, are a great help when referring to some code from a code box. The option can be overridden for any code block using 'gutter' attribute in the tag.
+
+[HILITE CODE IN COMMENTS] : This option allows you to tell the plugin whether to hilite code posted in comments. If this is enabled, code posted in the comments will be hilited as it is in the posts.
+
+[LINK KEYWORDS/FUNCTION NAMES TO MANUAL] : This option allows you to tell the plugin whether to link keywords, function names etc to that language's online manual. This works only if this feature is enabled for that particular language in GeSHi language file.
+
+[ENABLE GITHUB GIST EMBED IN COMMENTS] : This option allows you to tell the plugin whether to embed Github Gist in comments. If disabled then a Gist posted in comments is linked to Github.
+
+
+
+6. USAGE
+-----------------------------------------------------------------------------------------
+Using this syntax highlighter is fairly easy. There is one tag and seven optional attributes. Here's how code is posted for it to be hilited.
+
+[sourcecode language="language_name"]
+//some code here
+[/sourcecode]
+
+
+Following are the (optional) attributes:
+
+language	=> Use this to specify the programming language whose code you want to hilite. This language has to be present in 'geshi' directory inside plugin directory. If 'language' attribute is not specified or if a non-existant language is specified in it then a generic code box is rendered.
+
+firstline	=> Use this to start line numbering from a number greater than 1
+
+highlight	=> Use this to tell plugin which lines are to be marked different for emphasis. Line numbers are actual line numbers of code and have no relation to the ones starting as per 'firstline' attribute. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8
+			[sourcecode language="language_name" highlight="3,5-8,11"]
+			//some code here
+			[/sourcecode]
+
+file		=> Use this to show a file name/path. This is displayed in the toolbar shown above code box.
+
+gutter		=> Use this to tell plugin whether to show line numbers in the code box or not. It accepts either 'yes' or 'no'. This, if specified, will override the global option to show line numbers for that particular code box.
+
+plaintext	=> Use this to tell plugin whether to show plain text option for the code box or not. It accepts either 'yes' or 'no'. This, if specified, will override the global option to show plain text option for that particular code box.
+
+toolbar		=> Use this to tell plugin whether to show toolbar for the code box or not. It accepts either 'yes' or 'no'. This, if specified, will override the global option to show toolbar for that particular code box.
+
+
+The plugin also supports shorthand tags. So something like this:
+
+[php highlight="5,11"]
+//some code here
+[/php]
+
+would be like using:
+
+[sourcecode language="php" highlight="5,11"]
+//some code here
+[/sourcecode]
+
+Its advised to use the full format of the tag for semantics, however its a personal choice and the plugin supports both full format and shorthand.
+
+
+
+7. IMPORTANT
+-----------------------------------------------------------------------------------------
+Do not forget to close the tags, as your code will not be hilited if you don't close your tags. Also, DON'T NEST TAGS. Nesting of tags don't work, so don't try it, it'll ruin your output.
+
+Also a WYSIWYG editor (like the one bundled with WordPress) will probably mess up your code when you paste it in the editor. So if you are having that issue, then please don't report it as a bug. WYSIWYG editors are just not supported at present.
+
+NOTE: For fast results and less load on your server, you should have a cache plugin installed. That way the plugin won't have to parse the code blocks on a post everytime its loaded in browser.
+
+
+
+That's all of the important stuff. Enjoy!! 
+
