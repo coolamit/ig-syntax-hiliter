@@ -10,7 +10,7 @@ A plugin to easily present source code on your site with syntax highlighting and
 
 == Description ==
 
-iG:Syntax Hiliter allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [GeSHi library](http://qbnz.com/highlighter/) to colourize your code and supports over a 100 programming languages. Most common languages are included with the plugin and it includes drop in support for more languages used by GeSHi.
+**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [GeSHi library](http://qbnz.com/highlighter/) to colourize your code and supports over a 100 programming languages. Most common languages are included with the plugin and it includes drop in support for more languages used by GeSHi.
 
 Github: https://github.com/coolamit/ig-syntax-hiliter
 
@@ -29,7 +29,7 @@ Just deactivate plugin in WordPress admin, delete the syntax_hilite.php and gesh
 
 ###Installing The Plugin###
 
-Extract all files from the zip file and then upload it to `/wp-content/plugins/`. **Make sure to keep the file/folder structure intact**
+Extract all files from the zip file and then upload it to `/wp-content/plugins/`. **Make sure to keep the file/folder structure intact.**
 
 Go to WordPress admin section, click on "Plugins" in the menu bar and then click "Activate" link under "iG:Syntax Hiliter".
 
@@ -65,11 +65,13 @@ For detailed usage instructions and usage of different available attributes and 
 
 None yet!
 
+
 == Screenshots ==
 
 1. Settings page of the plugin where default options can be set for plugin.
 2. Example display of syntax highlighted PHP code.
 3. Example display of plain text view of some PHP code.
+
 
 == ChangeLog ==
 
@@ -97,15 +99,15 @@ None yet!
 
 = v3.1 =
 
-* BUGFIX:- Critical bug, which broke the plugin when the square brackets([ & ]) were used in the posts in places other than tags, has been fixed.
-* BUGFIX:- Another bug, which allowed any attribute in the tags besides the 'num' and also allowed any attribute value for it, affecting the processing. Now only the 'num' attribute is accepted and if you specify the 'num' attribute then its value must be a positive number otherwise your code won't be hilited. The 'num' attribute is optional and you can leave it out without any problems.
-* BUGFIX:- Fixed the unclosed <select> tags in the Plugin GUI code.
-* GeSHi BUGFIX:- Fixed a bug in GeSHi where the first line colour was not used when using FANCY LINE NUMBERS thus resulting in just one colour being used for the alternate lines.
+* BUGFIX: Critical bug, which broke the plugin when the square brackets([ & ]) were used in the posts in places other than tags, has been fixed.
+* BUGFIX: Another bug, which allowed any attribute in the tags besides the 'num' and also allowed any attribute value for it, affecting the processing. Now only the 'num' attribute is accepted and if you specify the 'num' attribute then its value must be a positive number otherwise your code won't be hilited. The 'num' attribute is optional and you can leave it out without any problems.
+* BUGFIX: Fixed the unclosed <select> tags in the Plugin GUI code.
+* GeSHi BUGFIX: Fixed a bug in GeSHi where the first line colour was not used when using FANCY LINE NUMBERS thus resulting in just one colour being used for the alternate lines.
 * There's a problem in WordPress due to which the starting delimiters of ASP, PHP were not displayed correctly, as whitespace was inserted between the '<' and the rest of the delimiter. This has been patched so that its displayed correctly, but its not saved in the database, so the database still contains the delimiters as formatted by WordPress.
 
 = v3.0 =
 
-* NEW LICENSE:-- iG:Syntax Hiliter is now licensed under GNU GPL.
+* NEW LICENSE: iG:Syntax Hiliter is now licensed under GNU GPL.
 * New GeSHi Core(v1.0.7) which has some bug-fixes, please see GeSHi Website for its changelog.
 * New languages added are C#, Delphi, Smarty & VB.NET.
 * ASP language file structure updated & more keywords added.
