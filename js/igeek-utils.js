@@ -70,15 +70,15 @@ var iGeek = {
 			var l_date = new Date();
 			var expiry_date = new Date( l_date.getTime() + expiry_secs );
 			cookie_value = escape(cookie_value);
-			cookie_value += ( ig.is_empty(expiry_secs) ) ? "" : "; expires=" + expiry_date.toUTCString();
-			cookie_value += ( ig.is_empty(cookie_path) ) ? "; path=/" : "; path=" + cookie_path;
+			cookie_value += ( iGeek.is_empty(expiry_secs) ) ? "" : "; expires=" + expiry_date.toUTCString();
+			cookie_value += ( iGeek.is_empty(cookie_path) ) ? "; path=/" : "; path=" + cookie_path;
 			document.cookie = cookie_name + "=" + cookie_value;
 		},
 		/**
 		 * pass cookie name to delete the cookie
 		 */
 		expire: function(cookie_name, cookie_path) {
-			cookie_path = ( ig.is_empty(cookie_path) ) ? '' : cookie_path;
+			cookie_path = ( iGeek.is_empty(cookie_path) ) ? '' : cookie_path;
 			this.set(cookie_name, "", 1, cookie_path);
 		}
 	}
