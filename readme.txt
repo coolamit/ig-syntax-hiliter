@@ -16,7 +16,6 @@ Github: https://github.com/coolamit/ig-syntax-hiliter
 
 WordPress.org plugin repo: http://plugins.svn.wordpress.org/igsyntax-hiliter/
 
-
 == Installation ==
 
 ###UPGRADING from v3.x###
@@ -60,18 +59,25 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 For detailed usage instructions and usage of different available attributes and plugin options, please [read the manual](http://plugins.svn.wordpress.org/igsyntax-hiliter/trunk/MANUAL.txt).
 
-
 == Frequently Asked Questions ==
 
-None yet!
+= My code looks all odd, characters appear as HTML entities. Why is your plugin screwing up my code? =
 
+If you are using the WYSIWYG (rich text) editor to compose your post then that is what's messing things up for you. iG:Syntax Hiliter does not support composing posts and posting code using WYSIWYG at present. If you are not using WYSIWYG editor and still have same issue, please report it.
+
+= I see some code that I can improve. Do you accept pull requests? =
+
+By all means, feel free to submit a pull request.
+
+= I want XYZ feature. Can you implement it? =
+
+Please feel free to suggest a new feature. Its inclusion might be speedier if you can provide the code to make it work.
 
 == Screenshots ==
 
-1. Settings page of the plugin where default options can be set for plugin.
-2. Example display of syntax highlighted PHP code.
-3. Example display of plain text view of some PHP code.
-
+1. Settings page of the plugin where default options can be set for plugin
+2. Example display of syntax highlighted PHP code
+3. Example display of plain text view of some PHP code
 
 == ChangeLog ==
 
