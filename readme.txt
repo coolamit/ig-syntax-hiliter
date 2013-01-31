@@ -88,7 +88,7 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 = v4.1 =
 
 * BUGFIX: Github Gist URL XSS security hole
-* BUGFIX: __dir__ doesn't work below PHP 5.3 - props to Karol Kuczmarski for spotting it
+* BUGFIX: `__dir__` doesn't work below PHP 5.3 - props to Karol Kuczmarski for spotting it
 * NEW: Added "lang" as shorthand for "language" attribute
 * NEW: Additional GeSHi language files can be put in "geshi" directory in theme, which will prevent their deletion on plugin upgrade
 * IMPROVED: If a code block is repeated with same attributes then its parsed only once and output is reused
