@@ -13,14 +13,14 @@ if( ! defined('IG_SYNTAX_HILITER_VERSION') ) {
 }
 
 //load up the plugin base abstract class
-require_once( __DIR__ . "/class-ig-syntax-hiliter.php" );
+require_once( "class-ig-syntax-hiliter.php" );
 //load up the plugin admin class
-require_once( __DIR__ . "/class-ig-syntax-hiliter-admin.php" );
+require_once( "class-ig-syntax-hiliter-admin.php" );
 //load up the plugin front-end class
-require_once( __DIR__ . "/class-ig-syntax-hiliter-frontend.php" );
+require_once( "class-ig-syntax-hiliter-frontend.php" );
 
 //load up GeSHi
-require_once( __DIR__ . "/geshi.php" );
+require_once( "geshi.php" );
 
 //set loader to execute on WP init
 add_action( 'init', 'ig_syntax_hiliter_loader' );
