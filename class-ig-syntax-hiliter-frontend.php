@@ -257,19 +257,23 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		}
 
 		extract( shortcode_atts( array(
-			'language' => 'code',
+			'language' => '',
 			'firstline' => 1,
 			'highlight' => 0,
 			'file' => '',
 			'gutter' => '',
 			'plaintext' => '',
 			'toolbar' => '',
+			'lang' => 'code',
 			'num' => 1,
 		), $attrs ) );
 
 		$num = intval( $num );
 		$firstline = ( intval( $firstline ) < 1 ) ? 1 : intval( $firstline );
 		$firstline = ( $num > $firstline ) ? $num : $firstline;
+
+		$language = ( empty( $language ) ) ? $lang : $language;
+		unset( $lang );
 
 		$language = sanitize_title( $language );
 		$language_display = $language;
@@ -322,12 +326,33 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 			if( ! file_exists( parent::$__geshi_dir . '/' . $language . '.php' ) ) {
 				$is_language = false;	//language file doesn't exist
 			}
+
+			//check for language file in theme directory
+			if( $is_language === false ) {
+				if( ! file_exists( get_template_directory() . '/geshi/' . $language . '.php' ) ) {
+					$is_language = false;	//language file doesn't exist
+				} else {
+					$is_language = true;
+					$dir_path = get_template_directory() . '/geshi/';
+				}
+			}
+
+			//check for language file in child theme directory
+			if( $is_language === false && get_template_directory() !== get_stylesheet_directory() ) {
+				if( ! file_exists( get_stylesheet_directory() . '/geshi/' . $language . '.php' ) ) {
+					$is_language = false;	//language file doesn't exist
+				} else {
+					$is_language = true;
+					$dir_path = get_stylesheet_directory() . '/geshi/';
+				}
+			}
 		}
 
 		if( $is_language !== true ) {
 			//we don't have a valid language specified in the tag by user
 			//set the code block to be hilited using the 'code' lang file
 			$language = 'code';
+			$language_display = $language;
 		}
 
 		//check whether to display line numbers & for a tag level override (if any)
@@ -370,6 +395,11 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		}
 
 		$geshi = new GeSHi( $code, $language );
+
+		if( isset($dir_path) && ! empty($dir_path) ) {
+			//language file is not in plugin folder, load from theme
+			$geshi->set_language_path( $dir_path );
+		}
 
 		$geshi_error = $geshi->error();
 		if( ! empty( $geshi_error ) ) {
@@ -436,15 +466,21 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 			$atts['language'] = $tag;	//shorthand tag used, so tag name is language
 		}
 
-		$shortcode_md5 = md5( microtime( true ) . '-' . serialize( array(
+		ksort( $atts );	//sort attribute array on keys
+
+		$shortcode_md5 = md5( serialize( array(
 			'text' => $code,
 			'atts' => $atts
-		) ) );	//create unique token key for this code block
+		) ) );	//create unique token key for this code block with these attributes
 
-		$this->__hilited_code[$shortcode_md5] = $this->_get_hilited_code( $atts, $code );	//save hilited code in array
-		if( empty( $this->__hilited_code[$shortcode_md5] ) ) {
-			unset( $this->__hilited_code[$shortcode_md5] );
-			return;
+		if( ! array_key_exists( $shortcode_md5, $this->__hilited_code ) ) {
+			$this->__hilited_code[$shortcode_md5] = $this->_get_hilited_code( $atts, $code );	//save hilited code in array
+
+			if( empty( $this->__hilited_code[$shortcode_md5] ) ) {
+				//banged up somewhere, we didn't get anything, unset key in array & return empty
+				unset( $this->__hilited_code[$shortcode_md5] );
+				return;
+			}
 		}
 
 		$shortcode_token = sprintf( self::token, $shortcode_md5 );	//generate token
@@ -542,18 +578,28 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 			'gist' => '',
 		), $attrs ) );
 
-		$id = sanitize_user( $id, true );	//since ID can only be alphanumeric
 		$gist = esc_url( $gist );
 
-		if( empty( $id ) && empty( $gist ) ) {
+		if( ! empty( $gist ) ) {
+			//gist attr takes priority
+			$gist = rtrim( $gist, '/' );
+			$arr_gist_url = explode( '/', $gist );
+
+			$gist_id = array_pop( $arr_gist_url );
+
+			if( ! empty( $gist_id ) ) {
+				$id = $gist_id;
+			}
+
+			unset( $gist_id, $arr_gist_url );
+		}
+
+		if( empty( $id ) ) {
 			return;
 		}
 
-		if( ! empty( $gist ) ) {
-			$gist = rtrim( $gist, '/' );	//gist attr takes priority
-		} else {
-			$gist = esc_url( 'https://gist.github.com/' . $id );
-		}
+		$id = sanitize_user( $id, true );	//since ID can only be alphanumeric
+		$gist = esc_url( 'https://gist.github.com/' . $id );
 
 		$returnable = '<script src="' . $gist . '.js"></script>';
 

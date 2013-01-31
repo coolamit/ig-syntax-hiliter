@@ -3,7 +3,7 @@
 A WordPress plugin for syntax hiliting of Actionscript, PHP, Java, C#, CSS, HTML, Javascript, MySQL, Python, Ruby & many other languages.
 
 
-Version: 4.0
+Version: 4.1
 Author: Amit Gupta
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 License: GNU GPL v2
@@ -42,6 +42,15 @@ You are required to have ability to edit WordPress options to be able to install
 
 2. WHAT's NEW
 -----------------------------------------------------------------------------------------
+v4.1
+-------------
+BUGFIX: Github Gist URL XSS security hole
+BUGFIX: __dir__ doesn't work below PHP 5.3 - props to Karol Kuczmarski for spotting it
+NEW: Added "lang" as shorthand for "language" attribute
+NEW: Additional GeSHi language files can be put in "geshi" directory in theme, which will prevent their deletion on plugin upgrade
+IMPROVED: If a code block is repeated with same attributes then its parsed only once and output is reused
+
+
 v4.0
 -------------
 NEW: Ability to embed Github Gist in post and comments (configurable)
@@ -56,28 +65,28 @@ IMPROVED: Simpler and faster options page in wp-admin
 
 v3.5
 -------------
-BUGFIX:- BB Tags except the ones of iG:Syntax Hiliter are allowed. The language file's existence is checked before parsing the code. If the language file does not exist then the code is not parsed.
-BUGFIX:- 'C' code hiliting is now fixed.
-BUGFIX:- 'Plain Text' has been improved to strip the extra blank lines and spaces in Opera and FireFox.
+BUGFIX: BB Tags except the ones of iG:Syntax Hiliter are allowed. The language file's existence is checked before parsing the code. If the language file does not exist then the code is not parsed.
+BUGFIX: 'C' code hiliting is now fixed.
+BUGFIX: 'Plain Text' has been improved to strip the extra blank lines and spaces in Opera and FireFox.
 The latest stable GeSHi core(v1.0.7.6).
-NEW:- Code Hiliting for Comments has been implemented. This feature can be Enabled/Disabled from the admin interface for iG:Syntax Hiliter. The tags are same for hiliting the code.
-NEW:- A cross-browser Colour Picker(tested in IE6, FireFox1.5 and Opera8.5) is now available to easily set the line colours displayed in the code box.
-NEW:- A new type of view implemented for seeing "Plain Text" code. Besides opening the plain text code in a new window, you can have it displayed in the code box itself with an option to display the hilited HTML code back again. The "Plain Text" view type can be set in the admin interface.
+NEW: Code Hiliting for Comments has been implemented. This feature can be Enabled/Disabled from the admin interface for iG:Syntax Hiliter. The tags are same for hiliting the code.
+NEW: A cross-browser Colour Picker(tested in IE6, FireFox1.5 and Opera8.5) is now available to easily set the line colours displayed in the code box.
+NEW: A new type of view implemented for seeing "Plain Text" code. Besides opening the plain text code in a new window, you can have it displayed in the code box itself with an option to display the hilited HTML code back again. The "Plain Text" view type can be set in the admin interface.
 The language file for Ruby that I created a while back is now bundled with the plugin and its also a part of the default GeSHi package.
 
 
 v3.1
 -------------
-BUGFIX:- Critical bug, which broke the plugin when the square brackets([ & ]) were used in the posts in places other than tags, has been fixed.
-BUGFIX:- Another bug, which allowed any attribute in the tags besides the 'num' and also allowed any attribute value for it, affecting the processing. Now only the 'num' attribute is accepted and if you specify the 'num' attribute then its value must be a positive number otherwise your code won't be hilited. The 'num' attribute is optional and you can leave it out without any problems.
-BUGFIX:- Fixed the unclosed <select> tags in the Plugin GUI code.
-GeSHi BUGFIX:- Fixed a bug in GeSHi where the first line colour was not used when using FANCY LINE NUMBERS thus resulting in just one colour being used for the alternate lines.
+BUGFIX: Critical bug, which broke the plugin when the square brackets([ & ]) were used in the posts in places other than tags, has been fixed.
+BUGFIX: Another bug, which allowed any attribute in the tags besides the 'num' and also allowed any attribute value for it, affecting the processing. Now only the 'num' attribute is accepted and if you specify the 'num' attribute then its value must be a positive number otherwise your code won't be hilited. The 'num' attribute is optional and you can leave it out without any problems.
+BUGFIX: Fixed the unclosed <select> tags in the Plugin GUI code.
+GeSHi BUGFIX: Fixed a bug in GeSHi where the first line colour was not used when using FANCY LINE NUMBERS thus resulting in just one colour being used for the alternate lines.
 There's a problem in WordPress due to which the starting delimiters of ASP, PHP were not displayed correctly, as whitespace was inserted between the '<' and the rest of the delimiter. This has been patched so that its displayed correctly, but its not saved in the database, so the database still contains the delimiters as formatted by WordPress.
 
 
 v3.0
 -------------
-NEW LICENSE:-- iG:Syntax Hiliter is now licensed under GNU GPL.
+NEW LICENSE: iG:Syntax Hiliter is now licensed under GNU GPL.
 Complete re-write of the plugin resulting in reduction of code from 750+ lines to about 400 Lines.
 New GeSHi Core(v1.0.7) which has some bug-fixes, please see GeSHi Website for its changelog.
 New languages added are C#, Delphi, Smarty & VB.NET.
@@ -91,7 +100,7 @@ NO NEED TO EDIT THE PLUGIN FILE ANYMORE. You can now configure the plugin settin
 
 v2.01
 -------------
-BUGFIX:- Fixed a bug by removing a <br /> tag from the function pFix() which lead to closing of an unnecessary <p> tag making the code not xHTML valid(as per my desires).
+BUGFIX: Fixed a bug by removing a <br /> tag from the function pFix() which lead to closing of an unnecessary <p> tag making the code not xHTML valid(as per my desires).
 
 
 v2.0 Final 
@@ -100,7 +109,7 @@ Implemented the new version of GeSHi core, v1.0.2 which has some bug fixes & whi
 The ASP(Active Server Pages) language file has been updated to the new Language File structure of GeSHi as well as more keywords added & hiliting is more effective now.
 iG:Syntax Hiliter now also supports ActionScript, C, C++, JavaScript, Perl, Python, Visual Basic & XML.
 The whole plugin has been re-written & all the hiliting code is now in a class. You can just use the class anywhere else too for hiliting the code. But to also use the Code Tags to wrap your code & then hilite them, you will need to use all other functions. You can remove the WordPress Filter calls at the end of the plugin & use the rest of the code as you want somewhere else.
-BUGFIX:- The issue of multi-line comments not being hilited properly in v2.0 Preview has been sorted out.
+BUGFIX: The issue of multi-line comments not being hilited properly in v2.0 Preview has been sorted out.
 
 
 v2.0 Preview 
@@ -128,7 +137,7 @@ Supports HTML, CSS, PHP, JAVA & SQL codes.
 3. INSTALLATION
 -----------------------------------------------------------------------------------------
 
-Installation is fairly easy. Just follow the steps:-
+Installation is fairly easy. Just follow the steps:
 
 Extract the contents of zip file and upload its contents as they are to your WordPress plugins directory, or just install directly from WordPress plugins repository.
 
@@ -140,14 +149,19 @@ That's all, your iG:Syntax Hiliter plugin is installed. Did you expect more? ;)
 
 4. UPGRADING
 -----------------------------------------------------------------------------------------
-Note: One click upgrades will be supported from this release onwards.
+Note: One click upgrades are supported from v4.0 onwards.
 
 Upgrading from an old version? No problem, its as easy as popping a candy in your mouth.
 
 
+UPGRADING from v4.0 or later
+---------------------------------
+Just deactivate plugin in WordPress admin, delete the "ig-syntax-hiliter" directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
+
+
 UPGRADING from v3.x
 ---------------------------------
-Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & "ig-syntax-hiliter" directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
+Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & "ig_syntax_hilite" directory from plugins folder and follow the INSTALLATION process again. That's quite easy!!
 
 
 UPGRADING from v2.1 or lower 
@@ -187,7 +201,7 @@ Using this syntax highlighter is fairly easy. There is one tag and seven optiona
 
 Following are the (optional) attributes:
 
-language	=> Use this to specify the programming language whose code you want to hilite. This language has to be present in 'geshi' directory inside plugin directory. If 'language' attribute is not specified or if a non-existant language is specified in it then a generic code box is rendered.
+language	=> Use this to specify the programming language whose code you want to hilite. This language has to be present in 'geshi' directory inside plugin directory. If 'language' attribute is not specified or if a non-existant language is specified in it then a generic code box is rendered. 'lang' is the shorthand for 'language' attribute.
 
 firstline	=> Use this to start line numbering from a number greater than 1
 
@@ -207,15 +221,15 @@ toolbar		=> Use this to tell plugin whether to show toolbar for the code box or 
 
 The plugin also supports shorthand tags. So something like this:
 
-[php highlight="5,11"]
-//some code here
-[/php]
-
-would be like using:
-
 [sourcecode language="php" highlight="5,11"]
 //some code here
 [/sourcecode]
+
+can also be written as:
+
+[php highlight="5,11"]
+//some code here
+[/php]
 
 Its advised to use the full format of the tag for semantics, however its a personal choice and the plugin supports both full format and shorthand.
 
