@@ -24,7 +24,7 @@ Just deactivate plugin in WordPress admin, delete the "ig-syntax-hiliter" direct
 
 ###UPGRADING from v3.x###
 
-Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & "ig-syntax-hiliter" directory from plugins folder and follow the installation process below. That's quite easy!!
+Just deactivate plugin in WordPress admin, delete the syntax_hilite.php file & "ig_syntax_hilite" directory from plugins folder and follow the installation process below. That's quite easy!!
 
 ###UPGRADING from v2.1 or lower###
 
