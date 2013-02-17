@@ -3,7 +3,7 @@
 A WordPress plugin for syntax hiliting of Actionscript, PHP, Java, C#, CSS, HTML, Javascript, MySQL, Python, Ruby & many other languages.
 
 
-Version: 4.1
+Version: 4.2
 Author: Amit Gupta
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 License: GNU GPL v2
@@ -42,6 +42,12 @@ You are required to have ability to edit WordPress options to be able to install
 
 2. WHAT's NEW
 -----------------------------------------------------------------------------------------
+v4.2
+-------------
+BUGFIX: Shorthand tags for all languages supported now - props to Karol Kuczmarski for spotting it
+NEW: Added C++ language file
+
+
 v4.1
 -------------
 BUGFIX: Github Gist URL XSS security hole
@@ -187,6 +193,8 @@ When you click the iG:Syntax Hiliter configuration page, you are offered 6 confi
 [LINK KEYWORDS/FUNCTION NAMES TO MANUAL] : This option allows you to tell the plugin whether to link keywords, function names etc to that language's online manual. This works only if this feature is enabled for that particular language in GeSHi language file.
 
 [ENABLE GITHUB GIST EMBED IN COMMENTS] : This option allows you to tell the plugin whether to embed Github Gist in comments. If disabled then a Gist posted in comments is linked to Github.
+
+[REBUILD SHORTHAND TAGS] : Language files in the plugin's directory and current theme (parent & child) directory are scanned and their names are cached to allow shorthand tag usage for all languages. This cache is rebuilt automatically every 3 days. But if you wish to rebuild it manually you can do so by clicking this button.
 
 
 

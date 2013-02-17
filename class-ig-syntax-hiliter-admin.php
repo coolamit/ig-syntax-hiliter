@@ -135,6 +135,17 @@ class iG_Syntax_Hiliter_Admin extends iG_Syntax_Hiliter {
 						</select>
 					</td>
 				</tr>
+				<tr>
+					<td colspan="2">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<button id="igsh_refresh_languages" name="igsh_refresh_languages" class="button button-primary" value="rebuild">Rebuild Shorthand Tags</button>
+						<p>Click the button above to rebuild the list of shorthand tags. This is needed if you have added any new language file or 
+						removed any existing language file.</p>
+						<p><strong>Note:</strong> This will be automatically done in <span id="igsh-time-to-rebuild"><?php echo $this->human_time_diff( time(), ( $this->_get_language_build_time() + parent::languages_cache_life ) ); ?></span></p>
+					</td>
+				</tr>
 			</table>
 		</div>
 <?php
@@ -189,7 +200,13 @@ class iG_Syntax_Hiliter_Admin extends iG_Syntax_Hiliter {
 		$_POST['option_name'] = sanitize_text_field( strtolower( trim($_POST['option_name']) ) );
 		$_POST['option_value'] = sanitize_text_field( strtolower( trim($_POST['option_value']) ) );
 
-		if( ! $this->_is_yesno( $_POST['option_value'] ) || ! $this->_get_option( $_POST['option_name'] ) ) {
+		if( $_POST['option_name'] == 'igsh_refresh_languages' && $_POST['option_value'] == 'rebuild' ) {
+			//rebuild language file list
+			$this->_get_languages( 'yes' );
+			$response['error'] = 0;
+			$response['msg'] = $this->_create_ajax_message( 'Shorthand Tags rebuilt successfully', 'success' );
+			$response['time'] = $this->human_time_diff( time(), ( $this->_get_language_build_time() + parent::languages_cache_life ) );
+		} elseif( ! $this->_is_yesno( $_POST['option_value'] ) || ! $this->_get_option( $_POST['option_name'] ) ) {
 			$response['msg'] = $this->_create_ajax_message( 'Invalid request sent, please refresh the page and try again', 'error' );
 			$this->_send_ajax_response($response);
 		} else {
@@ -211,16 +228,16 @@ class iG_Syntax_Hiliter_Admin extends iG_Syntax_Hiliter {
 		}
 
 		//load stylesheet
-		wp_enqueue_style( parent::plugin_id . '-admin', plugins_url( 'css/admin.css', __FILE__ ), false );
+		wp_enqueue_style( parent::plugin_id . '-admin', plugins_url( 'css/admin.css', __FILE__ ), false, IG_SYNTAX_HILITER_VERSION );
 		//load jQuery::msg stylesheet
-		wp_enqueue_style( parent::plugin_id . '-jquery-msg', plugins_url( 'css/jquery.msg.css', __FILE__ ), false );
+		wp_enqueue_style( parent::plugin_id . '-jquery-msg', plugins_url( 'css/jquery.msg.css', __FILE__ ), false, IG_SYNTAX_HILITER_VERSION );
 
 		//load jQuery::center script
-		wp_enqueue_script( parent::plugin_id . '-jquery-center', plugins_url( 'js/jquery.center.min.js', __FILE__ ), array( 'jquery' ) );
+		wp_enqueue_script( parent::plugin_id . '-jquery-center', plugins_url( 'js/jquery.center.min.js', __FILE__ ), array( 'jquery' ), IG_SYNTAX_HILITER_VERSION );
 		//load jQuery::msg script
-		wp_enqueue_script( parent::plugin_id . '-jquery-msg', plugins_url( 'js/jquery.msg.min.js', __FILE__ ), array( parent::plugin_id . '-jquery-center' ) );
+		wp_enqueue_script( parent::plugin_id . '-jquery-msg', plugins_url( 'js/jquery.msg.min.js', __FILE__ ), array( parent::plugin_id . '-jquery-center' ), IG_SYNTAX_HILITER_VERSION );
 		//load our script
-		wp_enqueue_script( parent::plugin_id . '-admin', plugins_url( 'js/admin.js', __FILE__ ), array( parent::plugin_id . '-jquery-msg' ) );
+		wp_enqueue_script( parent::plugin_id . '-admin', plugins_url( 'js/admin.js', __FILE__ ), array( parent::plugin_id . '-jquery-msg' ), IG_SYNTAX_HILITER_VERSION );
 
 		//some vars in JS that we'll need
 		wp_localize_script( parent::plugin_id . '-admin', 'ig_sh', array(

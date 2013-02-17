@@ -3,13 +3,13 @@
 Plugin Name: iG:Syntax Hiliter
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 Description: Syntax Highlighter plugin to colourize source code for various supported programming languages. See the MANUAL for more instructions.
-Version: 4.1
+Version: 4.2
 Author: Amit Gupta
 Author URI: http://blog.igeek.info/
 */
 
 if( ! defined('IG_SYNTAX_HILITER_VERSION') ) {
-	define( 'IG_SYNTAX_HILITER_VERSION', 4.1 );
+	define( 'IG_SYNTAX_HILITER_VERSION', 4.2 );
 }
 
 //set loader to execute on WP init
@@ -17,6 +17,9 @@ add_action( 'init', 'ig_syntax_hiliter_loader' );
 
 function ig_syntax_hiliter_loader() {
 	$igsh_plugin_dir = dirname( __FILE__ );
+
+	//load up TLC Transient class
+	require_once( $igsh_plugin_dir . "/tlc-transients.php" );
 
 	//load up GeSHi
 	require_once( $igsh_plugin_dir . "/geshi.php" );

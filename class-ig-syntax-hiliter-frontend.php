@@ -69,43 +69,22 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 	 */
 	protected $__geshi_language = array(
 		'as' => 'actionscript',
-		'actionscript' => 'actionscript',
-		'actionscript3' => 'actionscript3',
-		'apache' => 'apache',
-		'applescript' => 'applescript',
-		'asp' => 'asp',
-		'bash' => 'bash',
-		'c' => 'c',
-		'code' => 'code',
-		'csharp' => 'csharp',
-		'css' => 'css',
-		'c_mac' => 'c_mac',
-		'diff' => 'diff',
-		'groovy' => 'groovy',
 		'html' => 'html4strict',
-		'html4strict' => 'html4strict',
-		'html5' => 'html5',
-		'ini' => 'ini',
-		'java' => 'java',
-		'java5' => 'java5',
 		'js' => 'javascript',
-		'jquery' => 'jquery',
-		'mysql' => 'mysql',
-		'oracle11' => 'oracle11',
-		'pcre' => 'pcre',
-		'perl' => 'perl',
-		'perl6' => 'perl6',
-		'php' => 'php',
-		'postgresql' => 'postgresql',
-		'python' => 'python',
-		'rails' => 'rails',
-		'ruby' => 'ruby',
-		'sql' => 'sql',
-		'text' => 'text',
-		'vb' => 'vb',
-		'vbnet' => 'vbnet',
-		'xml' => 'xml',
-		'yaml' => 'yaml',
+	);
+
+	/**
+	 * @var Array Contains display names for some languages, like C# for csharp, VB.NET for vbnet
+	 */
+	protected $__geshi_language_display = array(
+		'cpp' => 'C++',
+		'cfm' => 'Cold Fusion',
+		'csharp' => 'C#',
+		'vbnet' => 'VB.NET',
+		'as' => 'ActionScript',
+		'c_mac' => 'CMac',
+		'html' => 'HTML4',
+		'html4strict' => 'HTML4',
 	);
 
 	/**
@@ -114,6 +93,8 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 	private function __construct() {
 		//init options
 		$this->_init_options();
+
+		$this->_build_tags_array();
 
 		//setup our style/script enqueuing for front-end
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_stuff' ) );
@@ -181,11 +162,11 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		}
 
 		//load stylesheet
-		wp_enqueue_style( self::plugin_id, plugins_url( 'css/front-end.css', __FILE__ ), false );
+		wp_enqueue_style( self::plugin_id, plugins_url( 'css/front-end.css', __FILE__ ), false, IG_SYNTAX_HILITER_VERSION );
 		//load utility lib
-		wp_enqueue_script( 'igeek-utils', plugins_url( 'js/igeek-utils.js', __FILE__ ), array() );
+		wp_enqueue_script( 'igeek-utils', plugins_url( 'js/igeek-utils.js', __FILE__ ), array(), IG_SYNTAX_HILITER_VERSION );
 		//load script
-		wp_enqueue_script( self::plugin_id, plugins_url( 'js/front-end.js', __FILE__ ), array( 'igeek-utils', 'jquery' ) );
+		wp_enqueue_script( self::plugin_id, plugins_url( 'js/front-end.js', __FILE__ ), array( 'igeek-utils', 'jquery' ), IG_SYNTAX_HILITER_VERSION );
 
 		//vars for front-end js
 		wp_localize_script( self::plugin_id, 'ig_syntax_hiliter', array(
@@ -194,6 +175,39 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 				'html' => $this->__code_box['html']
 			)
 		) );
+	}
+
+	/**
+	 * This function builds the array for shorthand tags for all language files
+	 * available in supported directories
+	 */
+	protected function _build_tags_array() {
+		$languages = $this->_get_languages();
+		if( empty( $languages ) ) {
+			return;
+		}
+
+		$keys = array_unique( array_merge( array_keys( $this->__geshi_language ), array_keys( $languages ) ) );
+
+		$tags = array();
+
+		foreach( $keys as $key ) {
+			if( array_key_exists( $key, $this->__geshi_language ) ) {
+				$tags[$key] = $this->__geshi_language[$key];
+				continue;
+			}
+
+			if( array_key_exists( $key, $languages ) ) {
+				$tags[$key] = $languages[$key];
+				continue;
+			}
+		}
+
+		ksort( $tags );
+
+		$this->__geshi_language = $tags;
+
+		unset( $tags, $keys, $languages );
 	}
 
 	/**
@@ -276,7 +290,7 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		unset( $lang );
 
 		$language = sanitize_title( $language );
-		$language_display = $language;
+		$language_display = ( array_key_exists( $language, $this->__geshi_language_display ) ) ? $this->__geshi_language_display[$language] : $language;
 		$language = ( array_key_exists( $language, $this->__geshi_language ) ) ? $this->__geshi_language[$language] : $language;
 
 		$file = strip_tags( $file );
@@ -322,29 +336,17 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		}
 
 		$is_language = true;	//assume we have a valid language
+		$dir_path = parent::$__dirs['geshi'];		//set default path to our geshi dir
+
 		if( function_exists('file_exists') ) {
-			if( ! file_exists( parent::$__geshi_dir . '/' . $language . '.php' ) ) {
+			foreach( parent::$__dirs as $key => $dir ) {
+				if( file_exists( $dir . '/' . $language . '.php' ) ) {
+					$is_language = true;	//language file exists
+					$dir_path = $dir;	//set language file dir
+					break;
+				}
+
 				$is_language = false;	//language file doesn't exist
-			}
-
-			//check for language file in theme directory
-			if( $is_language === false ) {
-				if( ! file_exists( get_template_directory() . '/geshi/' . $language . '.php' ) ) {
-					$is_language = false;	//language file doesn't exist
-				} else {
-					$is_language = true;
-					$dir_path = get_template_directory() . '/geshi/';
-				}
-			}
-
-			//check for language file in child theme directory
-			if( $is_language === false && get_template_directory() !== get_stylesheet_directory() ) {
-				if( ! file_exists( get_stylesheet_directory() . '/geshi/' . $language . '.php' ) ) {
-					$is_language = false;	//language file doesn't exist
-				} else {
-					$is_language = true;
-					$dir_path = get_stylesheet_directory() . '/geshi/';
-				}
 			}
 		}
 
@@ -397,7 +399,7 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 		$geshi = new GeSHi( $code, $language );
 
 		if( isset($dir_path) && ! empty($dir_path) ) {
-			//language file is not in plugin folder, load from theme
+			//we have a path to language file
 			$geshi->set_language_path( $dir_path );
 		}
 
@@ -428,6 +430,9 @@ class iG_Syntax_Hiliter_Frontend extends iG_Syntax_Hiliter {
 			$geshi->highlight_lines_extra( $highlight );	//show these lines as special
 			$geshi->set_highlight_lines_extra_style( 'background-color:#FFFFBC;' );	//set bg color for special lines
 		}
+
+		$geshi->enable_strict_mode();
+
 		$hilited_code = $geshi->parse_code();	//get it all
 
 		if( empty($hilited_code) ) {
