@@ -3,13 +3,14 @@
 Plugin Name: iG:Syntax Hiliter
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 Description: Syntax Highlighter plugin to colourize source code for various supported programming languages. See the MANUAL for more instructions.
-Version: 4.2
+Version: 4.3
 Author: Amit Gupta
 Author URI: http://blog.igeek.info/
+License: GPL v2
 */
 
 if( ! defined('IG_SYNTAX_HILITER_VERSION') ) {
-	define( 'IG_SYNTAX_HILITER_VERSION', 4.2 );
+	define( 'IG_SYNTAX_HILITER_VERSION', 4.3 );
 }
 
 //set loader to execute on WP init

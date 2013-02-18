@@ -87,6 +87,10 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == ChangeLog ==
 
+= v4.3 =
+
+* BUGFIX: some language file names got snipped when building language name cache
+
 = v4.2 =
 
 * BUGFIX: Shorthand tags for all languages supported now - props to Karol Kuczmarski for spotting it
@@ -116,8 +120,8 @@ Changelog of versions prior to v4.0 is available in the [manual](http://plugins.
 
 == Upgrade Notice ==
 
-= 4.2 =
-This version fixes the bug due to which shorthand tags for all included languages and user added languages did not work.
+= 4.3 =
+This version fixes a bug in v4.2 which caused unwanted snipping of language names when building language file name cache.
 
 
 

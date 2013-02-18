@@ -3,7 +3,7 @@
 A WordPress plugin for syntax hiliting of Actionscript, PHP, Java, C#, CSS, HTML, Javascript, MySQL, Python, Ruby & many other languages.
 
 
-Version: 4.2
+Version: 4.3
 Author: Amit Gupta
 Plugin URI: http://blog.igeek.info/wp-plugins/igsyntax-hiliter/
 License: GNU GPL v2
@@ -42,6 +42,11 @@ You are required to have ability to edit WordPress options to be able to install
 
 2. WHAT's NEW
 -----------------------------------------------------------------------------------------
+v4.3
+-------------
+BUGFIX: some language file names got snipped when building language name cache
+
+
 v4.2
 -------------
 BUGFIX: Shorthand tags for all languages supported now - props to Karol Kuczmarski for spotting it

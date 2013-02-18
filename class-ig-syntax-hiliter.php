@@ -84,6 +84,7 @@ abstract class iG_Syntax_Hiliter {
 		}
 
 		$tags = array_unique( array_filter( array_map( array( $this, '_file_to_tag_name' ), $tags ) ) );
+
 		sort( $tags );
 
 		$this->_set_language_build_time();	//set language list built time
@@ -143,7 +144,14 @@ abstract class iG_Syntax_Hiliter {
 	 */
 	protected function _file_to_tag_name( $file_path ) {
 		$file_path = str_replace( '\\', '/', $file_path );
-		$file_path = ( empty($file_path) || strpos( $file_path, '.php' ) === false ) ? '' : ltrim( rtrim( substr( $file_path, strrpos( $file_path, '/' ) ), '.php' ), '/' );
+		if( empty($file_path) || strpos( $file_path, '.php' ) === false ) {
+			$file_path = '';
+		} else {
+			$file_path = explode( '/', $file_path );
+			$file_path = explode( '.', array_pop( $file_path ) );
+			array_pop( $file_path );
+			$file_path = implode( '.', $file_path );
+		}
 		return $file_path;
 	}
 
@@ -197,6 +205,8 @@ abstract class iG_Syntax_Hiliter {
 			delete_option( $old_option_name );	//delete old options from DB
 			update_option( self::plugin_id . '-migrated-from', $db_version );
 			unset( $old_option_name, $old_options );
+		} elseif( $db_version == 4.2 ) {
+			$this->_get_languages( 'yes' );		//rebuild language file list
 		}
 
 		unset( $db_version );
