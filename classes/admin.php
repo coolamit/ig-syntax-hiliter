@@ -50,7 +50,7 @@ class Admin extends Base {
 
 			if ( $old_version < floatval( IG_SYNTAX_HILITER_VERSION ) ) {
 
-				printf( '<div class="updated fade"><p>Options migrated successfully from v%f</p></div>', floatval( $old_version ) );
+				printf( '<div class="updated fade"><p>Options migrated successfully from v%f</p></div>', $old_version );
 
 			}
 
