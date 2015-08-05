@@ -14,7 +14,8 @@ A plugin to easily present source code on your site with syntax highlighting and
 
 **NOTE :** For fast results and less load on your server, you should have a cache plugin installed. That way the plugin won't have to parse the code blocks on a post every time its loaded in browser.
 
-**Minimum Requirements**
+= Minimum Requirements =
+
 * WordPress 4.1 or above
 * PHP 5.3 or above
 
@@ -22,8 +23,6 @@ A plugin to easily present source code on your site with syntax highlighting and
 Pull requests are welcome on Github.
 
 Github: https://github.com/coolamit/ig-syntax-hiliter
-
-WordPress.org plugin repo: http://plugins.svn.wordpress.org/igsyntax-hiliter/
 
 == Installation ==
 
@@ -163,6 +162,7 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 * Minimum required PHP version bumped to 5.3.0. The plugin simply won't load its code on lower versions.
 * Major re-write of plugin for cleaner, modular & better performing code.
+* Assets are enqueued only if needed.
 * NEW: You can now disable plugin stylesheet which styles code boxes. People who have their own styling don't need it anyway.
 * NEW: 2 new options allow more control on GeSHi behaviour.
 * BUGFIX: Language name cache was not re-building automatically.
