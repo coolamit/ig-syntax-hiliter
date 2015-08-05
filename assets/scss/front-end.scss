@@ -1,0 +1,25 @@
+/**
+ * Styles for UI of iG:Syntax Hiliter plugin
+ *
+ * @author: Amit Gupta
+ * @since: 2012-12-30
+ * @version: 2013-01-29
+ * @version: 2015-07-22 - moved styles to SASS
+ * @version: 2015-08-05 - divided one big file into multiple partials
+ */
+
+/*
+ * Import Variables
+ */
+@import 'front-end/variables';
+
+/*
+ * Import Placeholders
+ */
+@import 'front-end/placeholders';
+
+/*
+ * Import Styles
+ */
+@import 'front-end/styles';
+
