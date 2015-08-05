@@ -150,6 +150,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered 10 co
 
 * Minimum required PHP version bumped to 5.3.0. The plugin simply won't load its code on lower versions.
 * Major re-write of plugin for cleaner, modular & better performing code.
+* Assets are enqueued only if needed.
 * NEW: You can now disable plugin stylesheet which styles code boxes. People who have their own styling don't need it anyway.
 * NEW: 2 new options allow more control on GeSHi behaviour.
 * BUGFIX: Language name cache was not re-building automatically.
