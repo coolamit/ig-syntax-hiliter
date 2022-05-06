@@ -594,7 +594,7 @@ class GeSHi {
      *               {@link GeSHi->set_language_path()}
      * @since 1.0.0
      */
-    function GeSHi($source = '', $language = '', $path = '') {
+    function __construct($source = '', $language = '', $path = '') {
         if (!empty($source)) {
             $this->set_source($source);
         }
@@ -4733,7 +4733,9 @@ class GeSHi {
             // TODO: a|bb|c => [ac]|bb
             static $callback_2;
             if (!isset($callback_2)) {
-                $callback_2 = create_function('$matches', 'return "[" . str_replace("|", "", $matches[1]) . "]";');
+                $callback_2 = function( $matches ) {
+					return '[' . str_replace('|', '', $matches[1]) . ']';
+				};
             }
             $list = preg_replace_callback('#\(\?\:((?:.\|)+.)\)#', $callback_2, $list);
         }
@@ -4772,4 +4774,4 @@ if (!function_exists('geshi_highlight')) {
     }
 }
 
-?>
+//EOF

@@ -2,19 +2,23 @@
 /**
  * Class for migrating old plugin values to new
  *
- * @author Amit Gupta <http://amitgupta.in/>
+ * @author Amit Gupta <https://amitgupta.in/>
  *
  * @since 2015-07-20
  */
 
 namespace iG\Syntax_Hiliter;
 
-class Migrate extends Singleton {
+use \iG\Syntax_Hiliter\Traits\Singleton;
+
+class Migrate {
+
+	use Singleton;
 
 	const V35_OPTION_NAME = 'igsh_options';
 
 	/**
-	 * @var iG\Syntax_Hiliter\Option
+	 * @var \iG\Syntax_Hiliter\Option
 	 */
 	protected $_option;
 
@@ -23,17 +27,20 @@ class Migrate extends Singleton {
 	 */
 	protected $_db_version;
 
+	/**
+	 * Class constructor
+	 */
 	protected function __construct() {
 		//init options
 		$this->_option = Option::get_instance();
 	}
 
-	public function settings( Base $obj ) {
+	public function settings( Base $obj ) : void {
 
 		$this->_db_version = $this->_get_last_version();
 
-		if ( $this->_db_version == round( floatval( IG_SYNTAX_HILITER_VERSION ), 1 ) ) {
-			return;	//current version, nothing to migrate, bail out
+		if ( round( floatval( IG_SYNTAX_HILITER_VERSION ), 1 ) === $this->_db_version ) {
+			return;    //current version, nothing to migrate, bail out
 		}
 
 		switch ( $this->_db_version ) {
@@ -63,7 +70,8 @@ class Migrate extends Singleton {
 	 *
 	 * @return float Last version of plugin installed. Returns 0 if its a fresh install.
 	 */
-	protected function _get_last_version() {
+	protected function _get_last_version() : float {
+
 		$db_version = floatval( get_option( Base::PLUGIN_ID . '-version', 0 ) );
 
 		if ( empty( $db_version ) && $this->_is_updating_from_35() ) {
@@ -71,6 +79,7 @@ class Migrate extends Singleton {
 		}
 
 		return round( floatval( $db_version ), 1 );
+
 	}
 
 	/**
@@ -79,7 +88,7 @@ class Migrate extends Singleton {
 	 *
 	 * @return void
 	 */
-	protected function _add_migrated_from_version() {
+	protected function _add_migrated_from_version() : void {
 		update_option( Base::PLUGIN_ID . '-migrated-from', $this->_db_version );
 	}
 
@@ -87,12 +96,12 @@ class Migrate extends Singleton {
 	 * This function checks whether the plugin's last version in use was v3.5.x
 	 * or not.
 	 *
-	 * @return boolean Returns TRUE if plugin's last version in use was v3.5.x else FALSE
+	 * @return bool Returns TRUE if plugin's last version in use was v3.5.x else FALSE
 	 */
-	protected function _is_updating_from_35() {
+	protected function _is_updating_from_35() : bool {
 		$old_options = get_option( self::V35_OPTION_NAME, false );
 
-		if ( $old_options === false || ! is_array( $old_options ) ) {
+		if ( false === $old_options || ! is_array( $old_options ) ) {
 			return false;
 		}
 
@@ -104,8 +113,9 @@ class Migrate extends Singleton {
 	 *
 	 * @return void
 	 */
-	protected function _settings_from_35() {
-		$old_options = get_option( self::V35_OPTION_NAME, array() );
+	protected function _settings_from_35() : void {
+
+		$old_options = get_option( self::V35_OPTION_NAME, [] );
 
 		if ( isset( $old_options['PLAIN_TEXT'] ) ) {
 			$this->_option->save( 'plain_text', Helper::bool_to_yesno( $old_options['PLAIN_TEXT'] ) );
@@ -119,11 +129,12 @@ class Migrate extends Singleton {
 			$this->_option->save( 'show_line_numbers', Helper::bool_to_yesno( $old_options['LINE_NUMBERS'] ) );
 		}
 
-		delete_option( self::V35_OPTION_NAME );	//delete old options from DB
+		delete_option( self::V35_OPTION_NAME );    //delete old options from DB
 
 		$this->_add_migrated_from_version();
 
 		unset( $old_options );
+
 	}
 
 	/**
@@ -131,12 +142,14 @@ class Migrate extends Singleton {
 	 *
 	 * @return void
 	 */
-	protected function _initialize_on_fresh_install( Base $obj ) {
-		$obj->get_languages( 'yes' );		//rebuild language file list
+	protected function _initialize_on_fresh_install( Base $obj ) : void {
+
+		$obj->get_languages( 'yes' );    //rebuild language file list
+
 		$this->_option->commit();
+
 	}
 
-}	//end of class
-
+}    //end of class
 
 //EOF

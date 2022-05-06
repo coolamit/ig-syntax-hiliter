@@ -2,22 +2,26 @@
 /**
  * Class for validating plugin values
  *
- * @author Amit Gupta <http://amitgupta.in/>
+ * @author Amit Gupta <https://amitgupta.in/>
  *
  * @since 2015-07-22
  */
 
 namespace iG\Syntax_Hiliter;
 
-class Validate extends Singleton {
+use \iG\Syntax_Hiliter\Traits\Singleton;
+
+class Validate {
+
+	use Singleton;
 
 	/**
 	 * @var array Allowed values for strict mode option
 	 */
-	public static $strict_mode_values = array( 'always', 'maybe', 'never' );
+	public static $strict_mode_values = [ 'always', 'maybe', 'never' ];
 
 	/**
-	 * Protected constructor, Singleton implemented
+	 * Class constructor
 	 */
 	protected function __construct() {}
 
@@ -25,20 +29,18 @@ class Validate extends Singleton {
 	 * This function checks whether the passed value is YES/NO or not. If it is then
 	 * it returns TRUE else FALSE. The parameter accepts only string.
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function is_yesno( $value ) {
+	public function is_yesno( $value ) : bool {
+
 		if ( ! is_string( $value ) ) {
 			return false;
 		}
 
 		$value = strtolower( trim( $value ) );
 
-		if ( $value === "yes" || $value === "no" ) {
-			return true;
-		}
+		return ( in_array( $value, [ 'yes', 'no' ], true ) );
 
-		return false;
 	}
 
 	/**
@@ -46,16 +48,19 @@ class Validate extends Singleton {
 	 * If the passed value does not match one of the possible values then it returns a default value.
 	 *
 	 * @param string $value Value for strict mode option
+	 *
 	 * @return string
 	 */
-	public function sanitize_strict_mode_values( $value ) {
+	public function sanitize_strict_mode_values( string $value ) : string {
+
 		$value = sanitize_title( strtolower( trim( $value ) ) );
 
-		if ( empty( $value ) || ! is_string( $value ) || ! in_array( $value, static::$strict_mode_values ) ) {
+		if ( empty( $value ) || ! in_array( $value, static::$strict_mode_values, true ) ) {
 			$value = static::$strict_mode_values[0];
 		}
 
 		return $value;
+
 	}
 
 	/**
@@ -65,20 +70,27 @@ class Validate extends Singleton {
 	 * @param array $languages An array of all language names
 	 * @return array A sanitized $values array, non-existing and duplicate language names removed
 	 */
-	public function languages( array $values = array(), array $languages = array() ) {
+	public function languages( array $values = [], array $languages = [] ) : array {
 
 		if ( empty( $values ) || empty( $languages ) ) {
-			return array();
+			return [];
 		}
 
-		$values = array_filter( array_unique( array_map( 'sanitize_file_name', array_map( 'trim', $values ) ) ) );
+		$values = array_filter(
+			array_unique(
+				array_map(
+					'sanitize_file_name',
+					array_map( 'trim', $values )
+				)
+			)
+		);
 
 		$values_count = count( $values );
-		$clean_values = array();
+		$clean_values = [];
 
 		for ( $i = 0; $i < $values_count; $i++ ) {
 
-			if ( in_array( $values[ $i ], $languages ) ) {
+			if ( in_array( $values[ $i ], $languages, true ) ) {
 				$clean_values[] = $values[ $i ];
 			}
 
@@ -90,7 +102,6 @@ class Validate extends Singleton {
 
 	}
 
-}	//end of class
-
+}    //end of class
 
 //EOF

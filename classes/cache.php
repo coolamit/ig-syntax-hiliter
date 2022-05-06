@@ -7,34 +7,47 @@
 
 namespace iG\Syntax_Hiliter;
 
+use \Exception;
 use \ErrorException;
 
 class Cache {
 
 	const KEY_PREFIX = 'igsh-cache-';
 
+	const MIN_EXPIRY = 120;    // 2 minutes
+
 	protected $_key;
-	protected $_expiry = 1800;	//30 minutes, default expiry
+
+	protected $_expiry = 1800;    // 30 minutes, default expiry
+
 	protected $_callback;
-	protected $_params = array();
+
+	protected $_params = [];
 
 	protected $_cache;
 
-	protected $_default_storage_format = array(
-		'expiry'   => 0,
-		'callback' => '',
-		'params'   => array(),
-		'data'     => '',
-	);
+	protected $_default_storage_format = [
+		'expiry' => 0,
+		'data'   => '',
+	];
 
 	/**
-	 * @param String $cache_key A mixed character string for use as unique identifier for current dataset stored in cache
+	 * Class constructor
+	 *
+	 * @param string $cache_key A string for use as unique identifier for current dataset stored in cache
+	 *
+	 * @throws \ErrorException
 	 */
-	public function __construct( $cache_key ) {
+	public function __construct( string $cache_key ) {
 
-		if ( empty( $cache_key ) || ! is_string( $cache_key ) ) {
+		if ( empty( $cache_key ) ) {
 
-			throw new ErrorException( 'Cache key is required to create ' . __CLASS__ . ' object' );
+			throw new ErrorException(
+				sprintf(
+					'Cache key is required to create %s object',
+					__CLASS__
+				)
+			);
 
 		}
 
@@ -45,21 +58,22 @@ class Cache {
 	/**
 	 * Factory method to facilitate single call data fetch using method chaining
 	 *
-	 * @param String $cache_key A mixed character string for use as unique identifier for current dataset stored in cache
-	 * @return iG\Syntax_Hiliter\Cache
+	 * @param string $cache_key A string for use as unique identifier for current dataset stored in cache
+	 *
+	 * @return \iG\Syntax_Hiliter\Cache
+	 *
+	 * @throws \ErrorException
 	 */
-	public static function create( $cache_key ) {
-		$class = __CLASS__;
-
-		return new $class( $cache_key );
+	public static function create( string $cache_key ) : self {
+		return new self( $cache_key );
 	}
 
 	/**
 	 * This function is for deleting the cache
 	 *
-	 * @return iG\Syntax_Hiliter\Cache
+	 * @return \iG\Syntax_Hiliter\Cache
 	 */
-	public function delete() {
+	public function delete() : self {
 		delete_option( $this->_key );
 
 		return $this;
@@ -68,35 +82,36 @@ class Cache {
 	/**
 	 * This function accepts the cache expiry
 	 *
-	 * @return iG\Syntax_Hiliter\Cache
+	 * @return \iG\Syntax_Hiliter\Cache
 	 */
-	public function expires_in( $expiry ) {
-		$expiry = intval( $expiry );
+	public function expires_in( int $expiry ) : self {
 
-		if ( $expiry > 0 ) {
-			$this->_expiry = $expiry;
+		if ( 0 < $expiry ) {
+			$this->_expiry = max( $expiry, self::MIN_EXPIRY );
 		}
 
-		unset( $expiry );
-
 		return $this;
+
 	}
 
 	/**
 	 * This function accepts the callback from which data is to be received
 	 *
-	 * @return iG\Syntax_Hiliter\Cache
+	 * @param callable $callback
+	 * @param array    $params
+	 *
+	 * @return \iG\Syntax_Hiliter\Cache
+	 *
+	 * @throws \ErrorException
 	 */
-	public function updates_with( $callback, array $params = array() ) {
+	public function updates_with( callable $callback, array $params = [] ) : self {
 
-		if ( empty( $callback ) || ! is_callable( $callback ) ) {
-
+		if ( empty( $callback ) ) {
 			throw new ErrorException( 'Callback passed is not callable' );
-
 		}
 
 		$this->_callback = $callback;
-		$this->_params = $params;
+		$this->_params   = $params;
 
 		return $this;
 
@@ -124,9 +139,14 @@ class Cache {
 
 	}
 
-	protected function _get_cache() {
+	/**
+	 * Method to grab the cache array from storage
+	 *
+	 * @return array
+	 */
+	protected function _get_cache() : array {
 
-		if ( is_bool( $this->_cache ) || ( is_array( $this->_cache ) && ! empty( $this->_cache ) ) ) {
+		if ( is_array( $this->_cache ) && ! empty( $this->_cache ) ) {
 			return $this->_cache;
 		}
 
@@ -136,42 +156,62 @@ class Cache {
 			return $this->_cache;
 		}
 
-		return false;
+		return [];
 
 	}
 
-	protected function _set_cache() {
+	/**
+	 * Method to save cache array in storage
+	 *
+	 * @return void
+	 */
+	protected function _set_cache() : void {
+
+		if ( ! is_array( $this->_cache ) || empty( $this->_cache ) ) {
+			return;
+		}
+
 		//delete existing cache
 		$this->delete();
 
 		//set new cache array
 		//we want it autoloaded hence the use of update_option()
 		update_option( $this->_key, $this->_cache );
+
 	}
 
-	protected function _has_expired() {
+	/**
+	 * Method to check if cache has expired or not
+	 *
+	 * @return bool
+	 */
+	protected function _has_expired() : bool {
+
 		$cache = $this->_get_cache();
 
-		if ( is_array( $cache ) && ! empty( $cache ) ) {
-
-			if ( ! empty( $cache['expiry'] ) && time() < intval( $cache['expiry'] ) ) {
-				//cache has not expired, yet
-				return false;
-			}
-
+		if ( isset( $cache['expiry'] ) && time() < intval( $cache['expiry'] ) ) {
+			//cache has not expired, yet
+			return false;
 		}
 
 		//cache has expired
 		return true;
+
 	}
 
-	protected function _refresh_cache() {
-		$cache = array(
-			'expiry'   => ( time() + $this->_expiry ),
-			'callback' => $this->_callback,
-			'params'   => $this->_params,
-			'data'     => '',
-		);
+	/**
+	 * Method which refreshes cached data
+	 *
+	 * @return void
+	 *
+	 * @throws \ErrorException
+	 */
+	protected function _refresh_cache() : void {
+
+		$cache = [
+			'expiry' => ( time() + $this->_expiry ),
+			'data'   => '',
+		];
 
 		/*
 		 * If we don't have a callback to get data from or if it's not a valid
@@ -184,18 +224,16 @@ class Cache {
 
 		try {
 			$cache['data'] = call_user_func_array( $this->_callback, $this->_params );
-		} catch( \Exception $e ) {
-			$cache['data'] = false;
+		} catch( Exception $e ) {
+			$cache['data'] = '';
 		}
 
 		$this->_cache = wp_parse_args( $cache, $this->_default_storage_format );
 
 		$this->_set_cache();
 
-		unset( $cache );
 	}
 
-}	//end of class
-
+}    //end of class
 
 //EOF

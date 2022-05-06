@@ -11,26 +11,36 @@ namespace iG\Syntax_Hiliter;
 class Admin extends Base {
 
 	/**
-	 * protected constructor, singleton pattern implemented
+	 * Class constructor
 	 */
 	protected function __construct() {
+
 		parent::__construct();
 
 		$this->_setup_hooks();
+
 	}
 
-	protected function _setup_hooks() {
-		//call function to add options menu item
-		add_action( 'admin_menu', array( $this, 'add_menu' ) );
+	/**
+	 * Method to set up listeners to WP hooks
+	 *
+	 * @return void
+	 */
+	protected function _setup_hooks() : void {
 
-		//setup our style/script enqueuing for wp-admin
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_stuff' ) );
+		/*
+		 * Actions
+		 */
+		add_action( 'admin_menu', [ $this, 'add_menu' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_stuff' ] );
+		add_action( 'wp_ajax_ig-sh-save-options', [ $this, 'save_plugin_options' ] );
+		add_action( 'admin_notices', [ $this, 'maybe_show_migration_message' ] );
 
-		//setup callback for AJAX on admin page
-		add_action( 'wp_ajax_ig-sh-save-options', array( $this, 'save_plugin_options' ) );
+		/*
+		 * Filters
+		 */
+		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
 
-		//callback to show any migration messages
-		add_action( 'admin_notices', array( $this, 'show_migration_message' ) );
 	}
 
 	/**
@@ -38,20 +48,22 @@ class Admin extends Base {
 	 * version or not. If they have been then it shows a one time notice on the plugin's
 	 * admin page and then deletes the older version number from DB.
 	 */
-	public function show_migration_message() {
+	public function maybe_show_migration_message() : void {
+
 		if ( get_current_screen()->id !== sprintf( 'settings_page_%s-page', parent::PLUGIN_ID ) ) {
 			//not our admin page, bail out
-			return false;
+			return;
 		}
 
 		$old_version = round( floatval( get_option( parent::PLUGIN_ID . '-migrated-from', 0 ) ), 1 );
 
-		if ( $old_version > 0 ) {
+		if ( 0 < $old_version ) {
 
-			if ( $old_version < floatval( IG_SYNTAX_HILITER_VERSION ) ) {
-
-				printf( '<div class="updated fade"><p>Options migrated successfully from v%f</p></div>', $old_version );
-
+			if ( floatval( IG_SYNTAX_HILITER_VERSION ) > $old_version ) {
+				printf(
+					'<div class="updated fade"><p>Options migrated successfully from v%f</p></div>',
+					$old_version
+				);
 			}
 
 			//delete this from DB, not needed anymore
@@ -59,58 +71,74 @@ class Admin extends Base {
 
 		}
 
-		unset( $old_version );
 	}
 
 	/**
-	 * This function adds plugin's admin page in the Settings menu
+	 * Method to add plugin settings page in the Settings menu
+	 *
+	 * @return void
 	 */
-	public function add_menu() {
-		add_options_page( parent::PLUGIN_NAME . ' Options', parent::PLUGIN_NAME, 'manage_options', parent::PLUGIN_ID . '-page', array( $this, 'admin_page' ) );
+	public function add_menu() : void {
+		add_options_page(
+			sprintf( '%s Options', parent::PLUGIN_NAME ),
+			parent::PLUGIN_NAME,
+			'manage_options',
+			sprintf( '%s-page', parent::PLUGIN_ID ),
+			[ $this, 'admin_page' ]
+		);
 	}
 
 	/**
-	 * This function constructs the UI for the plugin admin page
+	 * Method to construct the UI for the plugin settings page
+	 *
+	 * @return void
 	 */
-	public function admin_page() {
+	public function admin_page() : void {
 
-		echo Helper::render_template( IG_SYNTAX_HILITER_ROOT . '/templates/plugin-options-page.php', array(
-			'plugin_name'      => parent::PLUGIN_NAME,
-			'options'          => $this->_option->get_all(),
-			'strict_mode_opts' => Validate::$strict_mode_values,
-			'human_time_diff'  => Helper::human_time_diff( time(), ( $this->_get_language_cache_build_time() + parent::LANGUAGES_CACHE_LIFE ) ),
-		) );
+		Helper::render_template(
+			sprintf( '%s/templates/plugin-options-page.php', untrailingslashit( IG_SYNTAX_HILITER_ROOT ) ),
+			[
+				'plugin_name'      => parent::PLUGIN_NAME,
+				'options'          => $this->_option->get_all(),
+				'strict_mode_opts' => Validate::$strict_mode_values,
+				'human_time_diff'  => Helper::human_time_diff( time(), ( $this->_get_language_cache_build_time() + parent::LANGUAGES_CACHE_LIFE ) ),
+			],
+			true
+		);
 
 	}
 
 	/**
-	 * This function is called by WP to handle our AJAX requests
+	 * Method to handle our AJAX requests
+	 *
+	 * @return void
 	 */
-	public function save_plugin_options() {
+	public function save_plugin_options() : void {
 
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
-			return false;
+			return;
 		}
 
 		$response = new Ajax_Response();
 
-		$response->add_nonce( parent::PLUGIN_ID . '-nonce' );
+		$response->add_nonce( sprintf( '%s-nonce', parent::PLUGIN_ID ) );
 
 		//check & see if we have the values
+		$option_name  = Helper::filter_input( INPUT_POST, 'option_name', FILTER_SANITIZE_STRING );
+		$option_value = Helper::filter_input( INPUT_POST, 'option_value', FILTER_SANITIZE_STRING );
+
 		if (
 			! check_ajax_referer( parent::PLUGIN_ID . '-nonce', '_ig_sh_nonce', false )
-			|| ! isset( $_POST['option_name'] ) || ! isset( $_POST['option_value'] )
+			|| empty( $option_name ) || empty( $option_value )
 		) {
 			$response->add_error( 'Invalid request sent, please refresh the page and try again' );
 			$response->send();
 		}
 
-		$input = array(
-			'option_name'  => sanitize_text_field( strtolower( trim( $_POST['option_name'] ) ) ),
-			'option_value' => sanitize_text_field( strtolower( trim( $_POST['option_value'] ) ) ),
-		);
+		$option_name  = sanitize_text_field( strtolower( trim( $option_name ) ) );
+		$option_value = sanitize_text_field( strtolower( trim( $option_value ) ) );
 
-		if ( $input['option_name'] == 'igsh_refresh_languages' && $input['option_value'] == 'rebuild' ) {
+		if ( 'igsh_refresh_languages' === $option_name && 'rebuild' === $option_value ) {
 
 			//rebuild language file list
 			$this->get_languages( 'yes' );
@@ -118,67 +146,143 @@ class Admin extends Base {
 			$response->add_success( 'Shorthand Tags rebuilt successfully' );
 			$response->add( 'time', Helper::human_time_diff( time(), ( $this->_get_language_cache_build_time() + parent::LANGUAGES_CACHE_LIFE ) ) );
 
-		} elseif ( $this->_option->get( $input['option_name'] ) !== false ) {
+		} elseif ( $this->_option->get( $option_name ) !== false ) {
 
-			$response->add_success( 'Option Saved successfully' );	//assume option saved successfully
+			$response->add_success( 'Option Saved successfully' );    //assume option saved successfully
 
-			switch ( $input['option_name'] ) {
+			switch ( $option_name ) {
+
 				case 'strict_mode':
-					$this->_option->save( $input['option_name'], $this->_validate->sanitize_strict_mode_values( $input['option_value'] ) );
+					$this->_option->save(
+						$option_name,
+						$this->_validate->sanitize_strict_mode_values( $option_value )
+					);
 					break;
+
 				case 'non_strict_mode':
-					$sanitized_language_names = $this->_validate->languages( explode( ',', $input['option_value'] ), array_values( $this->get_languages() ) );
-					$this->_option->save( $input['option_name'], $sanitized_language_names );
+					$sanitized_language_names = $this->_validate->languages(
+						explode( ',', $option_value ),
+						array_values( $this->get_languages() )
+					);
+
+					$this->_option->save( $option_name, $sanitized_language_names );
 
 					unset( $sanitized_language_names );
 					break;
+
 				default:
-					if ( ! $this->_validate->is_yesno( $input['option_value'] ) ) {
+					if ( ! $this->_validate->is_yesno( $option_value ) ) {
 						$response->add_error( 'Invalid request sent, please refresh the page and try again' );
 						$response->send();
 					} else {
-						$this->_option->save( $input['option_name'], $input['option_value'] );
+						$this->_option->save( $option_name, $option_value );
 					}
+
 					break;
+
 			}
 
 		}
 
 		$response->send();
 
-	}	//end save_plugin_options()
+	}    //end save_plugin_options()
 
 	/**
-	 * function to enqueue stuff in wp-admin head
+	 * Method to load assets on settings page in wp-admin
+	 *
+	 * @return void
 	 */
-	public function enqueue_stuff( $hook ) {
+	public function enqueue_stuff( $hook ) : void {
 
 		if ( ! is_admin() || $hook !== sprintf( 'settings_page_%s-page', parent::PLUGIN_ID ) ) {
 			//page is not in wp-admin or not our settings page, so bail out
-			return false;
+			return;
 		}
 
 		//load stylesheet
-		wp_enqueue_style( parent::PLUGIN_ID . '-admin', plugins_url( 'assets/css/admin.css', __DIR__ ), false, IG_SYNTAX_HILITER_VERSION );
+		wp_enqueue_style(
+			sprintf( '%s-admin', parent::PLUGIN_ID ),
+			plugins_url( '/assets/css/admin.css', __DIR__ ),
+			false,
+			IG_SYNTAX_HILITER_VERSION
+		);
+
 		//load jQuery::msg stylesheet
-		wp_enqueue_style( parent::PLUGIN_ID . '-jquery-msg', plugins_url( 'assets/css/jquery.msg.css', __DIR__ ), false, IG_SYNTAX_HILITER_VERSION );
+		wp_enqueue_style(
+			sprintf( '%s-jquery-msg', parent::PLUGIN_ID ),
+			plugins_url( '/assets/css/jquery.msg.css', __DIR__ ),
+			false,
+			IG_SYNTAX_HILITER_VERSION
+		);
 
 		//load jQuery::center script
-		wp_enqueue_script( parent::PLUGIN_ID . '-jquery-center', plugins_url( 'assets/js/jquery.center.min.js', __DIR__ ), array( 'jquery' ), IG_SYNTAX_HILITER_VERSION );
+		wp_enqueue_script(
+			sprintf( '%s-jquery-center', parent::PLUGIN_ID ),
+			plugins_url( '/assets/js/jquery.center.min.js', __DIR__ ),
+			[ 'jquery' ],
+			IG_SYNTAX_HILITER_VERSION
+		);
+
 		//load jQuery::msg script
-		wp_enqueue_script( parent::PLUGIN_ID . '-jquery-msg', plugins_url( 'assets/js/jquery.msg.min.js', __DIR__ ), array( parent::PLUGIN_ID . '-jquery-center' ), IG_SYNTAX_HILITER_VERSION );
+		wp_enqueue_script(
+			sprintf( '%s-jquery-msg', parent::PLUGIN_ID ),
+			plugins_url( '/assets/js/jquery.msg.min.js', __DIR__ ),
+			[ sprintf( '%s-jquery-center', parent::PLUGIN_ID ) ],
+			IG_SYNTAX_HILITER_VERSION
+		);
+
 		//load our script
-		wp_enqueue_script( parent::PLUGIN_ID . '-admin', plugins_url( 'assets/js/admin.js', __DIR__ ), array( parent::PLUGIN_ID . '-jquery-msg' ), IG_SYNTAX_HILITER_VERSION );
+		wp_enqueue_script(
+			sprintf( '%s-admin', parent::PLUGIN_ID ),
+			plugins_url( '/assets/js/admin.js', __DIR__ ),
+			[ sprintf( '%s-jquery-msg', parent::PLUGIN_ID ) ],
+			IG_SYNTAX_HILITER_VERSION
+		);
 
 		//some vars in JS that we'll need
-		wp_localize_script( parent::PLUGIN_ID . '-admin', 'ig_sh', array(
-			'plugins_url' => untrailingslashit( plugins_url( '', __DIR__ ) ) . '/',
-			'nonce' => wp_create_nonce( parent::PLUGIN_ID . '-nonce' ),
-		) );
+		wp_localize_script(
+			sprintf( '%s-admin', parent::PLUGIN_ID ),
+			'ig_sh',
+			[
+				'plugins_url' => plugins_url( '/', __DIR__ ),
+				'nonce'       => wp_create_nonce( sprintf( '%s-nonce', parent::PLUGIN_ID ) ),
+			]
+		);
 
 	}
 
-}	//end of class
+	/**
+	 * Method to add link to plugin settings page in the plugin listing once plugin has been activated.
+	 *
+	 * @param array  $links
+	 * @param string $file
+	 *
+	 * @return array
+	 */
+	public function get_action_links( array $links, string $file ) : array {
 
+		if ( IG_SYNTAX_HILITER_BASENAME !== $file ) {
+			return $links;
+		}
+
+		$settings_page_slug = sprintf(
+			'options-general.php?page=%s-page',
+			parent::PLUGIN_ID
+		);
+
+		$settings_link = sprintf(
+			'<a href="%s" aria-label="Configure %s">Settings</a>',
+			esc_url( admin_url( $settings_page_slug ) ),
+			esc_attr( parent::PLUGIN_NAME )
+		);
+
+		array_unshift( $links, $settings_link );
+
+		return $links;
+
+	}
+
+}    //end of class
 
 //EOF

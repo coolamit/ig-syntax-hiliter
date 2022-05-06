@@ -1,6 +1,8 @@
 <?php
-/*
+/**
  * Template for the plugin options page
+ *
+ * @package igsyntax-hiliter
  */
 ?>
 <div class="wrap">
