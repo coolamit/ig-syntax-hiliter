@@ -2,7 +2,7 @@
 /**
  * Gatekeeper class for the plugin which loads plugin only if minimum requirements are satisfied.
  *
- * @author Amit Gupta <http://amitgupta.in/>
+ * @author Amit Gupta <https://amitgupta.in/>
  *
  * @since 2015-07-26
  */
@@ -10,7 +10,7 @@
 
 final class iG_Syntax_Hiliter_Gatekeeper {
 
-	const MIN_PHP_VERSION_REQUIRED = '5.3.0';
+	const MIN_PHP_VERSION_REQUIRED = '7.4.0';
 
 	/**
 	 * Constructor
@@ -28,18 +28,33 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	}
 
 	/**
+	 * Factory method to initialize the class
+	 *
+	 * @return \iG_Syntax_Hiliter_Gatekeeper
+	 */
+	public static function activate() {
+
+		$class = get_called_class();
+
+		return ( new $class() );
+
+	}
+
+	/**
 	 * Check if plugin's minimum requirements are satisfied or not. If they are then
 	 * Gatekeeper can grant a pass else deny passage.
 	 *
 	 * @return boolean Returns TRUE if minimum requirements are met else FALSE
 	 */
 	private function _has_pass() {
+
 		if ( version_compare( phpversion(), self::MIN_PHP_VERSION_REQUIRED ) == -1 ) {
 			//min requirements not met
 			return false;
 		}
 
 		return true;
+
 	}
 
 	/**
@@ -48,6 +63,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 * @return void
 	 */
 	private function _load_plugin() {
+
 		//load up autoloader
 		require_once( IG_SYNTAX_HILITER_ROOT . '/autoloader.php' );
 
@@ -65,6 +81,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 			\iG\Syntax_Hiliter\Frontend::get_instance();
 
 		}
+
 	}
 
 	/**
@@ -76,10 +93,14 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 * @return void
 	 */
 	public function show_admin_notice() {
-		printf( '<div class="error"><p>PHP version %s or greater is needed for <strong>iG:Syntax Hiliter</strong> plugin. You must upgrade your PHP to make it work.</p></div>', esc_html( self::MIN_PHP_VERSION_REQUIRED ) );
+
+		printf(
+			'<div class="error"><p>PHP version %s or greater is needed for <strong>iG:Syntax Hiliter</strong> plugin. You must upgrade your PHP to make it work.</p></div>',
+			esc_html( self::MIN_PHP_VERSION_REQUIRED )
+		);
+
 	}
 
-}	//end of class
-
+}    //end of class
 
 //EOF
