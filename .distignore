@@ -1,0 +1,51 @@
+# Files and directories that are NOT part of the released plugin.
+#
+# Everything listed here is stripped when the distribution zip is built. What
+# ships is the plugin's PHP, the compiled block assets in build/, assets/,
+# templates/, the readmes, the changelog and the licence files.
+
+# Version control and forge config
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.github/
+.wordpress-org/
+
+# Local tooling and agent scratch space
+.scratchpad/
+.claude/
+.ai/
+.agents/
+CLAUDE.md
+Makefile
+.editorconfig
+.DS_Store
+Thumbs.db
+
+# Dev dependencies
+node_modules/
+vendor/
+
+# Sources that are compiled before release
+src/
+assets/scss/
+
+# Build tool config
+package.json
+package-lock.json
+composer.json
+composer.lock
+phpcs.xml
+phpcs.xml.dist
+phpunit.xml
+phpunit.xml.dist
+tsconfig.json
+.nvmrc
+.distignore
+
+# Tests and their artefacts
+tests/
+.phpunit.cache
+.phpunit.result.cache
+.phpcs.cache

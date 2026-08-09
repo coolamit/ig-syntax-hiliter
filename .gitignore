@@ -25,5 +25,14 @@ node_modules/
 .agents/
 CLAUDE.md
 
+# Compiled block editor assets — built from src/ by @wordpress/scripts
+build/
+
+# Tooling caches
+.phpcs.cache
+.phpunit.result.cache
+
+# composer.lock and package-lock.json are committed on purpose. Do not ignore them.
+
 
 

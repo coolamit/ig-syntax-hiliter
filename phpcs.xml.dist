@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<ruleset name="iG Syntax Hiliter">
+
+	<description>Coding standards for the iG:Syntax Hiliter plugin.</description>
+
+	<!--
+		#############################################################################
+		FILES TO CHECK
+		#############################################################################
+
+		This list is deliberately narrow. The v5 codebase predates this tooling and
+		trips thousands of violations; the rule set is NOT weakened to hide them.
+		Instead only the paths that hold rewritten v6 code are checked, and this list
+		GROWS as v5 files are replaced:
+
+		  - add `classes` once the v5 classes have been rewritten,
+		  - add `templates` once the templates have been rewritten,
+		  - add `ig-syntax-hiliter.php` / `autoloader.php` once they are rewritten.
+
+		Nothing may be left off this list permanently — when the last v5 file goes,
+		the list becomes the whole plugin.
+	-->
+	<file>tests</file>
+
+	<!--
+		#############################################################################
+		COMMAND LINE DEFAULTS
+		#############################################################################
+	-->
+	<arg name="extensions" value="php"/>
+	<arg name="basepath" value="."/>
+	<arg name="cache" value=".phpcs.cache"/>
+	<arg name="tab-width" value="4"/>
+	<arg name="colors"/>
+	<arg value="sp"/><!-- Show sniff codes and progress. -->
+
+	<!--
+		#############################################################################
+		PATHS THAT ARE NEVER CHECKED
+		#############################################################################
+	-->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/assets/lib/*</exclude-pattern><!-- Vendored Prism.js. -->
+	<exclude-pattern>*/assets/js/*.min.js</exclude-pattern>
+	<exclude-pattern>*/geshi/*</exclude-pattern><!-- Third party GeSHi, dropped in v6. -->
+	<exclude-pattern>*/classes/geshi.php</exclude-pattern><!-- Third party GeSHi, dropped in v6. -->
+	<exclude-pattern>*/.scratchpad/*</exclude-pattern>
+
+	<!--
+		#############################################################################
+		RULE SETS
+		#############################################################################
+
+		`WordPress` is the umbrella standard — it is exactly WordPress-Core +
+		WordPress-Docs + WordPress-Extra. It is referenced as one ruleset rather
+		than three so that additions WPCS makes to the umbrella are picked up
+		automatically instead of being silently missed.
+	-->
+	<rule ref="WordPress"/>
+
+	<!-- Flag anything that is not valid on the plugin's minimum PHP version and up. -->
+	<rule ref="PHPCompatibilityWP"/>
+	<config name="testVersion" value="8.4-"/>
+
+	<!-- Minimum WordPress version the plugin supports. -->
+	<config name="minimum_wp_version" value="6.9"/>
+
+	<!--
+		#############################################################################
+		SNIFF CONFIGURATION
+		#############################################################################
+	-->
+
+	<!-- Tabs for indentation, never spaces. -->
+	<rule ref="Generic.WhiteSpace.DisallowSpaceIndent"/>
+	<rule ref="Universal.WhiteSpace.PrecisionAlignment">
+		<properties>
+			<property name="ignoreAlignmentBefore" type="array">
+				<element value="T_COMMENT"/>
+				<element value="T_DOC_COMMENT_WHITESPACE"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Spaces inside parentheses: foo( $bar ) — this is WPCS default, stated explicitly. -->
+	<rule ref="WordPress.WhiteSpace.ControlStructureSpacing">
+		<properties>
+			<property name="blank_line_check" value="false"/>
+		</properties>
+	</rule>
+
+	<!--
+		Every file in this plugin ends with a `//EOF` marker and every class with
+		a `//end of class` marker. That is a deliberate, long standing signature
+		of this codebase, so the two sniffs that object to the spacing and the
+		punctuation of those markers are switched off. Everything else the
+		inline comment sniff checks stays on.
+	-->
+	<rule ref="Squiz.Commenting.InlineComment.NoSpaceBefore">
+		<severity>0</severity>
+	</rule>
+	<rule ref="Squiz.Commenting.InlineComment.InvalidEndChar">
+		<severity>0</severity>
+	</rule>
+
+	<!--
+		This codebase writes functions and classes "airily" — a blank line after the
+		opening brace and before the closing one. That is house style throughout the
+		plugin, so the two whitespace sniffs that object to it are switched off. Drop
+		these two exclusions if the house style is ever changed.
+	-->
+	<rule ref="PSR2.Methods.FunctionClosingBrace.SpacingBeforeClose">
+		<severity>0</severity>
+	</rule>
+	<rule ref="PSR2.Classes.ClassDeclaration.CloseBraceAfterBody">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Text domain used by every translation function in the plugin. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="igsyntax-hiliter"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Everything global must carry one of the plugin's prefixes. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="ig_syntax_hiliter"/>
+				<element value="IG_SYNTAX_HILITER"/>
+				<element value="iG\Syntax_Hiliter"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!--
+		#############################################################################
+		PER PATH EXCEPTIONS
+		#############################################################################
+	-->
+
+	<!--
+		Test files follow the PHPUnit `test-*.php` naming used across the WordPress
+		project rather than the `class-*.php` file naming the sniff expects.
+	-->
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+
+	<!--
+		Test bootstraps run before WordPress exists, or instead of it. WP_Filesystem
+		is not available to them and STDERR is the only way they can report a
+		misconfiguration, so the alternative-functions sniff does not apply.
+	-->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>*/tests/*wp-tests-config.php</exclude-pattern>
+	</rule>
+
+</ruleset>

@@ -1,0 +1,77 @@
+{
+	"name": "coolamit/ig-syntax-hiliter",
+	"description": "Syntax Hiliter plugin for WordPress — dev tooling only, the plugin itself ships with no runtime PHP dependencies.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"homepage": "https://github.com/coolamit/ig-syntax-hiliter",
+	"authors": [
+		{
+			"name": "Amit Gupta",
+			"homepage": "https://igeek.info/"
+		}
+	],
+	"support": {
+		"issues": "https://github.com/coolamit/ig-syntax-hiliter/issues",
+		"source": "https://github.com/coolamit/ig-syntax-hiliter"
+	},
+	"require": {
+		"php": ">=8.4"
+	},
+	"require-dev": {
+		"squizlabs/php_codesniffer": "^3.13",
+		"wp-coding-standards/wpcs": "^3.4",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.1",
+		"phpcompatibility/phpcompatibility-wp": "^3.0.0-alpha2",
+		"phpcompatibility/php-compatibility": "^10.0.0-alpha2",
+		"phpcompatibility/phpcompatibility-paragonie": "^2.0.0-alpha1",
+		"phpunit/phpunit": "^9.6",
+		"yoast/phpunit-polyfills": "^3.1 || ^2.0",
+		"wp-phpunit/wp-phpunit": "^7.0 || ^6.9"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		},
+		"platform": {
+			"php": "8.4"
+		},
+		"sort-packages": true
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true,
+	"autoload-dev": {
+		"psr-4": {
+			"iG\\Syntax_Hiliter\\Tests\\Unit\\": "tests/unit/",
+			"iG\\Syntax_Hiliter\\Tests\\Integration\\": "tests/integration/",
+			"iG\\Syntax_Hiliter\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"fix": "phpcbf",
+		"lint-files": "phpcs",
+		"fix-files": "phpcbf",
+		"test": [
+			"@test:unit",
+			"@test:integration"
+		],
+		"test:unit": "phpunit --testsuite unit",
+		"test:integration": "phpunit --testsuite integration"
+	},
+	"scripts-descriptions": {
+		"lint": "Check the v6 PHP against WordPress Coding Standards.",
+		"fix": "Auto-fix coding standards violations where phpcbf can.",
+		"lint-files": "Check specific files/directories, eg. composer run lint-files classes/foo.php",
+		"fix-files": "Auto-fix specific files/directories.",
+		"test": "Run both test tiers.",
+		"test:unit": "Run the unit tier — no WordPress required.",
+		"test:integration": "Run the WordPress integration tier."
+	},
+	"extra": {
+		"notes": [
+			"Composer is a development-only tool for this plugin. There are no runtime PHP dependencies and vendor/ is never shipped in the release zip (see .distignore).",
+			"No WordPress codebase is pulled in as a Composer dependency (eg. roots/wordpress-no-content). The plugin already lives inside a real WordPress install in the VVV sandbox, so tests/integration/bootstrap.php derives ABSPATH from the plugin's own location. Set the WP_TESTS_ABSPATH env var to point the integration tier at any other WordPress checkout (that is what CI does). This keeps composer install fast and avoids vendoring a second copy of core.",
+			"wp-phpunit/wp-phpunit supplies only the WordPress PHPUnit test library, which is what we do want vendored — VVV's own wordpress-develop checkout is stuck on 5.0-alpha and must not be used."
+		]
+	}
+}

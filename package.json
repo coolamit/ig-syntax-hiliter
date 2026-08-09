@@ -1,0 +1,35 @@
+{
+	"name": "igsyntax-hiliter",
+	"version": "6.0.0",
+	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in build/ and assets/.",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"author": "Amit Gupta",
+	"homepage": "https://github.com/coolamit/ig-syntax-hiliter",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/coolamit/ig-syntax-hiliter.git"
+	},
+	"bugs": {
+		"url": "https://github.com/coolamit/ig-syntax-hiliter/issues"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"build": "wp-scripts build",
+		"start": "wp-scripts start",
+		"lint:js": "wp-scripts lint-js",
+		"lint:style": "wp-scripts lint-style",
+		"lint:types": "tsc --noEmit",
+		"format": "wp-scripts format"
+	},
+	"devDependencies": {
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"@wordpress/scripts": "^34.0.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"typescript": "^5.9.3"
+	}
+}
