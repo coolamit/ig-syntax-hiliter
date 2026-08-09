@@ -1,0 +1,539 @@
+#
+# Release workflow — PRD CI-1..CI-7.
+#
+# Fires on a `v*` tag. Two jobs:
+#
+#   1. `build`  — build the block assets, prove the tag / plugin header /
+#                 readme.txt all state the same version, produce the
+#                 distribution zip, prove the zip is shaped correctly, publish
+#                 the GitHub release and hand the zip on as an artifact.
+#   2. `deploy` — take that exact artifact and push it to WordPress.org SVN.
+#                 Ships in DRY RUN mode; see the flag in the deploy step.
+#
+# The test workflow (.github/workflows/test.yml) is separate and is not
+# re-run here — a tag is expected to point at a commit that already went
+# green on `master`.
+#
+# ---------------------------------------------------------------------------
+# CI-9 — the repo name is NOT the plugin slug
+# ---------------------------------------------------------------------------
+#
+# GitHub repo:  ig-syntax-hiliter
+# Plugin slug:  igsyntax-hiliter      (WordPress.org, and the directory the
+#                                      plugin installs into)
+#
+# One character apart. If the release zip unpacks to anything other than a
+# single root directory named exactly `igsyntax-hiliter/`, WordPress installs
+# it as a *different plugin* alongside the real one and every auto-updating
+# site ends up with two copies.
+#
+# Three structural defences, none of which may be removed:
+#
+#   a. `SLUG: igsyntax-hiliter` is set explicitly on BOTH 10up actions. Neither
+#      may fall back to its default, which is the repo name.
+#   b. The zip is repacked under an explicitly-named root and then asserted
+#      with a listing check that fails on an empty or unexpected result.
+#   c. Nothing here derives a slug, path or filename from the checkout
+#      directory or from `github.event.repository.name`.
+#
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Least privilege at the top; the one job that needs to write does so with a
+# job-level grant.
+permissions:
+  contents: read
+
+# A release must never be cancelled half-way — an interrupted SVN commit is
+# far worse than a duplicated run.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # CI-9. The single source of truth for the slug in this workflow. Every use
+  # is this variable; no step reconstructs it from anything else.
+  PLUGIN_SLUG: igsyntax-hiliter
+
+  # The plugin's main file. Note that this is named after the *repo*, not the
+  # slug — which is legal and is exactly why the two must never be conflated.
+  PLUGIN_FILE: ig-syntax-hiliter.php
+
+jobs:
+
+  build:
+    name: Build, verify and publish the GitHub release
+    runs-on: ubuntu-latest
+
+    permissions:
+      # `gh release create` writes to the repository. Nothing else here does.
+      contents: write
+
+    outputs:
+      # The version string, validated below, passed to the deploy job so that
+      # it does not have to re-derive it from the ref.
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+
+      #
+      # Third-party actions are pinned to a full commit SHA rather than a
+      # moving tag, for the same reason as in test.yml: a tag can be repointed
+      # at new code by its owner or by whoever compromises that account. The
+      # human-readable version each SHA corresponded to at pin time is in the
+      # trailing comment — update both together when bumping.
+      #
+      # NOTE: the checkout here is deliberately at the workspace root, unlike
+      # test.yml. `10up/action-wordpress-plugin-build-zip` rsyncs from
+      # `$GITHUB_WORKSPACE/`, so the plugin must BE the workspace. Nothing in
+      # this workflow reads the directory's name.
+      #
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      #
+      # ---- Version guard, before anything is built or published -----------
+      #
+      # Deliberately the first thing after checkout. It needs nothing but the
+      # source, so running it here fails a mismatched release in seconds
+      # rather than after a full npm build. The requirement is only that it
+      # runs before anything is published; earlier is strictly better.
+      #
+      - name: Verify tag, plugin header and readme.txt agree on the version
+        id: version
+        run: |
+          set -euo pipefail
+
+          tag_version="${GITHUB_REF_NAME#v}"
+
+          # The plugin header is a PHP comment block. This reads it the way
+          # WordPress core's get_file_data() does: a header line is an
+          # optional comment leader drawn from [ \t/*#@] followed immediately
+          # by the field name. That leading anchor is the whole point — it is
+          # what keeps this off `define( 'IG_SYNTAX_HILITER_VERSION', ... )`
+          # and off the prose line "Plugin version. A semantic version
+          # string ...", both of which a loose `grep -i version` would match.
+          # The value is taken as everything after the first colon, so a
+          # version containing spaces or colons could not silently truncate.
+          # First match wins, and only the top of the file is considered.
+          header_version="$(
+            awk '
+              NR > 200 { exit }
+              /^[ \t\/*#@]*Version:/ {
+                value = substr( $0, index( $0, ":" ) + 1 )
+                sub( /^[ \t]+/, "", value )
+                sub( /[ \t\r]+$/, "", value )
+                print value
+                exit
+              }
+            ' "${PLUGIN_FILE}"
+          )"
+
+          # readme.txt is the WordPress.org format: a `=== Plugin Name ===`
+          # title on line 1, then a header block of `Field: value` lines, then
+          # `== Section ==` headings. Only the header block is searched, so
+          # the words "Stable tag" appearing in changelog or upgrade-notice
+          # prose can never be picked up.
+          #
+          # `NR > 1` on the terminator is not cosmetic: the line-1 title also
+          # begins with `==`, so without it the scan stops before it starts
+          # and the guard reports "no Stable tag" for a perfectly good readme.
+          readme_version="$(
+            awk '
+              NR > 1 && /^==/ { exit }
+              tolower( $0 ) ~ /^[ \t]*stable tag:/ {
+                value = substr( $0, index( $0, ":" ) + 1 )
+                sub( /^[ \t]+/, "", value )
+                sub( /[ \t\r]+$/, "", value )
+                print value
+                exit
+              }
+            ' readme.txt
+          )"
+
+          echo "tag           : ${GITHUB_REF_NAME}  ->  ${tag_version}"
+          echo "plugin header : ${header_version}"
+          echo "readme.txt    : ${readme_version}"
+
+          # Fail CLOSED. An extraction that found nothing is a failure, never
+          # a pass — a guard that silently compares two empty strings is worse
+          # than no guard at all.
+          status=0
+
+          if [ -z "${tag_version}" ]; then
+            echo "::error::Could not derive a version from tag '${GITHUB_REF_NAME}'."
+            status=1
+          fi
+
+          if [ -z "${header_version}" ]; then
+            echo "::error::No 'Version:' header found in ${PLUGIN_FILE}."
+            status=1
+          fi
+
+          if [ -z "${readme_version}" ]; then
+            echo "::error::No 'Stable tag:' found in the readme.txt header block."
+            status=1
+          fi
+
+          if [ "${status}" -ne 0 ]; then
+            exit 1
+          fi
+
+          if [ "${tag_version}" != "${header_version}" ] || [ "${tag_version}" != "${readme_version}" ]; then
+            echo "::error::Version mismatch. Tag says '${tag_version}', ${PLUGIN_FILE} says '${header_version}', readme.txt says '${readme_version}'. Nothing has been published; fix the files, delete and re-push the tag."
+            exit 1
+          fi
+
+          echo "All three agree on version ${tag_version}."
+          echo "version=${tag_version}" >> "${GITHUB_OUTPUT}"
+
+      #
+      # ---- Build ----------------------------------------------------------
+      #
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          # Single source of truth for the Node version — .nvmrc (lts/krypton).
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install JS dependencies
+        # package-lock.json is committed, so `npm ci` (never `npm install`).
+        run: npm ci
+
+      - name: Build block editor assets
+        # build/ is git-ignored and must be produced here. It ships in the zip
+        # because .distignore does not exclude it and the 10up action copies
+        # from disk rather than from git — see the header of .distignore.
+        run: npm run build
+
+      - name: Assert the block build produced something
+        run: |
+          set -euo pipefail
+
+          if [ ! -d build ] || [ -z "$( find build -type f -name '*.js' -print -quit )" ]; then
+            echo "::error::'npm run build' left no JavaScript in build/. The zip would ship without the block."
+            exit 1
+          fi
+
+          echo "build/ contains:"
+          find build -type f | sort | sed 's/^/  /'
+
+      #
+      # ---- Package --------------------------------------------------------
+      #
+      # This action rsyncs the workspace through .distignore into a checkout of
+      # the plugin's WordPress.org SVN trunk and zips the result, so the
+      # archive contains exactly what a deploy would put in trunk.
+      #
+      # SLUG is load-bearing twice over: it selects the SVN URL (an incorrect
+      # slug 404s and fails the job — verified: plugins.svn.wordpress.org
+      # returns 200 for `igsyntax-hiliter` and 404 for `ig-syntax-hiliter`),
+      # and it is the CI-9 declaration that the slug is not the repo name.
+      #
+      # What it does NOT do — verified by reading build-zip.sh at the pinned
+      # SHA — is give the archive a root directory. It runs `zip -r <repo>.zip .`
+      # from inside trunk, so its zip has the plugin files at the archive root
+      # and is named after the repo. That shape installs as the wrong plugin,
+      # which is why the next step repacks before anything is published.
+      #
+      - name: Build the distribution archive
+        uses: 10up/action-wordpress-plugin-build-zip@b9e621e1261ccf51592b6f3943e4dc4518fca0d1 # 1.0.2
+        env:
+          SLUG: ${{ env.PLUGIN_SLUG }}
+        with:
+          # This action uploads its own (rootless, repo-named) artifact as a
+          # side effect. It is not the release asset and must not be installed
+          # by hand; keep it around for the shortest time the action allows.
+          retention-days: 1
+
+      - name: Repack the archive so its root directory is the plugin slug
+        run: |
+          set -euo pipefail
+
+          # The pinned action unzips its own archive to a fixed directory
+          # named `zipfile` in the workspace. That name is a constant in the
+          # action, not derived from the repo or the slug, which is why it is
+          # what we key off. If a future SHA bump changes it, this fails here
+          # rather than silently shipping the wrong shape.
+          source_dir="${GITHUB_WORKSPACE}/zipfile"
+
+          if [ ! -d "${source_dir}" ] || [ ! -f "${source_dir}/${PLUGIN_FILE}" ]; then
+            echo "::error::Expected the packaged plugin at ${source_dir} (containing ${PLUGIN_FILE}). The pinned 10up/action-wordpress-plugin-build-zip SHA must have changed its layout."
+            exit 1
+          fi
+
+          stage="${RUNNER_TEMP}/dist"
+          rm -rf "${stage}"
+          mkdir -p "${stage}/${PLUGIN_SLUG}"
+
+          # `cp -a src/. dest/` copies the contents, including dotfiles, and
+          # preserves modes.
+          cp -a "${source_dir}/." "${stage}/${PLUGIN_SLUG}/"
+
+          zip_path="${RUNNER_TEMP}/${PLUGIN_SLUG}-${VERSION}.zip"
+          rm -f "${zip_path}"
+
+          # Zipping the directory by name — never `.` — is what puts the slug
+          # in the archive as the single root entry.
+          ( cd "${stage}" && zip -qr "${zip_path}" "${PLUGIN_SLUG}" )
+
+          echo "ZIP_PATH=${zip_path}" >> "${GITHUB_ENV}"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      #
+      # The CI-9 assertion. Written so that it cannot pass vacuously: an empty
+      # listing, a listing with more than one root, or a root spelled anything
+      # other than the slug all fail.
+      #
+      # The machine-readable check uses `unzip -Z1`, which prints one path per
+      # line and nothing else. `unzip -l` is printed too, for the log, but is
+      # not parsed: it is a column-aligned human table with a header and a
+      # footer, and this plugin ships a file whose name contains a space
+      # ("GNU GPL.txt"), so splitting its Name column on whitespace is exactly
+      # the kind of parsing that quietly fails open.
+      #
+      - name: Assert the archive unpacks to a single "igsyntax-hiliter/" root
+        run: |
+          set -euo pipefail
+
+          echo "Archive: ${ZIP_PATH}"
+          unzip -l "${ZIP_PATH}"
+
+          entries="${RUNNER_TEMP}/zip-entries.txt"
+          unzip -Z1 "${ZIP_PATH}" > "${entries}"
+
+          if [ ! -s "${entries}" ]; then
+            echo "::error::The release archive is empty."
+            exit 1
+          fi
+
+          roots="$( sed -e 's|/.*||' -e '/^$/d' "${entries}" | sort -u )"
+          # `|| true` only so that a zero count reaches the check below as a
+          # zero, instead of aborting the step with no explanation.
+          root_count="$( printf '%s\n' "${roots}" | grep -c . || true )"
+
+          if [ "${root_count}" -ne 1 ] || [ "${roots}" != "${PLUGIN_SLUG}" ]; then
+            echo "::error::The release archive must contain exactly one root directory named '${PLUGIN_SLUG}/'. WordPress would install this as a different plugin. Found ${root_count} root entrie(s):"
+            printf '%s\n' "${roots}" | sed 's/^/  /'
+            exit 1
+          fi
+
+          echo "Archive root is '${PLUGIN_SLUG}/' — correct."
+
+          # Content spot-checks. These prove .distignore did its job in both
+          # directions: the things that must ship are there, and the things
+          # that must not are absent.
+          status=0
+
+          while IFS= read -r required; do
+            [ -n "${required}" ] || continue
+            if ! grep -Fxq "${required}" "${entries}"; then
+              echo "::error::Missing from the release archive: ${required}"
+              status=1
+            fi
+          done <<REQUIRED
+          ${PLUGIN_SLUG}/${PLUGIN_FILE}
+          ${PLUGIN_SLUG}/readme.txt
+          ${PLUGIN_SLUG}/assets/lib/prism/components.json
+          REQUIRED
+
+          # Matched by pattern rather than by exact name where the filenames
+          # belong to the build tool or are still moving between milestones:
+          # the compiled block, the plugin's own PHP, a Prism component and
+          # the licence.
+          while IFS= read -r pattern; do
+            [ -n "${pattern}" ] || continue
+            if ! grep -Eq "${pattern}" "${entries}"; then
+              echo "::error::Nothing in the release archive matches: ${pattern}"
+              status=1
+            fi
+          done <<PRESENT
+          ^${PLUGIN_SLUG}/build/.+\.js\$
+          ^${PLUGIN_SLUG}/classes/.+\.php\$
+          ^${PLUGIN_SLUG}/assets/lib/prism/components/.+\.js\$
+          ^${PLUGIN_SLUG}/(COPYING|LICENSE|GNU GPL\.txt)\$
+          PRESENT
+
+          while IFS= read -r pattern; do
+            [ -n "${pattern}" ] || continue
+            if grep -Eq "${pattern}" "${entries}"; then
+              echo "::error::An excluded path leaked into the release archive (${pattern}):"
+              grep -E -m 5 "${pattern}" "${entries}" | sed 's/^/  /'
+              status=1
+            fi
+          done <<FORBIDDEN
+          ^${PLUGIN_SLUG}/node_modules/
+          ^${PLUGIN_SLUG}/vendor/
+          ^${PLUGIN_SLUG}/tests/
+          ^${PLUGIN_SLUG}/src/
+          ^${PLUGIN_SLUG}/assets/scss/
+          ^${PLUGIN_SLUG}/\.git
+          ^${PLUGIN_SLUG}/(composer|package|package-lock)\.json\$
+          ^${PLUGIN_SLUG}/(phpcs|phpunit)\.xml(\.dist)?\$
+          ^${PLUGIN_SLUG}/(Makefile|CLAUDE\.md|tsconfig\.json)\$
+          ^${PLUGIN_SLUG}/\.(distignore|nvmrc|phpcs\.cache)\$
+          FORBIDDEN
+
+          if [ "${status}" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "Archive contents verified."
+
+      #
+      # ---- Publish --------------------------------------------------------
+      #
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Idempotent, so that re-running a failed run does not dead-end on
+          # "release already exists".
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists; replacing its asset."
+            gh release upload "${GITHUB_REF_NAME}" "${ZIP_PATH}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${ZIP_PATH}" \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --verify-tag
+          fi
+
+      - name: Upload the release archive as a workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          # Fixed name, consumed by the deploy job. Not the slug and not the
+          # repo name, so neither can be inferred from it by mistake.
+          name: release-archive
+          path: ${{ env.ZIP_PATH }}
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    name: Deploy to WordPress.org (dry run)
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Nothing in this job writes to the repository. It writes to SVN, and it
+    # does that with the SVN credentials, not with the GitHub token.
+    permissions:
+      contents: read
+
+    steps:
+
+      # The deploy action reads the WordPress.org listing assets (banners,
+      # icons, screenshots) from `.wordpress-org/` in the workspace, entirely
+      # separately from the plugin payload, so the repo has to be present even
+      # though the payload comes from the artifact.
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Fail early if the WordPress.org credentials are not configured
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          # The deploy action refuses to run without these, dry run or not.
+          # Checking here turns a confusing failure inside the action into a
+          # clear one. Values are never echoed.
+          if [ -z "${SVN_USERNAME}" ] || [ -z "${SVN_PASSWORD}" ]; then
+            echo "::error::Repository secrets SVN_USERNAME and SVN_PASSWORD must both be set (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+          echo "SVN credentials are present."
+
+      - name: Download the release archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-archive
+          path: artifact
+
+      - name: Unpack the archive and re-assert its root directory
+        run: |
+          set -euo pipefail
+
+          archive="$( find artifact -maxdepth 1 -type f -name '*.zip' -print -quit )"
+
+          if [ -z "${archive}" ]; then
+            echo "::error::No zip found in the downloaded artifact."
+            exit 1
+          fi
+
+          rm -rf dist
+          mkdir -p dist
+          unzip -q "${archive}" -d dist
+
+          # The same CI-9 assertion as in the build job, applied to what is
+          # about to be handed to SVN. Cheap, and it catches any corruption or
+          # substitution between the two jobs.
+          roots="$( find dist -mindepth 1 -maxdepth 1 -printf '%f\n' | sort )"
+          root_count="$( printf '%s\n' "${roots}" | grep -c . || true )"
+
+          if [ "${root_count}" -ne 1 ] || [ "${roots}" != "${PLUGIN_SLUG}" ]; then
+            echo "::error::Unpacked archive must contain exactly one directory named '${PLUGIN_SLUG}'. Found:"
+            printf '%s\n' "${roots}" | sed 's/^/  /'
+            exit 1
+          fi
+
+          if [ ! -f "dist/${PLUGIN_SLUG}/${PLUGIN_FILE}" ]; then
+            echo "::error::dist/${PLUGIN_SLUG}/${PLUGIN_FILE} is missing from the unpacked archive."
+            exit 1
+          fi
+
+          echo "Ready to deploy dist/${PLUGIN_SLUG}/ as '${PLUGIN_SLUG}' version ${VERSION}."
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+
+      #
+      # BUILD_DIR makes this a straight copy of the unpacked artifact into SVN
+      # trunk — .distignore is not consulted again, so what lands in trunk and
+      # what is attached to the GitHub release are the same bytes.
+      #
+      # The action tags SVN as `tags/<VERSION>` and no-ops if that tag already
+      # exists, so re-running this job cannot double-publish.
+      #
+      - name: Deploy to WordPress.org
+        uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # 2.3.0 (= the `stable` branch at pin time)
+        with:
+          #
+          # >>> DRY RUN <<<  Flip this ONE line to `false` to publish for real.
+          #
+          # Deliberately shipped as a dry run so the first tag can be inspected
+          # — the job log prints the full `svn status` of what would be
+          # committed to trunk and tagged — before anything reaches
+          # WordPress.org. Nothing is committed while this is `true`.
+          #
+          # This must be the `dry-run` INPUT. Setting a `DRY_RUN` environment
+          # variable instead does nothing at this pinned version and would
+          # publish for real.
+          #
+          dry-run: true
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          # CI-9 — never let this default to the repo name.
+          SLUG: ${{ env.PLUGIN_SLUG }}
+          # Relative to the workspace; resolved by the action.
+          BUILD_DIR: dist/${{ env.PLUGIN_SLUG }}
+          # Set explicitly from the guarded value rather than re-derived from
+          # the ref inside the action.
+          VERSION: ${{ needs.build.outputs.version }}
