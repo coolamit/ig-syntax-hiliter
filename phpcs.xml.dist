@@ -8,19 +8,27 @@
 		FILES TO CHECK
 		#############################################################################
 
-		This list is deliberately narrow. The v5 codebase predates this tooling and
-		trips thousands of violations; the rule set is NOT weakened to hide them.
-		Instead only the paths that hold rewritten v6 code are checked, and this list
-		GROWS as v5 files are replaced:
+		Only rewritten v6 files are checked. The rule set is not weakened to
+		accommodate the v5 code; this list grows instead, as files are replaced:
 
-		  - add `classes` once the v5 classes have been rewritten,
-		  - add `templates` once the templates have been rewritten,
-		  - add `ig-syntax-hiliter.php` / `autoloader.php` once they are rewritten.
+		  - classes/frontend.php -> shortcode-handler.php            (M2)
+		  - classes/admin.php, templates/                            (M4)
+		  - classes/option.php, validate.php, cache.php, helper.php  (M4)
 
-		Nothing may be left off this list permanently — when the last v5 file goes,
-		the list becomes the whole plugin.
+		When the last one lands, these entries collapse to `<file>classes</file>`.
 	-->
 	<file>tests</file>
+	<file>ig-syntax-hiliter.php</file>
+	<file>autoloader.php</file>
+	<file>classes/ig-syntax-hiliter-gatekeeper.php</file>
+	<file>classes/plugin.php</file>
+	<file>classes/base.php</file>
+	<file>classes/migrate.php</file>
+	<file>classes/snippet.php</file>
+	<file>classes/language-registry.php</file>
+	<file>classes/legacy-map.php</file>
+	<file>classes/renderer.php</file>
+	<file>classes/asset-manager.php</file>
 
 	<!--
 		#############################################################################
@@ -44,8 +52,6 @@
 	<exclude-pattern>*/build/*</exclude-pattern>
 	<exclude-pattern>*/assets/lib/*</exclude-pattern><!-- Vendored Prism.js. -->
 	<exclude-pattern>*/assets/js/*.min.js</exclude-pattern>
-	<exclude-pattern>*/geshi/*</exclude-pattern><!-- Third party GeSHi, dropped in v6. -->
-	<exclude-pattern>*/classes/geshi.php</exclude-pattern><!-- Third party GeSHi, dropped in v6. -->
 	<exclude-pattern>*/.scratchpad/*</exclude-pattern>
 
 	<!--
@@ -144,12 +150,39 @@
 		#############################################################################
 	-->
 
-	<!--
-		Test files follow the PHPUnit `test-*.php` naming used across the WordPress
-		project rather than the `class-*.php` file naming the sniff expects.
-	-->
+	<!-- The autoloader maps `Foo_Bar` to `foo-bar.php`, so `class-foo.php` naming is
+	     not possible. Tests use PHPUnit's `Class_Name.php` naming. -->
 	<rule ref="WordPress.Files.FileName">
+		<properties>
+			<property name="strict_class_file_names" value="false"/>
+		</properties>
 		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+
+	<!-- Short array syntax is the house style: the v5 source has 45 short array
+	     literals and no long ones. -->
+	<rule ref="Universal.Arrays.DisallowShortArraySyntax">
+		<severity>0</severity>
+	</rule>
+
+	<!-- A leading underscore marks a protected member. The visibility keyword is
+	     always present as well. -->
+	<rule ref="PSR2.Classes.PropertyDeclaration.Underscore">
+		<severity>0</severity>
+	</rule>
+	<rule ref="PSR2.Methods.MethodDeclaration.Underscore">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Methods close with a `}    //end method_name()` marker. WPCS excludes this
+	     sniff's `.Missing` code but not `.Misplaced`. -->
+	<rule ref="Squiz.Commenting.ClosingDeclarationComment.Misplaced">
+		<severity>0</severity>
+	</rule>
+
+	<!-- The `iG` branding starts lowercase. -->
+	<rule ref="PEAR.NamingConventions.ValidClassName.StartWithCapital">
+		<exclude-pattern>*/classes/ig-syntax-hiliter-gatekeeper.php</exclude-pattern>
 	</rule>
 
 	<!--

@@ -1,7 +1,13 @@
-## **iG:Syntax Hiliter v5.1**
+## **iG:Syntax Hiliter v6.0.0**
 ---------------------------------
 
 ### **Changelog**
+
+##### **v6.0.0**
+
+* Minimum requirements are now PHP 8.4 and WordPress 6.9. The plugin does not load below either, it just says so in `wp-admin`.
+* The GeSHi library has been dropped. Syntax highlighting now happens in the browser, with Prism.js.
+* *(placeholder — the full v6.0.0 changelog is written up in a later milestone.)*
 
 ##### **v5.1**
 

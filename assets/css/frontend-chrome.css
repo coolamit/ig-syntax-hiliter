@@ -1,0 +1,55 @@
+/**
+ * iG:Syntax Hiliter — the bits the Prism themes do not cover.
+ *
+ * Hand written, not generated from SCSS.
+ */
+
+/* File name label added to the toolbar. */
+.code-toolbar > .toolbar .igsh-file-label {
+	display: inline-block;
+	max-width: 20em;
+	overflow: hidden;
+	font-family: inherit;
+	font-size: 0.8em;
+	font-style: italic;
+	text-overflow: ellipsis;
+	vertical-align: bottom;
+	white-space: nowrap;
+	opacity: 0.75;
+}
+
+/*
+ * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` itself or on anything
+ * wrapping it; the toolbar plugin wraps each `pre` in a `.code-toolbar` div and
+ * appends the toolbar beside it, so both shapes need covering.
+ */
+pre.igsh-no-toolbar ~ .toolbar,
+.igsh-no-toolbar .code-toolbar > .toolbar {
+	display: none;
+}
+
+/*
+ * The themes paint a `language-none` box like any other, because they select on
+ * `pre[class*="language-"]`. All that is left is to keep the text in the box
+ * colour rather than a token colour which is never applied.
+ */
+pre[class*="language-"] > code.language-none,
+code.language-none {
+	color: inherit;
+	background: none;
+	text-shadow: none;
+}
+
+/* Minimal box styling for sites which load no theme at all. */
+pre[id^="ig-sh-"] {
+	overflow: auto;
+	max-width: 100%;
+	tab-size: 4;
+}
+
+pre[id^="ig-sh-"] > code {
+	display: block;
+	font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+	white-space: pre;
+	word-wrap: normal;
+}

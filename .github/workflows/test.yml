@@ -1,0 +1,305 @@
+#
+# CI test workflow — PRD CI-8 / NFR-6.
+#
+# Runs PHP lint, PHPCS (WordPress Coding Standards), the JS/TS build and both
+# PHPUnit tiers on a four-combination matrix:
+#
+#             | WP 6.9.0 | WP 7.0.x (latest patch)
+#   PHP 8.4   |    x     |     x
+#   PHP 8.5   |    x     |     x
+#
+# This is the *test* workflow only. The release workflow (CI-1..CI-7) is a
+# separate file and is not part of this one.
+#
+name: Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  push:
+    branches:
+      - master
+
+# Nothing in this workflow writes to the repository or to any external service,
+# and it needs no secrets.
+permissions:
+  contents: read
+
+# Superseded PR runs are pointless — cancel them. Pushes to master are never
+# cancelled, because master's check history has to stay complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  #
+  # CI-9: the GitHub repo is named `ig-syntax-hiliter`, the plugin slug is
+  # `igsyntax-hiliter` (no first hyphen). They are NOT the same string and no
+  # step here may assume the checkout directory is named after the repo.
+  #
+  # So the repo is deliberately checked out *into a WordPress install*, at
+  # `wordpress/wp-content/plugins/igsyntax-hiliter`, rather than into the
+  # default `ig-syntax-hiliter` directory:
+  #
+  #   1. the directory basename is the plugin slug, exactly as it will be on a
+  #      real site, so anything deriving a slug/URL from `__FILE__`
+  #      (plugin_basename(), plugins_url(), asset handles) sees the truth;
+  #   2. the plugin sits inside a real WP install, which is what the WordPress
+  #      integration test library expects.
+  #
+  # Do not "simplify" this back to a bare `actions/checkout` — the guard step
+  # in each job asserts the basename and will fail if someone does.
+  #
+  PLUGIN_SLUG: igsyntax-hiliter
+  WP_PATH: wordpress
+  PLUGIN_PATH: wordpress/wp-content/plugins/igsyntax-hiliter
+
+  # Kept inside the workspace so the cache path is unambiguous across runners.
+  COMPOSER_CACHE_DIR: ${{ github.workspace }}/.composer-cache
+
+jobs:
+
+  test:
+    # Reads as e.g. "Tests / PHP 8.4, WP 6.9.0" in the checks list, so a red
+    # matrix leg is identifiable without opening the run.
+    name: PHP ${{ matrix.php }}, WP ${{ matrix.wp }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Deliberately NOT fail-fast: one PHP/WP combination breaking must not
+      # cancel the other three and hide whether they were broken too.
+      fail-fast: false
+      matrix:
+        php:
+          - '8.4'   # NFR-1 floor.
+          - '8.5'
+        wp:
+          # An exact version is an exact pin. `<branch>.x` means "resolve the
+          # latest patch of that branch at run time" — see the resolve step.
+          #
+          # 6.9.0 is pinned by explicit decision (PRD CI-8): it is the declared
+          # floor (NFR-2), and we assume no breaking changes across 6.9.x
+          # patches rather than testing every one. Do not float this to 6.9.x.
+          - '6.9.0'
+          # The 7.0 leg tracks the newest 7.0 patch release on purpose, so that
+          # a regression introduced by a WP 7.0.x update surfaces here.
+          - '7.0.x'
+
+    services:
+      # The integration tier needs a real MySQL. The database name matches the
+      # default in tests/integration/wp-tests-config.php and the one VVV
+      # provides locally, so the same config file serves both environments.
+      #
+      # WARNING (also stated in wp-tests-config.php): every table in this
+      # database is dropped and rebuilt on each run. That is safe here because
+      # the service container is thrown away with the job.
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_unit_tests
+          MYSQL_USER: wp
+          MYSQL_PASSWORD: wp
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=root --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=30s
+
+    steps:
+
+      #
+      # Third-party actions are pinned to a full commit SHA, not a moving tag:
+      # a tag can be repointed at new code by the action's owner (or by someone
+      # who compromises the account), and this workflow runs on pull requests.
+      # The human-readable version each SHA corresponded to at pin time is in
+      # the trailing comment — update both together when bumping.
+      #
+      - name: Check out plugin into a WordPress plugins directory
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # CI-9 — see the note on env.PLUGIN_PATH above.
+          path: ${{ env.PLUGIN_PATH }}
+          persist-credentials: false
+
+      - name: Assert the plugin directory is named after the slug (CI-9)
+        working-directory: ${{ env.PLUGIN_PATH }}
+        run: |
+          actual="$( basename "$PWD" )"
+          if [ "$actual" != "$PLUGIN_SLUG" ]; then
+            echo "::error::Plugin checked out as '${actual}' but the WordPress.org slug is '${PLUGIN_SLUG}'."
+            echo "The repo name (ig-syntax-hiliter) is NOT the plugin slug. Restore the 'path:' input on actions/checkout."
+            exit 1
+          fi
+          echo "Plugin directory: ${PWD}"
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 (2.37.2)
+        with:
+          php-version: ${{ matrix.php }}
+          # mysqli for the test database; mbstring/xml/zip/gd are used by the
+          # WordPress test library and core's own bootstrap.
+          extensions: mysqli, mbstring, gd, zip, xml
+          coverage: none
+          tools: composer:v2
+          ini-values: memory_limit=512M
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          # Single source of truth for the Node version — .nvmrc (lts/krypton).
+          node-version-file: ${{ env.PLUGIN_PATH }}/.nvmrc
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_PATH }}/package-lock.json
+
+      - name: Cache Composer packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.COMPOSER_CACHE_DIR }}
+          # The PHP version is part of the key because Composer resolves and
+          # caches per-platform.
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles(format('{0}/composer.lock', env.PLUGIN_PATH)) }}
+          restore-keys: |
+            composer-${{ runner.os }}-php${{ matrix.php }}-
+
+      - name: Install PHP dependencies
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # composer.lock is committed, so `install` (never `update`) — CI must
+        # test the exact dependency set a developer gets. Composer is dev-only
+        # here; the plugin ships no runtime PHP dependencies.
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install JS dependencies
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # package-lock.json is committed, so `npm ci` (never `npm install`).
+        run: npm ci
+
+      #
+      # ---- Static checks -------------------------------------------------
+      #
+
+      - name: PHP lint
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Parse-check every PHP file the repo tracks, on the matrix's PHP
+        # version. This catches syntax that a given PHP no longer accepts
+        # before anything tries to execute it. Only tracked files are linted,
+        # so vendor/, node_modules/ and build/ are excluded for free.
+        run: |
+          git ls-files -z '*.php' | xargs -0 -n1 -P4 php -l
+
+      - name: PHPCS (WordPress Coding Standards)
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # `composer run lint` -> phpcs, configured by phpcs.xml.dist. That file
+        # deliberately checks only the paths holding rewritten v6 code and its
+        # <file> list grows as v5 files are replaced; this step needs no change
+        # when it does.
+        run: composer run lint
+
+      - name: Build block editor assets
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # `wp-scripts build`. build/ is git-ignored, so it must be produced
+        # here — the integration tier loads the plugin, which reads build/.
+        run: npm run build
+
+      #
+      # ---- WordPress + tests ---------------------------------------------
+      #
+
+      - name: Resolve WordPress version
+        env:
+          WP_SPEC: ${{ matrix.wp }}
+        # Turns the matrix entry into a real release number.
+        #
+        # `<branch>.x` -> newest released patch of that branch.
+        # anything else -> that exact version, with one correction: WordPress
+        # names the first release of a branch "6.9", not "6.9.0", and there is
+        # no wordpress-6.9.0.tar.gz. When the exact string is not a released
+        # version but dropping a trailing ".0" yields one, that is used. The
+        # pin is still 6.9.0 in every sense that matters; only the download
+        # filename differs.
+        #
+        # The list of released versions comes from the WordPress.org
+        # stable-check API, so nothing here is hardcoded guesswork.
+        run: |
+          set -euo pipefail
+
+          stable="$( curl -fsSL --retry 3 https://api.wordpress.org/core/stable-check/1.0/ )"
+
+          case "${WP_SPEC}" in
+            *.x )
+              branch="${WP_SPEC%.x}"
+              version="$(
+                printf '%s' "${stable}" \
+                  | jq -r --arg b "${branch}" 'keys[] | select( . == $b or startswith( $b + "." ) )' \
+                  | sort -V | tail -n 1
+              )"
+              ;;
+            * )
+              version="${WP_SPEC}"
+              if ! printf '%s' "${stable}" | jq -e --arg v "${version}" 'has( $v )' > /dev/null; then
+                short="${version%.0}"
+                if printf '%s' "${stable}" | jq -e --arg v "${short}" 'has( $v )' > /dev/null; then
+                  echo "Note: WordPress publishes ${version} as '${short}'."
+                  version="${short}"
+                fi
+              fi
+              ;;
+          esac
+
+          if [ -z "${version}" ] || ! printf '%s' "${stable}" | jq -e --arg v "${version}" 'has( $v )' > /dev/null; then
+            echo "::error::Could not resolve a released WordPress version for spec '${WP_SPEC}'."
+            exit 1
+          fi
+
+          echo "Matrix spec '${WP_SPEC}' resolved to WordPress ${version}."
+          echo "WP_VERSION=${version}" >> "${GITHUB_ENV}"
+
+      - name: Install WordPress ${{ env.WP_VERSION }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${GITHUB_WORKSPACE}/${WP_PATH}"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/wordpress.tar.gz" \
+            "https://wordpress.org/wordpress-${WP_VERSION}.tar.gz"
+
+          # --strip-components=1 drops the archive's own "wordpress/" root, and
+          # tar merges into the existing tree rather than replacing it, so the
+          # plugin already checked out at wp-content/plugins/<slug> survives.
+          tar -xzf "${RUNNER_TEMP}/wordpress.tar.gz" --strip-components=1 \
+            -C "${GITHUB_WORKSPACE}/${WP_PATH}"
+
+          test -r "${GITHUB_WORKSPACE}/${WP_PATH}/wp-settings.php"
+          test -r "${GITHUB_WORKSPACE}/${WP_PATH}/wp-content/plugins/${PLUGIN_SLUG}/ig-syntax-hiliter.php"
+
+          # Consumed by tests/integration/wp-tests-config.php. Locally that file
+          # derives ABSPATH from the plugin's position inside the VVV sandbox;
+          # there is no such install here, so it is set explicitly.
+          echo "WP_TESTS_ABSPATH=${GITHUB_WORKSPACE}/${WP_PATH}" >> "${GITHUB_ENV}"
+
+      - name: PHPUnit — unit tier
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # No WordPress, no database: the v6 domain core is WP-free by design and
+        # this tier exists to keep it that way. Run before the integration tier
+        # so a domain-level break is reported without WP noise on top of it.
+        run: composer run test:unit
+
+      - name: PHPUnit — integration tier
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Every variable below is read by tests/integration/wp-tests-config.php;
+        # the names must match that file exactly.
+        #
+        # DB_HOST is 127.0.0.1 rather than "localhost": mysqli treats
+        # "localhost" as a request for a unix socket, and the service container
+        # is only reachable over TCP on the mapped port.
+        env:
+          WP_TESTS_DB_NAME: wordpress_unit_tests
+          WP_TESTS_DB_USER: wp
+          WP_TESTS_DB_PASSWORD: wp
+          WP_TESTS_DB_HOST: 127.0.0.1:3306
+        run: composer run test:integration

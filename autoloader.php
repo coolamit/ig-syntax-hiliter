@@ -1,8 +1,13 @@
 <?php
 /**
- * Autoloader for PHP classes of this plugin
+ * Autoloader for the PHP classes of this plugin.
  *
- * @author Amit Gupta <http://amitgupta.in/>
+ * This file has no WordPress dependency, on purpose — the unit test tier loads
+ * it with no WordPress present at all.
+ *
+ * @package iG_Syntax_Hiliter
+ *
+ * @author Amit Gupta <https://amitgupta.in/>
  */
 
 /*
@@ -15,32 +20,31 @@ spl_autoload_register( 'ig_syntax_hiliter_autoloader' );
  * possible. It is registered with spl_autoload_register() and must not be
  * called directly.
  *
- * @param string $resource Fully qualified name of the resource that is to be loaded
+ * @param string $class_name Fully qualified name of the resource that is to be loaded.
  * @return void
  */
-function ig_syntax_hiliter_autoloader( $resource = '' ) {
+function ig_syntax_hiliter_autoloader( $class_name = '' ) {
+
 	$namespace_root = 'iG\Syntax_Hiliter';
 
-	$resource = trim( $resource, '\\' );
+	$class_name = trim( $class_name, '\\' );
 
-	if ( empty( $resource ) || strpos( $resource, '\\' ) === false || strpos( $resource, $namespace_root ) !== 0 ) {
+	if ( empty( $class_name ) || false === strpos( $class_name, '\\' ) || 0 !== strpos( $class_name, $namespace_root ) ) {
 		//not our namespace, bail out
 		return;
 	}
 
-	$path = str_replace(
-				'_',
-				'-',
-				implode(
-					'/',
-					array_slice(	//remove the namespace root and grab the actual resource
-						explode( '\\', $resource ),
-						2
-					)
-				)
-			);
+	//remove the namespace root and grab the actual resource
+	$parts = array_slice( explode( '\\', $class_name ), 2 );
 
-	$path = sprintf( '%s/classes/%s.php', untrailingslashit( IG_SYNTAX_HILITER_ROOT ), strtolower( $path ) );
+	$path = str_replace( '_', '-', implode( '/', $parts ) );
+
+	/*
+	 * rtrim() rather than untrailingslashit(): this autoloader must have no
+	 * WordPress dependency at all, so that the unit test tier can exercise the
+	 * plugin's classes with no WordPress loaded and nothing shimmed.
+	 */
+	$path = sprintf( '%s/classes/%s.php', rtrim( IG_SYNTAX_HILITER_ROOT, '/\\' ), strtolower( $path ) );
 
 	if ( file_exists( $path ) ) {
 		require_once $path;

@@ -1,6 +1,8 @@
 <?php
 /**
- * Class for migrating old plugin values to new
+ * Class for migrating old plugin values to new.
+ *
+ * @package iG_Syntax_Hiliter
  *
  * @author Amit Gupta <https://amitgupta.in/>
  *
@@ -9,39 +11,62 @@
 
 namespace iG\Syntax_Hiliter;
 
-use \iG\Syntax_Hiliter\Traits\Singleton;
+use iG\Syntax_Hiliter\Traits\Singleton;
 
+/**
+ * Brings the plugin's stored settings up to date with the installed version.
+ */
 class Migrate {
 
 	use Singleton;
 
+	/**
+	 * Name of the option the plugin used up to v3.5.
+	 *
+	 * @var string
+	 */
 	const V35_OPTION_NAME = 'igsh_options';
 
 	/**
+	 * Plugin options.
+	 *
 	 * @var \iG\Syntax_Hiliter\Option
 	 */
 	protected $_option;
 
 	/**
-	 * @var float Current plugin version in DB
+	 * Current plugin version in the DB.
+	 *
+	 * @var float
 	 */
 	protected $_db_version;
 
 	/**
-	 * Class constructor
+	 * Class constructor.
 	 */
 	protected function __construct() {
+
 		//init options
 		$this->_option = Option::get_instance();
-	}
 
-	public function settings( Base $obj ) : void {
+	}    //end __construct()
 
-		$this->_db_version = $this->_get_last_version();
-
-		if ( round( floatval( IG_SYNTAX_HILITER_VERSION ), 1 ) === $this->_db_version ) {
+	/**
+	 * Migrates the plugin's settings when the installed version has changed.
+	 *
+	 * @return void
+	 */
+	public function settings(): void {
+		/*
+		 * TODO (M4): rewrite this class for semver — version_compare()
+		 * throughout, the v5 -> v6 option mapping, and the cleanup of dropped
+		 * options and caches. Everything below this guard is still float based.
+		 */
+		if ( (string) IG_SYNTAX_HILITER_VERSION === (string) get_option( Base::PLUGIN_ID . '-version', '' ) ) {
 			return;    //current version, nothing to migrate, bail out
 		}
+
+		$this->_db_version = $this->_get_last_version();
 
 		switch ( $this->_db_version ) {
 
@@ -51,26 +76,26 @@ class Migrate {
 
 			case 4.2:
 			case 4.3:
-				$this->_initialize_on_fresh_install( $obj );
+				$this->_initialize_on_fresh_install();
 				$this->_add_migrated_from_version();
 				break;
 
 			default:
-				$this->_initialize_on_fresh_install( $obj );
+				$this->_initialize_on_fresh_install();
 				break;
 
 		}
 
 		update_option( Base::PLUGIN_ID . '-version', IG_SYNTAX_HILITER_VERSION );
 
-	}
+	}    //end settings()
 
 	/**
 	 * This function returns the last version of plugin that was installed.
 	 *
 	 * @return float Last version of plugin installed. Returns 0 if its a fresh install.
 	 */
-	protected function _get_last_version() : float {
+	protected function _get_last_version(): float {
 
 		$db_version = floatval( get_option( Base::PLUGIN_ID . '-version', 0 ) );
 
@@ -80,7 +105,7 @@ class Migrate {
 
 		return round( floatval( $db_version ), 1 );
 
-	}
+	}    //end _get_last_version()
 
 	/**
 	 * Adds a option with last plugin version which is displayed on plugin option page
@@ -88,9 +113,11 @@ class Migrate {
 	 *
 	 * @return void
 	 */
-	protected function _add_migrated_from_version() : void {
+	protected function _add_migrated_from_version(): void {
+
 		update_option( Base::PLUGIN_ID . '-migrated-from', $this->_db_version );
-	}
+
+	}    //end _add_migrated_from_version()
 
 	/**
 	 * This function checks whether the plugin's last version in use was v3.5.x
@@ -98,7 +125,8 @@ class Migrate {
 	 *
 	 * @return bool Returns TRUE if plugin's last version in use was v3.5.x else FALSE
 	 */
-	protected function _is_updating_from_35() : bool {
+	protected function _is_updating_from_35(): bool {
+
 		$old_options = get_option( self::V35_OPTION_NAME, false );
 
 		if ( false === $old_options || ! is_array( $old_options ) ) {
@@ -106,14 +134,15 @@ class Migrate {
 		}
 
 		return true;
-	}
+
+	}    //end _is_updating_from_35()
 
 	/**
 	 * Migrate settings from version 3.5 or older
 	 *
 	 * @return void
 	 */
-	protected function _settings_from_35() : void {
+	protected function _settings_from_35(): void {
 
 		$old_options = get_option( self::V35_OPTION_NAME, [] );
 
@@ -135,20 +164,18 @@ class Migrate {
 
 		unset( $old_options );
 
-	}
+	}    //end _settings_from_35()
 
 	/**
 	 * Initialize settings on fresh install
 	 *
 	 * @return void
 	 */
-	protected function _initialize_on_fresh_install( Base $obj ) : void {
-
-		$obj->get_languages( 'yes' );    //rebuild language file list
+	protected function _initialize_on_fresh_install(): void {
 
 		$this->_option->commit();
 
-	}
+	}    //end _initialize_on_fresh_install()
 
 }    //end of class
 

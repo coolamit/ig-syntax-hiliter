@@ -28,24 +28,6 @@ if ( ! defined( 'IG_SYNTAX_HILITER_ROOT' ) ) {
 	define( 'IG_SYNTAX_HILITER_ROOT', IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR );
 }
 
-/*
- * `untrailingslashit()` is the one WordPress function the autoloader calls. It
- * is shimmed rather than pulled in with the rest of WordPress so that this tier
- * stays WordPress free. This shim goes away when the autoloader is rewritten
- * for v6 and stops depending on WordPress.
- */
-if ( ! function_exists( 'untrailingslashit' ) ) {
-	/**
-	 * Removes trailing forward slashes and backslashes if they exist.
-	 *
-	 * @param string $value Value to strip trailing slashes from.
-	 * @return string
-	 */
-	function untrailingslashit( $value ) {  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Shim for the WordPress function of the same name.
-		return rtrim( (string) $value, '/\\' );
-	}
-}
-
 require_once IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/autoloader.php';
 
 
