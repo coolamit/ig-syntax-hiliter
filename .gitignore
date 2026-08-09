@@ -1,4 +1,10 @@
 
+.phpunit.cache
+vendor/
+.env
+.env.production
+*.log
+
 # OS
 .DS_Store
 Thumbs.db
@@ -9,12 +15,15 @@ Thumbs.db
 .settings/
 .build/
 .idea/
-nbproject/
+.vscode/
 
-# Compass/SASS/SCSS
-.sass-cache
-*.css.map
-
-#npm
 node_modules/
+
+.scratchpad/*
+.claude/
+.ai/
+.agents/
+CLAUDE.md
+
+
 
