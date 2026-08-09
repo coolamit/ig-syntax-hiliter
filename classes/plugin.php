@@ -37,8 +37,8 @@ final class Plugin {
 	protected function _load_services(): void {
 
 		Asset_Manager::get_instance()->register_hooks();
-
-		// TODO (M2): attach the shortcode handler, content protector and Gist pipeline.
+		Shortcode_Handler::get_instance()->register_hooks();
+		Gist_Embed::get_instance()->register_hooks();
 
 		/*
 		 * TODO (M4): restore `if ( is_admin() ) { Admin::get_instance(); }`.

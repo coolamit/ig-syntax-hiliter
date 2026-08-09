@@ -11,7 +11,6 @@
 		Only rewritten v6 files are checked. The rule set is not weakened to
 		accommodate the v5 code; this list grows instead, as files are replaced:
 
-		  - classes/frontend.php -> shortcode-handler.php            (M2)
 		  - classes/admin.php, templates/                            (M4)
 		  - classes/option.php, validate.php, cache.php, helper.php  (M4)
 
@@ -29,6 +28,9 @@
 	<file>classes/legacy-map.php</file>
 	<file>classes/renderer.php</file>
 	<file>classes/asset-manager.php</file>
+	<file>classes/content-protector.php</file>
+	<file>classes/shortcode-handler.php</file>
+	<file>classes/gist-embed.php</file>
 
 	<!--
 		#############################################################################

@@ -194,15 +194,20 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The v5 Frontend class is never loaded. It is still on disk until the end
-	 * of M2, and it would fatal if it were loaded, because it needs GeSHi and
-	 * the language methods that have been removed from Base.
+	 * The v5 Frontend class and its template are gone, replaced by the shortcode
+	 * handler and the content protector.
 	 *
 	 * @return void
 	 */
-	public function test_v5_frontend_is_not_loaded(): void {
+	public function test_v5_frontend_is_gone(): void {
 
 		$this->assertFalse( class_exists( '\iG\Syntax_Hiliter\Frontend', false ) );
+		$this->assertFileDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/classes/frontend.php' );
+		$this->assertFileDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/templates/frontend-code-box.php' );
+
+		$this->assertTrue( class_exists( '\iG\Syntax_Hiliter\Shortcode_Handler' ) );
+		$this->assertTrue( class_exists( '\iG\Syntax_Hiliter\Content_Protector' ) );
+		$this->assertTrue( class_exists( '\iG\Syntax_Hiliter\Gist_Embed' ) );
 
 	}
 
