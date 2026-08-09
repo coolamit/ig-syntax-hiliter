@@ -55,15 +55,25 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The Gist pipeline sits where it has always sat.
+	 * The Gist pipeline runs ahead of `wptexturize`.
+	 *
+	 * Texturize is registered on `the_content` at priority 10 and curls the quotes
+	 * around a `gist="…"` URL before this pipeline can parse it, which is what broke
+	 * that attribute for the whole of v5. Priority 9 is the fix, so it is pinned.
 	 *
 	 * @return void
 	 */
-	public function test_hooks_are_registered_at_the_legacy_priorities(): void {
+	public function test_hooks_are_registered_ahead_of_texturize(): void {
 
 		$gist = Gist_Embed::get_instance();
 
-		$this->assertSame( 10, has_filter( 'the_content', [ $gist, 'parse' ] ) );
+		$this->assertSame( 9, has_filter( 'the_content', [ $gist, 'parse' ] ) );
+		$this->assertLessThan(
+			has_filter( 'the_content', 'wptexturize' ),
+			has_filter( 'the_content', [ $gist, 'parse' ] ),
+			'The Gist pipeline must parse its attributes before texturize rewrites them.'
+		);
+
 		$this->assertSame( 9, has_filter( 'the_excerpt', [ $gist, 'parse' ] ) );
 
 		// `gist_in_comments` is off by default, so comments get the link form.
@@ -87,22 +97,18 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * A full Gist URL wins over the id, and only its last segment is used.
 	 *
-	 * Called directly rather than through `the_content`, because `wptexturize`
-	 * shares priority 10 and is registered first, so it curls the attribute quotes
-	 * before this pipeline ever sees them. That is v5 behaviour, unchanged here.
+	 * Run through `the_content` rather than called directly, because that is the
+	 * path the quoted URL was broken on for the whole of v5: `wptexturize` curled
+	 * the quotes at priority 10 before this pipeline could read them, leaving
+	 * `https://gist.github.com/.js`. The embed now runs at 9, so the URL survives.
 	 *
 	 * @return void
 	 */
 	public function test_a_url_wins_over_an_id(): void {
 
-		$output = Gist_Embed::get_instance()->render(
-			[
-				'id'   => 'ignored',
-				'gist' => 'https://gist.github.com/someone/def456/',
-			]
-		);
+		$output = $this->_filter( 'the_content', '[github id="ignored" gist="https://gist.github.com/someone/def456/"]' );
 
-		$this->assertSame( $this->_expected_embed( 'def456' ), $output );
+		$this->assertStringContainsString( $this->_expected_embed( 'def456' ), $output );
 
 	}
 

@@ -2,35 +2,45 @@
 /**
  * Class for fetching and saving plugin options
  *
+ * @package iG_Syntax_Hiliter
+ *
  * @author Amit Gupta <https://amitgupta.in/>
  */
 
 namespace iG\Syntax_Hiliter;
 
-use \iG\Syntax_Hiliter\Traits\Singleton;
+use iG\Syntax_Hiliter\Traits\Singleton;
 
+/**
+ * The plugin's settings, as one option array with a known set of keys.
+ *
+ * Only the keys below exist: a value stored under any other name is dropped the
+ * next time the options are saved.
+ */
 class Option {
 
 	use Singleton;
 
 	/**
-	 * @var array An array which contains plugin options
+	 * An array which contains plugin options.
+	 *
+	 * @var array
 	 */
 	protected $_options;
 
 	/**
-	 * @var array An array which contains default plugin options
+	 * An array which contains default plugin options.
+	 *
+	 * @var array
 	 */
 	protected $_default_options = [
-		'fe-styles'         => 'yes',    //use plugin CSS to style hilited code box by default
-		'strict_mode'       => 'maybe',    //don't use GeSHi strict mode always
-		'non_strict_mode'   => [ 'php' ],    //langauges where strict mode is disabled
-		'toolbar'           => 'yes',    //show toolbar above hilited code by default
-		'plain_text'        => 'yes',    //show option to view code in plain text by default
-		'show_line_numbers' => 'yes',    //show line numbers in code by default
-		'hilite_comments'   => 'yes',    //hilite code posted in comments by default
-		'link_to_manual'    => 'no',    //don't link keywords to manual by default
-		'gist_in_comments'  => 'no',    //don't embed Github Gist in comments by default
+		'theme'                => Asset_Manager::DEFAULT_THEME,    //base name of the bundled theme stylesheet, or 'none' for no stylesheet
+		'toolbar'              => 'yes',    //show toolbar above hilited code by default
+		'copy_code'            => 'yes',    //show the copy to clipboard button by default
+		'show_line_numbers'    => 'yes',    //show line numbers in code by default
+		'normalize_whitespace' => 'no',    //don't strip common indentation from code by default
+		'hilite_comments'      => 'yes',    //hilite code posted in comments by default
+		'gist_in_comments'     => 'no',    //don't embed Github Gist in comments by default
 	];
 
 	/**
@@ -41,9 +51,11 @@ class Option {
 	}
 
 	/**
+	 * Method to load the plugin's options from the DB.
+	 *
 	 * @return void
 	 */
-	protected function _load_all_options() : void {
+	protected function _load_all_options(): void {
 
 		//fetch options array from wp_options & then do a safe merge with default options
 		$db_options = get_option( Base::PLUGIN_ID . '-options', false );
@@ -59,7 +71,7 @@ class Option {
 	/**
 	 * Getter method to fetch a single option by name
 	 *
-	 * @param string $name
+	 * @param string $name Option name.
 	 *
 	 * @return mixed
 	 */
@@ -78,7 +90,7 @@ class Option {
 	 *
 	 * @return array
 	 */
-	public function get_all() : array {
+	public function get_all(): array {
 		return $this->_options;
 	}
 
@@ -86,12 +98,12 @@ class Option {
 	 * Method to save an option. It takes care of sanitizing the value before
 	 * saving it and saves an option only if the option name already exists.
 	 *
-	 * @param string $name
-	 * @param mixed  $value
+	 * @param string $name  Option name.
+	 * @param mixed  $value Value to save.
 	 *
 	 * @return bool Returns TRUE if option is successfully saved else FALSE
 	 */
-	public function save( string $name, $value ) : bool {
+	public function save( string $name, $value ): bool {
 
 		if ( empty( $name ) || ! isset( $this->_options[ $name ] ) ) {
 			return false;
@@ -130,7 +142,7 @@ class Option {
 	 *
 	 * @return bool
 	 */
-	public function commit() : bool {
+	public function commit(): bool {
 
 		if ( empty( $this->_options ) ) {
 			return false;

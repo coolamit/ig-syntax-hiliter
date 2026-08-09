@@ -1,288 +1,561 @@
 <?php
 /**
- * iG Syntax Hiliter Admin Class
- * This class handles all the stuff for settings page of the plugin in wp-admin
+ * The plugin's settings screen and the REST route which saves it.
  *
- * @author Amit Gupta <http://amitgupta.in/>
+ * @package iG_Syntax_Hiliter
+ *
+ * @author Amit Gupta <https://amitgupta.in/>
  */
 
 namespace iG\Syntax_Hiliter;
 
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+use WP_REST_Server;
+
+/**
+ * Settings screen, and the REST route the screen saves through.
+ *
+ * Settings save one at a time, as they always have: changing a control sends that
+ * one setting and nothing else. The route is the only way in, so the same schema
+ * decides what may be written whether the request came from the screen or from
+ * anywhere else.
+ *
+ * The route has to be registered on every request, not only in wp-admin, because
+ * `rest_api_init` runs on requests where `is_admin()` is false and `REST_REQUEST`
+ * is not defined until long after this plugin loads. Everything else this class
+ * hooks is on an admin only hook and costs nothing elsewhere.
+ */
 class Admin extends Base {
 
 	/**
-	 * Class constructor
+	 * Namespace every one of the plugin's REST routes lives under.
+	 *
+	 * @var string
 	 */
-	protected function __construct() {
-
-		parent::__construct();
-
-		$this->_setup_hooks();
-
-	}
+	const REST_NAMESPACE = 'igsyntax-hiliter/v1';
 
 	/**
-	 * Method to set up listeners to WP hooks
+	 * Capability required to read or change anything this class exposes.
+	 *
+	 * @var string
+	 */
+	const CAPABILITY = 'manage_options';
+
+	/**
+	 * Menu slug of the settings page.
+	 *
+	 * @var string
+	 */
+	const PAGE_SLUG = self::PLUGIN_ID . '-page';
+
+	/**
+	 * Hook suffix WordPress gives the settings page.
+	 *
+	 * @var string
+	 */
+	const PAGE_HOOK = 'settings_page_' . self::PAGE_SLUG;
+
+	/**
+	 * Whether the hooks have been registered already.
+	 *
+	 * @var bool
+	 */
+	protected bool $_hooked = false;
+
+	/**
+	 * Method to hook the settings screen and its route up to WordPress.
 	 *
 	 * @return void
 	 */
-	protected function _setup_hooks() : void {
+	public function register_hooks(): void {
 
-		/*
-		 * Actions
-		 */
-		add_action( 'admin_menu', [ $this, 'add_menu' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_stuff' ] );
-		add_action( 'wp_ajax_ig-sh-save-options', [ $this, 'save_plugin_options' ] );
-		add_action( 'admin_notices', [ $this, 'maybe_show_migration_message' ] );
-
-		/*
-		 * Filters
-		 */
-		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
-
-	}
-
-	/**
-	 * This function checks whether the plugin options have been migrated from an older
-	 * version or not. If they have been then it shows a one time notice on the plugin's
-	 * admin page and then deletes the older version number from DB.
-	 */
-	public function maybe_show_migration_message() : void {
-
-		if ( get_current_screen()->id !== sprintf( 'settings_page_%s-page', parent::PLUGIN_ID ) ) {
-			//not our admin page, bail out
+		if ( $this->_hooked ) {
 			return;
 		}
 
-		$old_version = round( floatval( get_option( parent::PLUGIN_ID . '-migrated-from', 0 ) ), 1 );
+		$this->_hooked = true;
 
-		if ( 0 < $old_version ) {
+		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
+		add_action( 'admin_menu', [ $this, 'add_menu' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'admin_notices', [ $this, 'maybe_show_migration_message' ] );
 
-			if ( floatval( IG_SYNTAX_HILITER_VERSION ) > $old_version ) {
-				printf(
-					'<div class="updated fade"><p>Options migrated successfully from v%f</p></div>',
-					$old_version
-				);
-			}
+		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
 
-			//delete this from DB, not needed anymore
-			delete_option( parent::PLUGIN_ID . '-migrated-from' );
+	}    //end register_hooks()
 
+	/**
+	 * Method to decide whether the current user may use the plugin's REST routes.
+	 *
+	 * Logged out is answered with `401` and under privileged with `403`, so that a
+	 * caller can tell "log in" apart from "you may not do this". Neither answer
+	 * reaches a callback, so neither can change a stored setting.
+	 *
+	 * @return true|\WP_Error TRUE when the request may proceed, an error otherwise.
+	 */
+	public static function rest_permission_check() {
+
+		if ( ! is_user_logged_in() ) {
+			return new WP_Error(
+				'ig_syntax_hiliter_rest_not_logged_in',
+				__( 'You must be logged in to do that.', 'igsyntax-hiliter' ),
+				[ 'status' => 401 ]
+			);
 		}
 
-	}
+		if ( ! current_user_can( static::CAPABILITY ) ) {
+			return new WP_Error(
+				'ig_syntax_hiliter_rest_forbidden',
+				__( 'You are not allowed to change these settings.', 'igsyntax-hiliter' ),
+				[ 'status' => 403 ]
+			);
+		}
+
+		return true;
+
+	}    //end rest_permission_check()
 
 	/**
-	 * Method to add plugin settings page in the Settings menu
+	 * Method to get the settings the screen shows and the route accepts.
+	 *
+	 * This is the only list of writable settings there is. A name which is not a key
+	 * here is rejected by the route, so the route can never be used to write an
+	 * arbitrary option.
+	 *
+	 * @return array Setting name to its type, label, description and permitted values.
+	 */
+	public static function get_settings_schema(): array {
+
+		$yes_no = [
+			'yes' => __( 'Yes', 'igsyntax-hiliter' ),
+			'no'  => __( 'No', 'igsyntax-hiliter' ),
+		];
+
+		return [
+			'theme'                => [
+				'type'        => 'choice',
+				'label'       => __( 'Theme', 'igsyntax-hiliter' ),
+				'description' => __( 'Colour scheme used for code boxes on the front end.', 'igsyntax-hiliter' ),
+				'choices'     => static::get_theme_choices(),
+			],
+			'toolbar'              => [
+				'type'        => 'toggle',
+				'label'       => __( 'Show the toolbar', 'igsyntax-hiliter' ),
+				'description' => __( 'Puts a small toolbar above each code box, which carries the language name, the file label and the copy button.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'copy_code'            => [
+				'type'        => 'toggle',
+				'label'       => __( 'Show the copy button', 'igsyntax-hiliter' ),
+				'description' => __( 'Adds a button which copies the code to the clipboard. It lives in the toolbar, so it needs the toolbar switched on.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'show_line_numbers'    => [
+				'type'        => 'toggle',
+				'label'       => __( 'Show line numbers', 'igsyntax-hiliter' ),
+				'description' => __( 'The default for every code box. A single snippet can override it with the gutter attribute or the block setting.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'normalize_whitespace' => [
+				'type'        => 'toggle',
+				'label'       => __( 'Normalize whitespace', 'igsyntax-hiliter' ),
+				'description' => __( 'Trims blank lines and strips the indentation shared by every line of a snippet. Off by default, because that indentation is often deliberate.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'hilite_comments'      => [
+				'type'        => 'toggle',
+				'label'       => __( 'Highlight code in comments', 'igsyntax-hiliter' ),
+				'description' => __( 'Runs the same highlighting over code posted in comments.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'gist_in_comments'     => [
+				'type'        => 'toggle',
+				'label'       => __( 'Allow Gist embeds in comments', 'igsyntax-hiliter' ),
+				'description' => __( 'Lets a commenter embed a GitHub Gist with the github shortcode. Off by default, because it lets a commenter load a third party script.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+		];
+
+	}    //end get_settings_schema()
+
+	/**
+	 * Method to get the themes offered by the theme setting.
+	 *
+	 * The bundled themes are those whose stylesheet is actually readable on disk, so
+	 * a theme which is not shipped is never offered. "None" is last, because picking
+	 * it means the code boxes are styled by the site's own CSS and nothing else.
+	 *
+	 * @return array Theme setting value to its label.
+	 */
+	public static function get_theme_choices(): array {
+
+		$choices = Asset_Manager::get_themes();
+
+		$choices[ Asset_Manager::THEME_NONE ] = __( 'None — load no theme stylesheet', 'igsyntax-hiliter' );
+
+		return $choices;
+
+	}    //end get_theme_choices()
+
+	/**
+	 * Method to register the plugin's REST routes.
 	 *
 	 * @return void
 	 */
-	public function add_menu() : void {
-		add_options_page(
-			sprintf( '%s Options', parent::PLUGIN_NAME ),
-			parent::PLUGIN_NAME,
-			'manage_options',
-			sprintf( '%s-page', parent::PLUGIN_ID ),
-			[ $this, 'admin_page' ]
+	public function register_rest_routes(): void {
+
+		register_rest_route(
+			static::REST_NAMESPACE,
+			'/option',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'save_option' ],
+				'permission_callback' => [ static::class, 'rest_permission_check' ],
+				'args'                => [
+					'name'  => [
+						'type'              => 'string',
+						'required'          => true,
+						'enum'              => array_keys( static::get_settings_schema() ),
+						'description'       => __( 'Name of the setting to save.', 'igsyntax-hiliter' ),
+						'sanitize_callback' => 'sanitize_key',
+						'validate_callback' => [ static::class, 'validate_option_name' ],
+					],
+					'value' => [
+						'type'              => 'string',
+						'required'          => true,
+						'description'       => __( 'Value to save the setting as.', 'igsyntax-hiliter' ),
+						'sanitize_callback' => 'sanitize_text_field',
+						'validate_callback' => [ static::class, 'validate_option_value' ],
+					],
+				],
+			]
 		);
-	}
+
+	}    //end register_rest_routes()
 
 	/**
-	 * Method to construct the UI for the plugin settings page
+	 * Method to check that a setting name is one this plugin owns.
+	 *
+	 * @param mixed $value Name as it was sent.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function validate_option_name( $value ) {
+
+		if ( is_string( $value ) && array_key_exists( sanitize_key( $value ), static::get_settings_schema() ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'ig_syntax_hiliter_unknown_setting',
+			__( 'That is not one of this plugin\'s settings.', 'igsyntax-hiliter' ),
+			[ 'status' => 400 ]
+		);
+
+	}    //end validate_option_name()
+
+	/**
+	 * Method to check that a value is one the named setting accepts.
+	 *
+	 * Validation runs before sanitization, so the name is read raw here and cleaned
+	 * up before it is looked up.
+	 *
+	 * @param mixed            $value   Value as it was sent.
+	 * @param \WP_REST_Request $request Request being validated.
+	 *
+	 * @return true|\WP_Error
+	 */
+	public static function validate_option_value( $value, $request ) {
+
+		$name   = ( $request instanceof WP_REST_Request ) ? sanitize_key( (string) $request['name'] ) : '';
+		$schema = static::get_settings_schema();
+
+		if ( ! isset( $schema[ $name ] ) ) {
+			return new WP_Error(
+				'ig_syntax_hiliter_unknown_setting',
+				__( 'That is not one of this plugin\'s settings.', 'igsyntax-hiliter' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		if ( is_string( $value ) && isset( $schema[ $name ]['choices'][ $value ] ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'ig_syntax_hiliter_invalid_setting_value',
+			sprintf(
+				/* translators: %s: name of the setting. */
+				__( 'That is not a value the %s setting accepts.', 'igsyntax-hiliter' ),
+				$name
+			),
+			[ 'status' => 400 ]
+		);
+
+	}    //end validate_option_value()
+
+	/**
+	 * Method to save one setting.
+	 *
+	 * The schema is checked again here rather than trusted from validation, and
+	 * success is reported only once the value is in the database.
+	 *
+	 * @param \WP_REST_Request $request Request being served.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function save_option( WP_REST_Request $request ) {
+
+		$name   = sanitize_key( (string) $request['name'] );
+		$value  = (string) $request['value'];
+		$schema = static::get_settings_schema();
+
+		if ( ! isset( $schema[ $name ]['choices'][ $value ] ) ) {
+			return new WP_Error(
+				'ig_syntax_hiliter_invalid_setting',
+				__( 'That setting or that value is not one this plugin knows.', 'igsyntax-hiliter' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		if ( ! $this->_option->save( $name, $value ) ) {
+			return new WP_Error(
+				'ig_syntax_hiliter_setting_not_saved',
+				__( 'The setting could not be saved.', 'igsyntax-hiliter' ),
+				[ 'status' => 500 ]
+			);
+		}
+
+		return new WP_REST_Response(
+			[
+				'name'    => $name,
+				'value'   => (string) $this->_option->get( $name ),
+				'message' => __( 'Setting saved.', 'igsyntax-hiliter' ),
+			]
+		);
+
+	}    //end save_option()
+
+	/**
+	 * Method to add the settings page to the Settings menu.
 	 *
 	 * @return void
 	 */
-	public function admin_page() : void {
+	public function add_menu(): void {
+
+		add_options_page(
+			sprintf(
+				/* translators: %s: plugin name. */
+				__( '%s Options', 'igsyntax-hiliter' ),
+				static::PLUGIN_NAME
+			),
+			static::PLUGIN_NAME,
+			static::CAPABILITY,
+			static::PAGE_SLUG,
+			[ $this, 'render_page' ]
+		);
+
+	}    //end add_menu()
+
+	/**
+	 * Method to render the settings page.
+	 *
+	 * @return void
+	 */
+	public function render_page(): void {
+
+		$options  = $this->_option->get_all();
+		$settings = [];
+
+		foreach ( static::get_settings_schema() as $name => $setting ) {
+
+			$value = $options[ $name ] ?? '';
+			$value = ( is_scalar( $value ) ) ? (string) $value : '';
+
+			$setting['name']  = $name;
+			$setting['value'] = ( isset( $setting['choices'][ $value ] ) ) ? $value : (string) array_key_first( $setting['choices'] );
+
+			$settings[ $name ] = $setting;
+
+		}
 
 		Helper::render_template(
 			sprintf( '%s/templates/plugin-options-page.php', untrailingslashit( IG_SYNTAX_HILITER_ROOT ) ),
 			[
-				'plugin_name'      => parent::PLUGIN_NAME,
-				'options'          => $this->_option->get_all(),
-				'strict_mode_opts' => Validate::$strict_mode_values,
-				'human_time_diff'  => Helper::human_time_diff( time(), ( $this->_get_language_cache_build_time() + parent::LANGUAGES_CACHE_LIFE ) ),
+				'plugin_name' => static::PLUGIN_NAME,
+				'settings'    => $settings,
+				'dropin_path' => static::get_dropin_display_path(),
 			],
 			true
 		);
 
-	}
+	}    //end render_page()
 
 	/**
-	 * Method to handle our AJAX requests
+	 * Method to get the drop-in language directory as a path worth showing a person.
+	 *
+	 * The directory is never created by the plugin; the page only says where it goes.
+	 *
+	 * @return string Path relative to wp-content, with a trailing slash.
+	 */
+	public static function get_dropin_display_path(): string {
+
+		$uploads = wp_upload_dir( null, false );
+		$basedir = ( empty( $uploads['error'] ) && ! empty( $uploads['basedir'] ) ) ? $uploads['basedir'] : '';
+
+		if ( '' !== $basedir && defined( 'WP_CONTENT_DIR' ) && str_starts_with( $basedir, WP_CONTENT_DIR ) ) {
+			$basedir = 'wp-content' . substr( $basedir, strlen( WP_CONTENT_DIR ) );
+		}
+
+		$basedir = ( '' === $basedir ) ? 'wp-content/uploads' : $basedir;
+
+		return trailingslashit(
+			sprintf( '%s/%s', untrailingslashit( $basedir ), Language_Registry::DROPIN_DIR )
+		);
+
+	}    //end get_dropin_display_path()
+
+	/**
+	 * Method to load the settings page assets.
+	 *
+	 * Nothing here depends on jQuery.
+	 *
+	 * @param string $hook Hook suffix of the admin page being loaded.
 	 *
 	 * @return void
 	 */
-	public function save_plugin_options() : void {
+	public function enqueue_assets( $hook ): void {
 
-		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		if ( static::PAGE_HOOK !== $hook ) {
 			return;
 		}
 
-		$response = new Ajax_Response();
+		$handle  = sprintf( '%s-admin', static::PLUGIN_ID );
+		$version = (string) IG_SYNTAX_HILITER_VERSION;
 
-		$response->add_nonce( sprintf( '%s-nonce', parent::PLUGIN_ID ) );
+		wp_enqueue_style( $handle, Helper::get_asset_url( 'css/admin.css' ), [], $version );
 
-		//check & see if we have the values
-		$option_name  = Helper::filter_input( INPUT_POST, 'option_name', FILTER_SANITIZE_STRING );
-		$option_value = Helper::filter_input( INPUT_POST, 'option_value', FILTER_SANITIZE_STRING );
+		wp_enqueue_script( $handle, Helper::get_asset_url( 'js/admin.js' ), [], $version, true );
 
-		if (
-			! check_ajax_referer( parent::PLUGIN_ID . '-nonce', '_ig_sh_nonce', false )
-			|| empty( $option_name ) || empty( $option_value )
-		) {
-			$response->add_error( 'Invalid request sent, please refresh the page and try again' );
-			$response->send();
-		}
+		wp_add_inline_script(
+			$handle,
+			sprintf(
+				'window.igSyntaxHiliterAdmin = %s;',
+				// Angle brackets are escaped so that no translated string can close the script tag this sits in.
+				wp_json_encode( $this->_get_script_data(), JSON_HEX_TAG | JSON_HEX_AMP )
+			),
+			'before'
+		);
 
-		$option_name  = sanitize_text_field( strtolower( trim( $option_name ) ) );
-		$option_value = sanitize_text_field( strtolower( trim( $option_value ) ) );
-
-		if ( 'igsh_refresh_languages' === $option_name && 'rebuild' === $option_value ) {
-
-			//rebuild language file list
-			$this->get_languages( 'yes' );
-
-			$response->add_success( 'Shorthand Tags rebuilt successfully' );
-			$response->add( 'time', Helper::human_time_diff( time(), ( $this->_get_language_cache_build_time() + parent::LANGUAGES_CACHE_LIFE ) ) );
-
-		} elseif ( $this->_option->get( $option_name ) !== false ) {
-
-			$response->add_success( 'Option Saved successfully' );    //assume option saved successfully
-
-			switch ( $option_name ) {
-
-				case 'strict_mode':
-					$this->_option->save(
-						$option_name,
-						$this->_validate->sanitize_strict_mode_values( $option_value )
-					);
-					break;
-
-				case 'non_strict_mode':
-					$sanitized_language_names = $this->_validate->languages(
-						explode( ',', $option_value ),
-						array_values( $this->get_languages() )
-					);
-
-					$this->_option->save( $option_name, $sanitized_language_names );
-
-					unset( $sanitized_language_names );
-					break;
-
-				default:
-					if ( ! $this->_validate->is_yesno( $option_value ) ) {
-						$response->add_error( 'Invalid request sent, please refresh the page and try again' );
-						$response->send();
-					} else {
-						$this->_option->save( $option_name, $option_value );
-					}
-
-					break;
-
-			}
-
-		}
-
-		$response->send();
-
-	}    //end save_plugin_options()
+	}    //end enqueue_assets()
 
 	/**
-	 * Method to load assets on settings page in wp-admin
-	 *
-	 * @return void
-	 */
-	public function enqueue_stuff( $hook ) : void {
-
-		if ( ! is_admin() || $hook !== sprintf( 'settings_page_%s-page', parent::PLUGIN_ID ) ) {
-			//page is not in wp-admin or not our settings page, so bail out
-			return;
-		}
-
-		//load stylesheet
-		wp_enqueue_style(
-			sprintf( '%s-admin', parent::PLUGIN_ID ),
-			plugins_url( '/assets/css/admin.css', __DIR__ ),
-			false,
-			IG_SYNTAX_HILITER_VERSION
-		);
-
-		//load jQuery::msg stylesheet
-		wp_enqueue_style(
-			sprintf( '%s-jquery-msg', parent::PLUGIN_ID ),
-			plugins_url( '/assets/css/jquery.msg.css', __DIR__ ),
-			false,
-			IG_SYNTAX_HILITER_VERSION
-		);
-
-		//load jQuery::center script
-		wp_enqueue_script(
-			sprintf( '%s-jquery-center', parent::PLUGIN_ID ),
-			plugins_url( '/assets/js/jquery.center.min.js', __DIR__ ),
-			[ 'jquery' ],
-			IG_SYNTAX_HILITER_VERSION
-		);
-
-		//load jQuery::msg script
-		wp_enqueue_script(
-			sprintf( '%s-jquery-msg', parent::PLUGIN_ID ),
-			plugins_url( '/assets/js/jquery.msg.min.js', __DIR__ ),
-			[ sprintf( '%s-jquery-center', parent::PLUGIN_ID ) ],
-			IG_SYNTAX_HILITER_VERSION
-		);
-
-		//load our script
-		wp_enqueue_script(
-			sprintf( '%s-admin', parent::PLUGIN_ID ),
-			plugins_url( '/assets/js/admin.js', __DIR__ ),
-			[ sprintf( '%s-jquery-msg', parent::PLUGIN_ID ) ],
-			IG_SYNTAX_HILITER_VERSION
-		);
-
-		//some vars in JS that we'll need
-		wp_localize_script(
-			sprintf( '%s-admin', parent::PLUGIN_ID ),
-			'ig_sh',
-			[
-				'plugins_url' => plugins_url( '/', __DIR__ ),
-				'nonce'       => wp_create_nonce( sprintf( '%s-nonce', parent::PLUGIN_ID ) ),
-			]
-		);
-
-	}
-
-	/**
-	 * Method to add link to plugin settings page in the plugin listing once plugin has been activated.
-	 *
-	 * @param array  $links
-	 * @param string $file
+	 * Method to build the data the settings page script needs.
 	 *
 	 * @return array
 	 */
-	public function get_action_links( array $links, string $file ) : array {
+	protected function _get_script_data(): array {
+
+		return [
+			'restUrl' => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
+			'nonce'   => wp_create_nonce( 'wp_rest' ),
+			'i18n'    => [
+				'saving'        => __( 'Saving…', 'igsyntax-hiliter' ),
+				'saved'         => __( 'Setting saved.', 'igsyntax-hiliter' ),
+				'saveFailed'    => __( 'That setting could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
+				'reloadNeeded'  => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
+				'revertConfirm' => __(
+					"This will convert every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode, in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
+					'igsyntax-hiliter'
+				),
+				'revertNone'    => __( 'There are no blocks to convert.', 'igsyntax-hiliter' ),
+				'revertRunning' => __( 'Converting… do not close this page.', 'igsyntax-hiliter' ),
+				/* translators: 1: number of posts converted, 2: number of posts skipped. */
+				'revertDone'    => __( 'Finished. %1$d converted, %2$d left alone.', 'igsyntax-hiliter' ),
+				'revertFailed'  => __( 'The conversion stopped because a request failed. Nothing already converted has been lost — run it again to carry on.', 'igsyntax-hiliter' ),
+			],
+		];
+
+	}    //end _get_script_data()
+
+	/**
+	 * Method to tell the site owner, once, that their settings were migrated.
+	 *
+	 * @return void
+	 */
+	public function maybe_show_migration_message(): void {
+
+		$screen = get_current_screen();
+
+		if ( is_null( $screen ) || static::PAGE_HOOK !== $screen->id ) {
+			return;    //not our settings page, bail out
+		}
+
+		$old_version = get_option( static::PLUGIN_ID . '-migrated-from', '' );
+		$old_version = ( is_scalar( $old_version ) ) ? trim( (string) $old_version ) : '';
+
+		if ( '' === $old_version ) {
+			return;
+		}
+
+		delete_option( static::PLUGIN_ID . '-migrated-from' );    //shown once, then gone
+
+		if ( ! version_compare( $old_version, (string) IG_SYNTAX_HILITER_VERSION, '<' ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+			esc_html(
+				sprintf(
+					/* translators: %s: version number the settings came from. */
+					__( 'Settings migrated successfully from v%s.', 'igsyntax-hiliter' ),
+					$old_version
+				)
+			)
+		);
+
+	}    //end maybe_show_migration_message()
+
+	/**
+	 * Method to add a settings link to the plugin's row on the plugins screen.
+	 *
+	 * @param array  $links Action links for the plugin being listed.
+	 * @param string $file  Plugin file the links belong to.
+	 *
+	 * @return array
+	 */
+	public function get_action_links( $links, $file ): array {
+
+		$links = ( is_array( $links ) ) ? $links : [];
 
 		if ( IG_SYNTAX_HILITER_BASENAME !== $file ) {
 			return $links;
 		}
 
-		$settings_page_slug = sprintf(
-			'options-general.php?page=%s-page',
-			parent::PLUGIN_ID
+		array_unshift(
+			$links,
+			sprintf(
+				'<a href="%1$s" aria-label="%2$s">%3$s</a>',
+				esc_url( admin_url( sprintf( 'options-general.php?page=%s', static::PAGE_SLUG ) ) ),
+				esc_attr(
+					sprintf(
+						/* translators: %s: plugin name. */
+						__( 'Configure %s', 'igsyntax-hiliter' ),
+						static::PLUGIN_NAME
+					)
+				),
+				esc_html__( 'Settings', 'igsyntax-hiliter' )
+			)
 		);
-
-		$settings_link = sprintf(
-			'<a href="%s" aria-label="Configure %s">Settings</a>',
-			esc_url( admin_url( $settings_page_slug ) ),
-			esc_attr( parent::PLUGIN_NAME )
-		);
-
-		array_unshift( $links, $settings_link );
 
 		return $links;
 
-	}
+	}    //end get_action_links()
 
 }    //end of class
+
 
 //EOF

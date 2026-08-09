@@ -14,7 +14,9 @@ use iG\Syntax_Hiliter\Traits\Singleton;
 /**
  * Boots the plugin's services once the Gatekeeper has cleared the environment.
  *
- * Core services always load; only the settings screen is admin gated.
+ * Nothing here is gated on `is_admin()`. A REST request is not an admin request,
+ * so the settings and revert routes would never be registered; and `Admin` is the
+ * only class left extending `Base`, which is what runs a pending migration.
  */
 final class Plugin {
 
@@ -39,12 +41,9 @@ final class Plugin {
 		Asset_Manager::get_instance()->register_hooks();
 		Shortcode_Handler::get_instance()->register_hooks();
 		Gist_Embed::get_instance()->register_hooks();
-
-		/*
-		 * TODO (M4): restore `if ( is_admin() ) { Admin::get_instance(); }`.
-		 * Admin still calls language-scan methods that no longer exist on Base,
-		 * so the settings screen would fatal.
-		 */
+		Block::get_instance()->register_hooks();
+		Admin::get_instance()->register_hooks();
+		Block_Converter::get_instance()->register_hooks();
 
 	}    //end _load_services()
 

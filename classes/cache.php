@@ -174,9 +174,8 @@ class Cache {
 		//delete existing cache
 		$this->delete();
 
-		//set new cache array
-		//we want it autoloaded hence the use of update_option()
-		update_option( $this->_key, $this->_cache );
+		//not autoloaded: the language registry alone is ~33KB and is only read when a snippet renders
+		update_option( $this->_key, $this->_cache, false );
 
 	}
 

@@ -1,126 +1,277 @@
 /**
- * JS for admin UI of iG:Syntax Hiliter plugin
+ * Settings page behaviour for the iG:Syntax Hiliter plugin.
  *
- * @author: Amit Gupta
- * @since: 2012-08-25
- * @version: 2013-02-17
- * @version: 2015-07-18 - Amit Gupta - formatting changes, changed images URI
- * @version: 2015-07-26 - Amit Gupta - streamlined code
+ * No jQuery, no libraries: a fetch to the plugin's REST routes, a small live
+ * region for feedback, and the browser's own tooltips and confirmation dialog.
+ *
+ * @package iG_Syntax_Hiliter
  */
 
-var igsh_admin = {
-	message_hide_timeout: 1500,
-	ajax_action: 'ig-sh-save-options',
-	get_yesno_reverse: function ( elem_value ) {
-		if ( typeof elem_value === 'undefined' || ! elem_value ) {
-			return false;
-		}
+( function () {
+	'use strict';
 
-		switch( elem_value ) {
-			case 'yes':
-				return 'no';
-			case 'no':
-			default:
-				return 'yes';
-		}
-	},
-	show_message: function ( msg ) {
-		if ( typeof msg === 'undefined' || ! msg ) {
-			msg = '';
-		}
+	var config = window.igSyntaxHiliterAdmin;
 
-		jQuery.msg( {
-			msgID : 1,
-			bgPath : ig_sh.plugins_url + 'assets/images/',
-			autoUnblock : false,
-			clickUnblock : false,
-			klass : 'black-on-white',
-			content : msg + ' &nbsp;&nbsp; <img src="' + ig_sh.plugins_url + 'assets/images/ajax-loader.gif" id="loading-img" />'
-		} );
-	},
-	hide_message: function() {
-		jQuery.msg( 'unblock' );
-	},
-	get_data: function( elem ) {
-		if ( typeof elem === 'undefined' || ! elem ) {
-			return {};
-		}
-
-		return {
-			"name": jQuery( elem ).attr( 'name' ),
-			"value": jQuery( elem ).val()
-		};
+	if ( ! config || ! config.restUrl ) {
+		return;
 	}
-};
 
-jQuery( document ).ready( function( $ ) {
+	var strings = config.i18n || {};
+	var toast = null;
+	var toastTimer = null;
 
-	var loading_img = $( "<img />" ).attr( 'src', ig_sh.plugins_url + 'assets/images/ajax-loader.gif' );	//pre-load ajax animation, just-in-case
+	/**
+	 * Shows a short message in the page's live region.
+	 *
+	 * @param {string}  message Message to show.
+	 * @param {boolean} isError Whether the message reports a failure.
+	 * @param {boolean} sticky  Whether the message stays until it is replaced.
+	 */
+	function notify( message, isError, sticky ) {
+		if ( ! toast ) {
+			toast = document.createElement( 'div' );
+			toast.className = 'igsh-toast';
+			toast.setAttribute( 'role', 'status' );
+			toast.setAttribute( 'aria-live', 'polite' );
+			document.body.appendChild( toast );
+		}
 
-	$( '.ig-sh-option' ).on( 'change', function(){
-		var ui = igsh_admin.get_data( this );
+		window.clearTimeout( toastTimer );
 
-		igsh_admin.show_message( 'Saving' );
+		toast.textContent = message;
+		toast.classList.toggle( 'igsh-toast--error', !! isError );
+		toast.classList.add( 'igsh-toast--visible' );
 
-		$.post(
-			ajaxurl,
-			{
-				action: igsh_admin.ajax_action,
-				_ig_sh_nonce: ig_sh.nonce,
-				option_name: ui.name,
-				option_value: ui.value
+		if ( ! sticky ) {
+			toastTimer = window.setTimeout( function () {
+				toast.classList.remove( 'igsh-toast--visible' );
+			}, isError ? 6000 : 2500 );
+		}
+	}
+
+	/**
+	 * Calls one of the plugin's REST routes.
+	 *
+	 * @param {string} method Request method.
+	 * @param {string} route  Route path, relative to the plugin's namespace.
+	 * @param {Object} body   Optional request body.
+	 *
+	 * @return {Promise<Object>} The decoded response body.
+	 */
+	function request( method, route, body ) {
+		var options = {
+			method: method,
+			credentials: 'same-origin',
+			headers: {
+				'X-WP-Nonce': config.nonce,
+				Accept: 'application/json',
 			},
-			function( data ) {
-				setTimeout( igsh_admin.hide_message, igsh_admin.message_hide_timeout );
+		};
 
-				var is_error = 1;
+		if ( body ) {
+			options.headers[ 'Content-Type' ] = 'application/json';
+			options.body = JSON.stringify( body );
+		}
 
-				if ( ! data || ! data.nonce || ! data.msg ) {
-					$.msg( 'replace', '<span class="ig-sh-error"><strong>Error:</strong> Unable to save option</span>' );
-				} else {
-					is_error = parseInt( data.error );
-					ig_sh.nonce = data.nonce;
-					$.msg( 'replace', data.msg );
+		return window.fetch( config.restUrl + route, options ).then( function ( response ) {
+			return response.json().then(
+				function ( payload ) {
+					if ( response.ok ) {
+						return payload;
+					}
+
+					var error = new Error( ( payload && payload.message ) || response.statusText );
+
+					error.status = response.status;
+					error.code = payload && payload.code;
+
+					throw error;
+				},
+				function () {
+					var error = new Error( response.statusText );
+
+					error.status = response.status;
+
+					throw error;
+				}
+			);
+		} );
+	}
+
+	/**
+	 * Reads the value a control currently stands for.
+	 *
+	 * @param {HTMLElement} control Control to read.
+	 *
+	 * @return {string} Value to store for the setting.
+	 */
+	function readControl( control ) {
+		if ( control.dataset.igshToggle ) {
+			return control.checked ? 'yes' : 'no';
+		}
+
+		return control.value;
+	}
+
+	/**
+	 * Puts a control back to a value it held earlier.
+	 *
+	 * @param {HTMLElement} control Control to set.
+	 * @param {string}      value   Value to set it to.
+	 */
+	function writeControl( control, value ) {
+		if ( control.dataset.igshToggle ) {
+			control.checked = 'yes' === value;
+
+			return;
+		}
+
+		control.value = value;
+	}
+
+	/**
+	 * Sends one setting, and puts the control back if it does not save.
+	 *
+	 * @param {HTMLElement} control Control which changed.
+	 */
+	function saveSetting( control ) {
+		var name = control.dataset.igshOption;
+		var value = readControl( control );
+		var previous = control.dataset.igshPrevious;
+
+		control.disabled = true;
+
+		notify( strings.saving, false, true );
+
+		request( 'POST', 'option', { name: name, value: value } )
+			.then( function ( payload ) {
+				control.dataset.igshPrevious = payload && payload.value ? payload.value : value;
+
+				writeControl( control, control.dataset.igshPrevious );
+
+				notify( ( payload && payload.message ) || strings.saved, false );
+			} )
+			.catch( function ( error ) {
+				writeControl( control, previous );
+
+				notify(
+					403 === error.status && 'rest_cookie_invalid_nonce' === error.code
+						? strings.reloadNeeded
+						: strings.saveFailed + ' ' + error.message,
+					true
+				);
+			} )
+			.finally( function () {
+				control.disabled = false;
+			} );
+	}
+
+	/**
+	 * Runs the block to shortcode conversion, one batch at a time.
+	 *
+	 * @param {HTMLElement} button   Button which started it.
+	 * @param {HTMLElement} progress Wrapper holding the progress meter.
+	 * @param {HTMLElement} meter    The progress meter itself.
+	 * @param {HTMLElement} status   Element the running total is written to.
+	 */
+	function runRevert( button, progress, meter, status ) {
+		if ( ! window.confirm( strings.revertConfirm ) ) {
+			return;
+		}
+
+		var totals = { processed: 0, converted: 0, skipped: 0, failed: 0 };
+
+		button.disabled = true;
+		status.textContent = strings.revertRunning;
+
+		request( 'GET', 'revert' )
+			.then( function ( state ) {
+				var total = state && state.total ? state.total : 0;
+
+				if ( ! total ) {
+					status.textContent = strings.revertNone;
+
+					return null;
 				}
 
-				if ( is_error == 1 ) {
-					//error, revert the changes made to option control so it can be changed again
-					$( '#' + ui.name ).val( igsh_admin.get_yesno_reverse()( ui.value ) );
+				meter.max = total;
+				meter.value = 0;
+				progress.hidden = false;
+
+				return nextBatch( 0 );
+			} )
+			.catch( function ( error ) {
+				status.textContent = strings.revertFailed + ' ' + error.message;
+			} )
+			.finally( function () {
+				button.disabled = false;
+			} );
+
+		/**
+		 * Fetches and applies one batch, then the next.
+		 *
+		 * @param {number} cursor Id of the last post already handled.
+		 *
+		 * @return {Promise} Resolved once there is nothing left to do.
+		 */
+		function nextBatch( cursor ) {
+			return request( 'POST', 'revert', { cursor: cursor } ).then( function ( batch ) {
+				totals.processed += batch.processed;
+				totals.converted += batch.converted;
+				totals.skipped += batch.skipped;
+				totals.failed += batch.failed;
+
+				meter.value = Math.min( totals.processed, meter.max );
+
+				status.textContent = strings.revertRunning;
+
+				if ( batch.done || 0 === batch.processed ) {
+					status.textContent = ( strings.revertDone || '' )
+						.replace( '%1$d', totals.converted )
+						.replace( '%2$d', totals.skipped + totals.failed );
+
+					meter.value = meter.max;
+
+					return null;
 				}
-			},
-			"json"
-		);
-	} );
 
-	$ ( '#igsh_refresh_languages' ).on( 'click', function(){
-		var ui = igsh_admin.get_data( this );
+				return nextBatch( batch.cursor );
+			} );
+		}
+	}
 
-		igsh_admin.show_message( 'Rebuilding' );
+	/**
+	 * Wires the page up.
+	 */
+	function init() {
+		var controls = document.querySelectorAll( '[data-igsh-option]' );
 
-		$.post(
-			ajaxurl,
-			{
-				action: igsh_admin.ajax_action,
-				_ig_sh_nonce: ig_sh.nonce,
-				option_name: ui.name,
-				option_value: ui.value
-			},
-			function( data ) {
-				setTimeout( igsh_admin.hide_message, igsh_admin.message_hide_timeout );
+		Array.prototype.forEach.call( controls, function ( control ) {
+			control.dataset.igshPrevious = readControl( control );
 
-				if ( ! data || ! data.nonce || ! data.msg || ! data.time ) {
-					$.msg( 'replace', '<span class="ig-sh-error"><strong>Error:</strong> Unable to build tags</span>' );
-				} else {
-					ig_sh.nonce = data.nonce;
-					$.msg( 'replace', data.msg );
-					$( '#igsh-time-to-rebuild' ).html( data.time );
-				}
-			},
-			"json"
-		);
-	} );
+			control.addEventListener( 'change', function () {
+				saveSetting( control );
+			} );
+		} );
 
-} );
+		var button = document.getElementById( 'igsh-revert-blocks' );
+		var progress = document.getElementById( 'igsh-revert-progress' );
+		var meter = document.getElementById( 'igsh-revert-meter' );
+		var status = document.getElementById( 'igsh-revert-status' );
+
+		if ( button && progress && meter && status ) {
+			button.addEventListener( 'click', function () {
+				runRevert( button, progress, meter, status );
+			} );
+		}
+	}
+
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', init );
+	} else {
+		init();
+	}
+} )();
 
 
 //EOF

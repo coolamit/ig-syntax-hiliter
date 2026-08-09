@@ -9,16 +9,17 @@
 		#############################################################################
 
 		Only rewritten v6 files are checked. The rule set is not weakened to
-		accommodate the v5 code; this list grows instead, as files are replaced:
-
-		  - classes/admin.php, templates/                            (M4)
-		  - classes/option.php, validate.php, cache.php, helper.php  (M4)
+		accommodate the v5 code; this list grows instead, as files are replaced.
+		Still outstanding: classes/validate.php, cache.php, helper.php — all three
+		carry code orphaned by the v6 rewrite and are not clean yet.
 
 		When the last one lands, these entries collapse to `<file>classes</file>`.
 	-->
 	<file>tests</file>
+	<file>templates</file>
 	<file>ig-syntax-hiliter.php</file>
 	<file>autoloader.php</file>
+	<file>uninstall.php</file>
 	<file>classes/ig-syntax-hiliter-gatekeeper.php</file>
 	<file>classes/plugin.php</file>
 	<file>classes/base.php</file>
@@ -31,6 +32,10 @@
 	<file>classes/content-protector.php</file>
 	<file>classes/shortcode-handler.php</file>
 	<file>classes/gist-embed.php</file>
+	<file>classes/block.php</file>
+	<file>classes/block-converter.php</file>
+	<file>classes/admin.php</file>
+	<file>classes/option.php</file>
 
 	<!--
 		#############################################################################

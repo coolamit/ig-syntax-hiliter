@@ -30,9 +30,15 @@ class Gist_Embed {
 	/**
 	 * Priority at which a Gist becomes an embed.
 	 *
+	 * Ahead of priority 10, where `wptexturize` runs. Texturize curls the quotes
+	 * around an attribute value it cannot see is a shortcode attribute, which turns
+	 * `gist="https://…"` into a URL that `wp_parse_url()` then splits at the entity.
+	 * Core cannot spare the attribute because this plugin never registers its tags
+	 * globally, so nothing is left for `no_texturize_shortcodes` to match on.
+	 *
 	 * @var int
 	 */
-	const PRIORITY_EMBED = 10;
+	const PRIORITY_EMBED = 9;
 
 	/**
 	 * Priority at which a Gist becomes a link.
