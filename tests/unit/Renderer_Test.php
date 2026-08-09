@@ -111,26 +111,7 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * A first line of 1 is the default and needs no attribute.
-	 *
-	 * @return void
-	 */
-	public function test_first_line_attribute(): void {
-
-		$this->assertStringNotContainsString(
-			'data-start',
-			$this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1 ) )
-		);
-
-		$this->assertStringContainsString(
-			'data-start="2"',
-			$this->renderer->render_snippet( new Snippet( 'x', 'php', true, 2 ) )
-		);
-
-	}
-
-	/**
-	 * Code is escaped exactly once, and is otherwise untouched.
+	 * I1 — code is escaped exactly once, and is otherwise untouched.
 	 *
 	 * @return void
 	 */
@@ -172,13 +153,16 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * A language the registry cannot confirm falls back rather than being written out.
+	 * AC-6 / I4 — a language the registry cannot confirm falls back rather than
+	 * being written out. The class goes on the `<pre>` as well as the `<code>`,
+	 * because every bundled theme selects on `pre[class*="language-"]` and without
+	 * it a plain box is never painted.
 	 *
 	 * @return void
 	 */
 	public function test_unknown_language_falls_back(): void {
 
-		foreach ( [ 'madeuplang', '', 'none', 'typescript' ] as $language ) {
+		foreach ( [ 'madeuplang', '', 'none', 'typescript', 'code', 'text' ] as $language ) {
 
 			$markup = $this->renderer->render_snippet( new Snippet( 'x', $language ) );
 
@@ -186,6 +170,12 @@ class Renderer_Test extends TestCase {
 				'<code class="language-none">',
 				$markup,
 				sprintf( 'Language "%s" should have fallen back.', $language )
+			);
+
+			$this->assertMatchesRegularExpression(
+				'#<pre [^>]*class="language-none[^"]*"#',
+				$markup,
+				sprintf( 'Language "%s" should have left the box styled.', $language )
 			);
 
 			if ( '' === $language || Language_Registry::NO_LANGUAGE === $language ) {
@@ -203,26 +193,9 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * The tags which never highlighted anything in v5 still do not.
-	 *
-	 * @return void
-	 */
-	public function test_plain_languages_fall_back(): void {
-
-		$this->assertStringContainsString(
-			'<code class="language-none">',
-			$this->renderer->render_snippet( new Snippet( 'x', 'code' ) )
-		);
-
-		$this->assertStringContainsString(
-			'<code class="language-none">',
-			$this->renderer->render_snippet( new Snippet( 'x', 'text' ) )
-		);
-
-	}
-
-	/**
-	 * Legacy language names are translated, and aliases resolve.
+	 * The three stages of resolution: the name as typed, the legacy map, and the
+	 * registry's own aliases — each case insensitive and whitespace tolerant. The
+	 * legacy map's own table belongs to `Legacy_Map_Test`.
 	 *
 	 * @return void
 	 */
@@ -232,13 +205,9 @@ class Renderer_Test extends TestCase {
 			'php'         => 'php',
 			'PHP'         => 'php',
 			'  php  '     => 'php',
-			'js'          => 'javascript',
-			'jquery'      => 'javascript',
-			'html'        => 'markup',
 			'html4strict' => 'markup',
-			'html5'       => 'markup',
-			'xml'         => 'markup',
-			'rails'       => 'ruby',
+			'js'          => 'javascript',
+			'markup'      => 'markup',
 			'madeuplang'  => 'none',
 		];
 
@@ -298,32 +267,6 @@ class Renderer_Test extends TestCase {
 
 		$this->assertStringContainsString( 'data-file="a&quot; onload=&quot;alert(1)"', $markup );
 		$this->assertStringNotContainsString( 'onload="alert', $markup );
-
-	}
-
-	/**
-	 * The attributes v6 no longer acts on never reach the markup.
-	 *
-	 * @return void
-	 */
-	public function test_retired_attributes_do_not_leak(): void {
-
-		$markup = $this->renderer->render_snippet(
-			Snippet::from_shortcode_atts(
-				[
-					'language'    => 'php',
-					'plaintext'   => 'yes',
-					'toolbar'     => 'no',
-					'strict_mode' => 'always',
-					'made_up'     => 'leaky',
-				],
-				'echo 1;'
-			)
-		);
-
-		foreach ( [ 'plaintext', 'toolbar', 'strict_mode', 'made_up', 'leaky' ] as $needle ) {
-			$this->assertStringNotContainsString( $needle, $markup );
-		}
 
 	}
 

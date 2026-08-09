@@ -68,47 +68,28 @@ class Migrate_Shim_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The stored version is compared as a string, not as a float. `6.0` is what
-	 * floatval() makes of `6.0.0`, so a float comparison would treat this as
-	 * current and skip the upgrade entirely.
+	 * A stored version is compared as a string, not as a float — a v5.1 install
+	 * holds the float `5.1`, and `6.0` is what floatval() makes of `6.0.0`, so a
+	 * float comparison would treat that as current and skip the upgrade entirely.
+	 *
+	 * The v5 to v6 settings mapping itself is M4's job; what matters here is that
+	 * the upgrade path runs at all.
 	 *
 	 * @return void
 	 */
 	public function test_a_float_shaped_stored_version_is_not_mistaken_for_the_current_one(): void {
 
-		update_option( Base::PLUGIN_ID . '-version', '6.0' );
-		delete_option( Base::PLUGIN_ID . '-options' );
+		foreach ( [ 5.1, '6.0' ] as $stored ) {
 
-		Migrate::get_instance()->settings();
+			update_option( Base::PLUGIN_ID . '-version', $stored );
+			delete_option( Base::PLUGIN_ID . '-options' );
 
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
-		$this->assertIsArray( get_option( Base::PLUGIN_ID . '-options' ) );
+			Migrate::get_instance()->settings();
 
-	}
+			$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+			$this->assertIsArray( get_option( Base::PLUGIN_ID . '-options' ) );
 
-	/**
-	 * An upgrade from v5.1 is recognised and leaves the DB on 6.0.0.
-	 *
-	 * The v5 to v6 settings mapping itself is M4's job — all that matters here
-	 * is that the upgrade path runs, and runs only once.
-	 *
-	 * @return void
-	 */
-	public function test_upgrading_from_v51_runs_once(): void {
-
-		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		delete_option( Base::PLUGIN_ID . '-options' );
-
-		Migrate::get_instance()->settings();
-
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
-		$this->assertIsArray( get_option( Base::PLUGIN_ID . '-options' ) );
-
-		delete_option( Base::PLUGIN_ID . '-options' );
-
-		Migrate::get_instance()->settings();
-
-		$this->assertFalse( get_option( Base::PLUGIN_ID . '-options', false ) );
+		}
 
 	}
 

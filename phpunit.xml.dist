@@ -10,10 +10,10 @@
 	Running the `phpunit` binary without naming a test suite is rejected by
 	tests/bootstrap.php, because each tier needs a different bootstrap.
 
-	Test case files are named after the class they hold, eg.
-	`Bootstrap_Smoke_Test.php`, because PHPUnit resolves a test class from its
-	file name and will not find it otherwise. This is the one place in the plugin
-	that does not use kebab-case file names.
+	Test case files are named after the class they hold, eg. `Renderer_Test.php`,
+	because PHPUnit resolves a test class from its file name and will not find it
+	otherwise. This is the one place in the plugin that does not use kebab-case
+	file names.
 -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

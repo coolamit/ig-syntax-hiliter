@@ -17,6 +17,10 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  * pass after everything else has finished. Save filters get the same treatment,
  * except that what comes back is the author's original bytes rather than markup —
  * KSES is bracketed, never bypassed, and nothing transformed is ever stored.
+ *
+ * Contexts which carry a summary rather than a page get a strip pass instead, and
+ * the plugin's tags are declared to `strip_shortcodes()` so that the summary core
+ * builds for itself is stripped too.
  */
 class Shortcode_Handler {
 
@@ -107,6 +111,8 @@ class Shortcode_Handler {
 		foreach ( $strip_filters as $filter ) {
 			add_filter( $filter, [ $this, 'strip' ], static::PRIORITY_STRIP );
 		}
+
+		add_filter( 'strip_shortcodes_tagnames', [ $this, 'claim_stripped_tags' ] );
 
 		foreach ( static::SAVE_FILTERS as $filter ) {
 			add_filter( $filter, [ $this, 'protect_save' ], static::PRIORITY_PROTECT );
@@ -207,6 +213,29 @@ class Shortcode_Handler {
 		return Content_Protector::get_instance()->strip( $content );
 
 	}    //end strip()
+
+	/**
+	 * Method to declare this plugin's tags to `strip_shortcodes()`.
+	 *
+	 * The tags are never handed to `add_shortcode()`, so core cannot tell they are
+	 * shortcodes and leaves them in place. `wp_trim_excerpt()` strips shortcodes out
+	 * of the post body and then runs what is left through `the_content` to build an
+	 * automatic excerpt, so without this a snippet would be rendered into a code box
+	 * and `wp_trim_words()` would take the markup off and leave the code as prose.
+	 *
+	 * @param mixed $tags Shortcode tags core is about to strip.
+	 *
+	 * @return mixed
+	 */
+	public function claim_stripped_tags( $tags ) {
+
+		if ( ! is_array( $tags ) ) {
+			return $tags;
+		}
+
+		return array_values( array_unique( array_merge( $tags, Legacy_Map::get_tags() ) ) );
+
+	}    //end claim_stripped_tags()
 
 	/**
 	 * Method to build a snippet from a matched shortcode.

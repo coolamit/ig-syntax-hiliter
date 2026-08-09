@@ -107,21 +107,10 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A Gist id with nothing usable in it renders nothing at all.
-	 *
-	 * @return void
-	 */
-	public function test_an_unusable_id_renders_nothing(): void {
-
-		$this->assertSame( '', Gist_Embed::get_instance()->render( [] ) );
-		$this->assertSame( '', Gist_Embed::get_instance()->render( '' ) );
-
-	}
-
-	/**
 	 * A bare `[github]` with no attributes renders nothing, and above all does not
-	 * fatal — the v5 signature took `array $atts` and WordPress passes an empty
-	 * string when a shortcode has no attributes.
+	 * fatal — the v5 signature took `array $atts`, which fatals on the empty string
+	 * a shortcode with no attributes used to be handed. WordPress hands callbacks an
+	 * array from 6.5 onwards, so the string is asserted against directly.
 	 *
 	 * @return void
 	 */
@@ -133,6 +122,8 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'gist.github.com', $output );
 		$this->assertStringContainsString( 'before', $output );
 		$this->assertStringContainsString( 'after', $output );
+
+		$this->assertSame( '', Gist_Embed::get_instance()->render( '' ) );
 
 	}
 

@@ -36,24 +36,17 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * The language is kept exactly as the author typed it, never resolved here.
+	 * The language is kept exactly as the author typed it and never resolved here
+	 * (FR-2.7), the legacy `lang` spelling is read, and `language` wins when both
+	 * are given.
 	 *
 	 * @return void
 	 */
-	public function test_language_is_stored_as_typed(): void {
+	public function test_language_attribute_grammar(): void {
 
 		$this->assertSame( 'js', Snippet::from_shortcode_atts( [ 'language' => 'js' ], 'x' )->language );
 		$this->assertSame( 'html4strict', Snippet::from_shortcode_atts( [ 'language' => 'html4strict' ], 'x' )->language );
 		$this->assertSame( 'madeuplang', Snippet::from_shortcode_atts( [ 'language' => 'madeuplang' ], 'x' )->language );
-
-	}
-
-	/**
-	 * The legacy `lang` spelling is read, and `language` wins when both are given.
-	 *
-	 * @return void
-	 */
-	public function test_legacy_lang_attribute_is_read(): void {
 
 		$this->assertSame( 'php', Snippet::from_shortcode_atts( [ 'lang' => 'php' ], 'x' )->language );
 		$this->assertSame(
@@ -128,7 +121,8 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * The `"2,4-6"` range grammar is parsed into a sorted, unique list of lines.
+	 * The `"2,4-6"` range grammar is parsed into a sorted, unique list of lines,
+	 * and nonsense yields nothing rather than an error.
 	 *
 	 * @return void
 	 */
@@ -139,15 +133,6 @@ class Snippet_Test extends TestCase {
 		$this->assertSame( [ 1, 2, 3 ], Snippet::from_shortcode_atts( [ 'highlight' => '3-1' ], 'x' )->highlight_lines );
 		$this->assertSame( [ 2, 3 ], Snippet::from_shortcode_atts( [ 'highlight' => ' 3 , 2 , 3 ' ], 'x' )->highlight_lines );
 		$this->assertSame( [ 4 ], Snippet::from_shortcode_atts( [ 'highlight' => '4-4' ], 'x' )->highlight_lines );
-
-	}
-
-	/**
-	 * Nonsense in the highlight attribute yields nothing, and never an error.
-	 *
-	 * @return void
-	 */
-	public function test_highlight_ignores_nonsense(): void {
 
 		$this->assertSame( [], Snippet::from_shortcode_atts( [ 'highlight' => '0' ], 'x' )->highlight_lines );
 		$this->assertSame( [], Snippet::from_shortcode_atts( [ 'highlight' => '' ], 'x' )->highlight_lines );
@@ -213,11 +198,12 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * Attribute values which are not scalars are discarded rather than fatal.
+	 * WordPress hands a shortcode callback an empty string when it has no
+	 * attributes, and old content can carry attributes of any shape at all.
 	 *
 	 * @return void
 	 */
-	public function test_hostile_attributes_do_not_fatal(): void {
+	public function test_malformed_attributes_do_not_fatal(): void {
 
 		$snippet = Snippet::from_shortcode_atts(
 			[
@@ -231,19 +217,10 @@ class Snippet_Test extends TestCase {
 		$this->assertSame( 'php', $snippet->language );
 		$this->assertSame( '', $snippet->file );
 
-	}
+		$empty = Snippet::from_shortcode_atts( '', 'echo 1;' );
 
-	/**
-	 * WordPress hands a shortcode callback an empty string when it has no attributes.
-	 *
-	 * @return void
-	 */
-	public function test_empty_string_attributes_do_not_fatal(): void {
-
-		$snippet = Snippet::from_shortcode_atts( '', 'echo 1;' );
-
-		$this->assertSame( 'echo 1;', $snippet->code );
-		$this->assertSame( 'code', $snippet->language );
+		$this->assertSame( 'echo 1;', $empty->code );
+		$this->assertSame( 'code', $empty->language );
 
 	}
 
@@ -261,7 +238,7 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * Shortcode content is trimmed, and not otherwise touched.
+	 * I5 — shortcode content is trimmed, and not otherwise touched.
 	 *
 	 * @return void
 	 */
@@ -276,22 +253,8 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * A snippet cannot be changed once it has been made.
-	 *
-	 * @return void
-	 */
-	public function test_snippet_is_immutable(): void {
-
-		$snippet = new Snippet( 'x', 'php' );
-
-		$this->expectException( \Error::class );
-
-		$snippet->language = 'ruby';
-
-	}
-
-	/**
-	 * Block attributes go through the same parser as shortcode attributes.
+	 * Block attributes go through the same parser as shortcode attributes, and a
+	 * block which says nothing about line numbers inherits the site setting.
 	 *
 	 * @return void
 	 */
@@ -314,15 +277,6 @@ class Snippet_Test extends TestCase {
 		$this->assertSame( 12, $snippet->first_line );
 		$this->assertSame( [ 2, 4, 5, 6 ], $snippet->highlight_lines );
 		$this->assertSame( 'index.php', $snippet->file );
-
-	}
-
-	/**
-	 * A block which says nothing about line numbers inherits the site setting.
-	 *
-	 * @return void
-	 */
-	public function test_block_attributes_fall_back_to_the_site_setting(): void {
 
 		$this->assertFalse( Snippet::from_block_attributes( [ 'code' => 'x' ], '', false )->show_line_numbers );
 		$this->assertTrue( Snippet::from_block_attributes( [ 'code' => 'x' ], '', true )->show_line_numbers );

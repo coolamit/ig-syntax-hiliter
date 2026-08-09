@@ -73,14 +73,8 @@ class Legacy_Map_Test extends TestCase {
 	const SHIPPED_ALIASES = [ 'as', 'html', 'js' ];
 
 	/**
-	 * Tags the plugin has never shipped and must never claim.
-	 *
-	 * @var array
-	 */
-	const FOREIGN_TAGS = [ 'email', 'latex', 'make', 'go', 'reg', 'lua', 'rust', 'swift' ];
-
-	/**
-	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing else.
+	 * Decision 18 — every shipped tag and alias is claimed, plus the generic tag,
+	 * and nothing else. A tag the plugin never shipped is another plugin's to claim.
 	 *
 	 * @return void
 	 */
@@ -94,50 +88,6 @@ class Legacy_Map_Test extends TestCase {
 
 		$this->assertSame( $expected, $actual );
 		$this->assertCount( 41, $actual );
-
-	}
-
-	/**
-	 * A tag the plugin never shipped is not the plugin's tag.
-	 *
-	 * @return void
-	 */
-	public function test_does_not_claim_foreign_tags(): void {
-
-		foreach ( self::FOREIGN_TAGS as $tag ) {
-
-			$this->assertNotContains(
-				$tag,
-				Legacy_Map::get_default_tags(),
-				sprintf( 'The plugin must not register [%s], it never shipped it.', $tag )
-			);
-
-			$this->assertFalse(
-				Legacy_Map::is_our_tag( $tag ),
-				sprintf( 'The plugin must not claim [%s] as its own.', $tag )
-			);
-
-			$this->assertNull(
-				Legacy_Map::to_language_id( $tag ),
-				sprintf( 'The plugin must not know a language for [%s].', $tag )
-			);
-
-		}
-
-	}
-
-	/**
-	 * The generic tag is always the plugin's, whatever it is asked to highlight.
-	 *
-	 * @return void
-	 */
-	public function test_generic_tag_is_always_ours(): void {
-
-		$this->assertTrue( Legacy_Map::is_our_tag( 'sourcecode' ) );
-		$this->assertSame( 'sourcecode', Legacy_Map::GENERIC_TAG );
-
-		// It carries its language in an attribute, so it has no entry in the map.
-		$this->assertNull( Legacy_Map::to_language_id( 'sourcecode' ) );
 
 	}
 

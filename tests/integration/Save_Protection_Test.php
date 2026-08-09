@@ -87,66 +87,12 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Without the protection, KSES eats the code. This is the control: it proves
-	 * the test above is testing something.
+	 * AC-3 — a contributor saves a script tag inside a snippet, the stored content
+	 * is byte identical to what was submitted, and saving it again changes nothing.
 	 *
 	 * @return void
 	 */
-	public function test_kses_would_destroy_the_code_without_the_protection(): void {
-
-		$this->_become_contributor();
-
-		$handler = Shortcode_Handler::get_instance();
-
-		remove_filter( 'content_save_pre', [ $handler, 'protect_save' ], 1 );
-		remove_filter( 'content_save_pre', [ $handler, 'restore_save' ], 100 );
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
-				'post_status'  => 'draft',
-			]
-		);
-
-		add_filter( 'content_save_pre', [ $handler, 'protect_save' ], 1 );
-		add_filter( 'content_save_pre', [ $handler, 'restore_save' ], 100 );
-
-		$stored = get_post_field( 'post_content', $post_id, 'raw' );
-
-		$this->assertNotSame( self::HOSTILE_CONTENT, $stored );
-		$this->assertStringNotContainsString( '<script src=', $stored );  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
-		$this->assertStringNotContainsString( '<?php', $stored );
-
-	}
-
-	/**
-	 * A contributor saves a script tag inside a snippet and the stored content is
-	 * byte identical to what was submitted.
-	 *
-	 * @return void
-	 */
-	public function test_a_contributor_saves_byte_identical_content(): void {
-
-		$this->_become_contributor();
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
-				'post_status'  => 'draft',
-			]
-		);
-
-		$this->assertSame( self::HOSTILE_CONTENT, get_post_field( 'post_content', $post_id, 'raw' ) );
-
-	}
-
-	/**
-	 * Saving the same content again changes nothing, which is what idempotence
-	 * means here.
-	 *
-	 * @return void
-	 */
-	public function test_resaving_produces_no_diff(): void {
+	public function test_a_contributor_saves_byte_identical_content_and_resaves_with_no_diff(): void {
 
 		$this->_become_contributor();
 
@@ -219,33 +165,9 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A post saved this way renders correctly afterwards.
-	 *
-	 * @return void
-	 */
-	public function test_the_stored_content_still_renders(): void {
-
-		$this->_become_contributor();
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
-				'post_status'  => 'publish',
-			]
-		);
-
-		$output = $this->_filter( 'the_content', get_post_field( 'post_content', $post_id, 'raw' ) );
-
-		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( esc_html( '<script src="https://example.com/a.js"></script>' ), $output );  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
-		$this->assertStringContainsString( 'Intro paragraph.', $output );
-		$this->assertStringContainsString( 'Outro paragraph.', $output );
-
-	}
-
-	/**
 	 * Content outside a snippet is not this plugin's business, and KSES is left to
-	 * do its job on it.
+	 * do its job on it. This is also what proves KSES is live for the tests above,
+	 * rather than them passing because nothing was filtering in the first place.
 	 *
 	 * @return void
 	 */

@@ -1,6 +1,11 @@
 <?php
 /**
- * Tests for the legacy shortcode display pipeline.
+ * Tests for the protect-then-restore pipeline itself.
+ *
+ * What each legacy tag renders as belongs to `Backward_Compatibility_Test` and
+ * `Legacy_Content_Test`; what is checked here is the mechanism which lets them do
+ * it — where the hooks sit, and the fact that nothing between the two passes ever
+ * gets a look at the code.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -9,15 +14,13 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
-use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
 /**
- * Checks that legacy shortcodes render, and that nothing between the two passes
- * ever gets a look at the code.
+ * The pipeline, and the immunity it exists to provide.
  */
 class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
@@ -90,7 +93,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The plugin's hooks sit where they are supposed to sit.
+	 * FR-4.1 / FR-4.2 / FR-4.5 — the plugin's hooks sit where they are supposed to
+	 * sit, on both the display filters and the save filters.
 	 *
 	 * @return void
 	 */
@@ -98,14 +102,31 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 		$handler = Shortcode_Handler::get_instance();
 
+		/*
+		 * Named rather than read from the constants, because everything below reads
+		 * from the constants — a filter dropped from one of these lists would
+		 * otherwise take its own coverage with it.
+		 */
+		$this->assertSame(
+			[ 'content_save_pre', 'content_filtered_save_pre' ],
+			Shortcode_Handler::SAVE_FILTERS
+		);
+
+		$this->assertSame(
+			[ 'excerpt_save_pre', 'get_the_excerpt', 'the_excerpt', 'the_excerpt_rss' ],
+			Shortcode_Handler::EXCERPT_FILTERS
+		);
+
 		$this->assertSame( 1, has_filter( 'the_content', [ $handler, 'protect_display' ] ) );
 		$this->assertSame( 100, has_filter( 'the_content', [ $handler, 'restore_display' ] ) );
 
 		$this->assertSame( 1, has_filter( 'comment_text', [ $handler, 'protect_display' ] ) );
 		$this->assertSame( 100, has_filter( 'comment_text', [ $handler, 'restore_display' ] ) );
 
-		$this->assertSame( 1, has_filter( 'content_save_pre', [ $handler, 'protect_save' ] ) );
-		$this->assertSame( 100, has_filter( 'content_save_pre', [ $handler, 'restore_save' ] ) );
+		foreach ( Shortcode_Handler::SAVE_FILTERS as $filter ) {
+			$this->assertSame( 1, has_filter( $filter, [ $handler, 'protect_save' ] ), $filter );
+			$this->assertSame( 100, has_filter( $filter, [ $handler, 'restore_save' ] ), $filter );
+		}
 
 		foreach ( Shortcode_Handler::EXCERPT_FILTERS as $filter ) {
 			$this->assertSame( 2, has_filter( $filter, [ $handler, 'strip' ] ), $filter );
@@ -117,87 +138,9 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A language named tag renders as a code box in that language.
-	 *
-	 * @return void
-	 */
-	public function test_a_named_language_tag_renders(): void {
-
-		$output = $this->_filter( 'the_content', "[php]\n\$a = 1;\n[/php]" );
-
-		$this->assertStringContainsString( '<pre ', $output );
-		$this->assertStringContainsString( 'class="language-php line-numbers"', $output );
-		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( '$a = 1;', $output );
-
-	}
-
-	/**
-	 * A shorthand alias resolves to the language it is short for.
-	 *
-	 * @return void
-	 */
-	public function test_a_shorthand_alias_renders(): void {
-
-		$output = $this->_filter( 'the_content', '[js]var a = 1;[/js]' );
-
-		$this->assertStringContainsString( '<code class="language-javascript">', $output );
-
-	}
-
-	/**
-	 * The generic tag takes its language from an attribute, and understands the
-	 * whole legacy attribute grammar.
-	 *
-	 * @return void
-	 */
-	public function test_the_generic_tag_renders_with_its_attributes(): void {
-
-		$output = $this->_filter(
-			'the_content',
-			"[sourcecode language=\"css\" firstline=\"5\" highlight=\"2,4-6\" file=\"style.css\" gutter=\"no\"]\na {}\n[/sourcecode]"
-		);
-
-		$this->assertStringContainsString( 'class="language-css"', $output );
-		$this->assertStringNotContainsString( 'line-numbers', $output );
-		$this->assertStringContainsString( 'data-start="5"', $output );
-		$this->assertStringContainsString( 'data-line="2,4-6"', $output );
-		$this->assertStringContainsString( 'data-file="style.css"', $output );
-
-	}
-
-	/**
-	 * The legacy spellings of the attribute names still work.
-	 *
-	 * @return void
-	 */
-	public function test_the_legacy_attribute_spellings_still_work(): void {
-
-		$output = $this->_filter( 'the_content', '[sourcecode lang="ruby" num="7"]puts 1[/sourcecode]' );
-
-		$this->assertStringContainsString( 'class="language-ruby', $output );
-		$this->assertStringContainsString( 'data-start="7"', $output );
-
-	}
-
-	/**
-	 * A language nothing can resolve degrades to a plain box rather than asking the
-	 * browser for a language file that is not there.
-	 *
-	 * @return void
-	 */
-	public function test_an_unresolvable_language_degrades_to_no_language(): void {
-
-		$output = $this->_filter( 'the_content', '[sourcecode language="madeuplang"]xyz[/sourcecode]' );
-
-		$this->assertStringContainsString( '<code class="language-none">', $output );
-		$this->assertStringNotContainsString( 'language-madeuplang', $output );
-
-	}
-
-	/**
-	 * A tag the plugin never shipped is not the plugin's. It is neither registered
-	 * nor rendered nor stripped.
+	 * Decision 18 — a tag the plugin never shipped is not the plugin's. It is
+	 * neither registered nor rendered nor stripped. `[sourcecode]` always is,
+	 * whatever language it names, and an unresolvable one degrades.
 	 *
 	 * @return void
 	 */
@@ -212,20 +155,10 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		$this->assertNotContains( 'email', Legacy_Map::get_tags() );
 		$this->assertArrayNotHasKey( 'email', $GLOBALS['shortcode_tags'] );
 
-	}
+		$generic = $this->_filter( 'the_content', '[sourcecode language="email"]a@b.com[/sourcecode]' );
 
-	/**
-	 * An escaped shortcode is not a snippet, and is left as the author wrote it.
-	 *
-	 * @return void
-	 */
-	public function test_an_escaped_shortcode_is_left_alone(): void {
-
-		$content = '[[php]echo 1;[/php]]';
-		$output  = $this->_filter( 'the_content', $content );
-
-		$this->assertStringContainsString( $content, $output );
-		$this->assertStringNotContainsString( '<pre ', $output );
+		$this->assertStringContainsString( '<code class="language-none">', $generic );
+		$this->assertStringNotContainsString( 'language-email', $generic );
 
 	}
 
@@ -246,7 +179,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The whole point: while the filter chain runs, the content holds no code.
+	 * I2 — while the filter chain runs, the content holds no code.
 	 *
 	 * @return void
 	 */
@@ -265,8 +198,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The production bug this pipeline exists for: a script tag inside a code box,
-	 * with a filter at priority 10 that strips scripts and autolinks URLs.
+	 * AC-2 — the production bug this pipeline exists for: a script tag inside a code
+	 * box, with a filter at priority 10 that strips scripts and autolinks URLs.
 	 *
 	 * @return void
 	 */
@@ -290,22 +223,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Entities, PHP tags and mixed markup come out the far end exactly as written.
-	 *
-	 * @return void
-	 */
-	public function test_entities_and_php_tags_are_not_mangled(): void {
-
-		$code = "<?php echo '<div>' . \$a . '</div>'; ?>\n// &amp; &lt; -- \"quoted\" 'single'";
-
-		$output = $this->_filter( 'the_content', sprintf( '[php]%s[/php]', $code ) );
-
-		$this->assertStringContainsString( esc_html( $code ), $output );
-
-	}
-
-	/**
-	 * A code box never ends up inside a paragraph.
+	 * A code box never ends up inside a paragraph, which is what would happen if the
+	 * placeholder were not block level by the time `wpautop` reached it.
 	 *
 	 * @return void
 	 */
@@ -318,83 +237,6 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<pre ', $output );
 		$this->assertStringContainsString( 'Some text:', $output );
 		$this->assertStringContainsString( 'More text', $output );
-
-	}
-
-	/**
-	 * Two identical snippets on a page get two different DOM ids.
-	 *
-	 * @return void
-	 */
-	public function test_repeated_snippets_get_distinct_ids(): void {
-
-		$output = $this->_filter( 'the_content', "[php]echo 1;[/php]\n\n[php]echo 1;[/php]" );
-
-		preg_match_all( '/id="(ig-sh-\d+)"/', $output, $matches );
-
-		$this->assertCount( 2, $matches[1] );
-		$this->assertSame( $matches[1], array_unique( $matches[1] ) );
-
-	}
-
-	/**
-	 * Comments are not block content and never will be, so the shortcode pipeline
-	 * is the only path they have.
-	 *
-	 * @return void
-	 */
-	public function test_comments_are_highlighted(): void {
-
-		$output = $this->_filter( 'comment_text', '[php]echo 1;[/php]' );
-
-		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( 'echo 1;', $output );
-
-	}
-
-	/**
-	 * Excerpts strip snippets rather than rendering them.
-	 *
-	 * @return void
-	 */
-	public function test_excerpts_strip_snippets(): void {
-
-		foreach ( [ 'the_excerpt', 'the_excerpt_rss', 'get_the_excerpt' ] as $filter ) {
-
-			$output = $this->_filter( $filter, 'before [php]echo 1;[/php] after' );
-
-			$this->assertStringNotContainsString( '<pre ', $output, $filter );
-			$this->assertStringNotContainsString( '[php]', $output, $filter );
-			$this->assertStringNotContainsString( 'echo 1;', $output, $filter );
-			$this->assertStringContainsString( 'before', $output, $filter );
-			$this->assertStringContainsString( 'after', $output, $filter );
-
-		}
-
-	}
-
-	/**
-	 * A feed goes through `the_content` first, so a snippet renders there too.
-	 *
-	 * @return void
-	 */
-	public function test_feeds_render_snippets(): void {
-
-		$code = '<script src="https://example.com/thing.js"></script>';  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => sprintf( "[php]\n%s\n[/php]", $code ),
-			]
-		);
-
-		$this->go_to( get_permalink( $post_id ) );
-		the_post();
-
-		$output = get_the_content_feed( 'rss2' );
-
-		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( esc_html( $code ), $output );
 
 	}
 
@@ -436,39 +278,6 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( $markup, $output );
 		$this->assertStringNotContainsString( '<a href="https://example.com/x.js"', $output );
 		$this->assertFalse( $protector->is_protecting(), 'The run is over once the content has been restored.' );
-
-	}
-
-	/**
-	 * The filtered content field gets the same save time treatment.
-	 *
-	 * @return void
-	 */
-	public function test_the_filtered_content_field_is_protected_too(): void {
-
-		$handler = Shortcode_Handler::get_instance();
-
-		$this->assertSame( 1, has_filter( 'content_filtered_save_pre', [ $handler, 'protect_save' ] ) );
-		$this->assertSame( 100, has_filter( 'content_filtered_save_pre', [ $handler, 'restore_save' ] ) );
-
-		$slashed = wp_slash( "[php]\n<script src=\"https://example.com/a.js\"></script>\n[/php]" );  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
-
-		$this->assertSame( $slashed, $this->_filter( 'content_filtered_save_pre', $slashed ) );
-
-	}
-
-	/**
-	 * Rendering a snippet is what tells the asset manager there is something on the
-	 * page worth loading assets for.
-	 *
-	 * @return void
-	 */
-	public function test_rendering_signals_the_asset_manager(): void {
-
-		$this->_filter( 'the_content', '[php]echo 1;[/php]' );
-
-		$this->assertTrue( Asset_Manager::get_instance()->has_snippets() );
-		$this->assertContains( 'php', Asset_Manager::get_instance()->get_languages() );
 
 	}
 

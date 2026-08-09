@@ -300,7 +300,10 @@ class Language_Registry_Test extends TestCase {
 	}
 
 	/**
-	 * Resolution is case insensitive, whitespace tolerant and alias aware.
+	 * FR-2.4 — resolution is case insensitive, whitespace tolerant and alias aware,
+	 * and anything it cannot confirm resolves to nothing at all. An alias pointing
+	 * at a language which is not there is one of those, having been discarded when
+	 * the registry was built.
 	 *
 	 * @return void
 	 */
@@ -314,41 +317,11 @@ class Language_Registry_Test extends TestCase {
 		$this->assertSame( 'javascript', $registry->resolve( 'JavaScript' ) );
 		$this->assertSame( 'markup', $registry->resolve( 'HTML' ) );
 
-	}
-
-	/**
-	 * A language the registry does not have resolves to nothing at all.
-	 *
-	 * @return void
-	 */
-	public function test_resolve_returns_null_for_the_unknown(): void {
-
-		$registry = $this->get_fixture_registry();
-
 		$this->assertNull( $registry->resolve( 'madeuplang' ) );
 		$this->assertNull( $registry->resolve( '' ) );
 		$this->assertNull( $registry->resolve( '   ' ) );
 		$this->assertNull( $registry->resolve( Language_Registry::NO_LANGUAGE ) );
-
-	}
-
-	/**
-	 * An alias pointing nowhere is discarded when the registry is built.
-	 *
-	 * @return void
-	 */
-	public function test_dangling_aliases_are_discarded(): void {
-
-		$registry = $this->get_fixture_registry();
-
 		$this->assertNull( $registry->resolve( 'ghost' ) );
-		$this->assertSame(
-			[
-				'js'   => 'javascript',
-				'html' => 'markup',
-			],
-			$registry->get_aliases()
-		);
 
 	}
 
@@ -394,6 +367,11 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * The manifest the plugin actually ships parses, and holds what it should.
 	 *
+	 * The languages the legacy tags point at are `Legacy_Map_Test`'s business; what
+	 * is checked here is that the shipped manifest is readable at all, that its own
+	 * aliases survive parsing, and that the two ids which are not languages are not
+	 * treated as though they were.
+	 *
 	 * @return void
 	 */
 	public function test_bundled_manifest(): void {
@@ -408,13 +386,9 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertGreaterThan( 250, count( $registry->get_languages() ) );
 
-		$this->assertSame( 'javascript', $registry->resolve( 'js' ) );
-		$this->assertSame( 'markup', $registry->resolve( 'html' ) );
 		$this->assertSame( 'bash', $registry->resolve( 'shell' ) );
-		$this->assertSame( 'php', $registry->resolve( 'PHP' ) );
-		$this->assertNull( $registry->resolve( 'madeuplang' ) );
 
-		// "none" is a convention of the highlighter, not a language it can load.
+		// I4 depends on "none" being a convention of the highlighter, not a language it can load.
 		$this->assertFalse( $registry->has( Language_Registry::NO_LANGUAGE ) );
 
 		// The core file is not a language either.
