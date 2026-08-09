@@ -9,16 +9,71 @@
 
 **WordPress.org:** [https://wordpress.org/plugins/igsyntax-hiliter/](https://wordpress.org/plugins/igsyntax-hiliter/)
 
-**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [GeSHi library](http://qbnz.com/highlighter/) to colourise your code and supports over a 100 programming languages. Most common languages are included with the plugin and it includes drop in support for more languages used by GeSHi.
+**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [Prism.js library](https://prismjs.com/) to colourise your code and supports close to 300 programming languages, all of which are bundled with the plugin. More can be added by dropping in Prism component files.
 
-**NOTE :** For fast results and less load on your server, you should have a cache plugin installed. That way the plugin won't have to parse the code blocks on a post every time it is loaded in browser.
+You can write code snippets using the block editor, or using this plugin's shortcodes in the classic editor's Text view. Both are supported. The classic editor's Visual (WYSIWYG) tab is not, and never has been — it mangles code before the plugin ever sees it.
+
+**NOTE :** Highlighting happens in the visitor's browser, not on your server. Prism's files are loaded only on pages that actually contain a code snippet, and only the languages that page needs.
 
 ### **[Changelog](CHANGELOG.md)**
+
+### **Important changes in 6.0**
+
+Version 6.0 replaces the GeSHi library, which has not been maintained in over a decade, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
+
+#### **Posts you never open in the block editor are not touched**
+
+Every shortcode this plugin has ever shipped keeps rendering straight out of `post_content`. A post written in 2004 that nobody ever edits again will keep rendering correctly, forever. Editing a post in the classic editor's Text view triggers no conversion either — shortcodes stay shortcodes. Code in comments keeps working the same way it always has.
+
+#### **Opening a post that contains legacy shortcodes in the block editor converts its snippets to blocks**
+
+This happens automatically, on load, without asking, and it is written to the post the next time you save. Open the post and close it again without saving and nothing has changed.
+
+The reason is that WordPress hands a classic post to the block editor as a single Classic (TinyMCE) block containing the whole post, code and all — and TinyMCE mangles code. It reads `<?php echo "<div>x</div>"; ?>` as HTML: the `<div>` becomes a real element and the `<?php … ?>` is dropped entirely. Because the whole post is one block, editing an unrelated paragraph is enough to re-save every snippet in the post in that damaged form. The conversion moves your code into block attributes, where TinyMCE cannot reach it, before that can happen. It is surgical — only the snippets are replaced, and every other byte of the post is left exactly as it was.
+
+#### **Snippets that have been converted to blocks are not visible if the plugin is deactivated**
+
+This is a genuine trade-off, and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing, and the snippet silently disappears from the post.
+
+So the settings page has an **Uninstall** section containing a tool that converts every one of this plugin's blocks back into a `[sourcecode language="…"]` shortcode across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+
+#### **Only the tags the plugin actually shipped are recognised**
+
+Those are:
+
+```
+actionscript actionscript3 apache applescript asp bash c c_mac code cpp csharp css
+diff groovy html4strict html5 ini java java5 javascript jquery mysql oracle11 pcre
+perl perl6 php postgresql python rails ruby sql text vb vbnet xml yaml
+```
+
+plus the aliases `as`, `html` and `js`, plus `[sourcecode]` and `[github]`.
+
+A tag this plugin never shipped is left completely alone — not registered, not rendered, not converted. If your post contains `[email]`, it stays `[email]` and goes to whichever plugin owns it. That is deliberate: claiming a wider set of tags would mean taking shortcodes away from other plugins, which is a worse problem than the one it would solve.
+
+#### **Languages added by dropping GeSHi files into your theme are no longer supported**
+
+Since v4.1 you could add a language by putting a GeSHi language file in a `geshi/` directory in your theme and using its filename as a tag. GeSHi is gone in 6.0, and that mechanism goes with it. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
+
+There are two ways to deal with that, neither as convenient as dropping in a file used to be:
+
+- Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/`. That directory is outside the plugin, so it survives plugin updates. The language then works in `[sourcecode language="…"]` and shows up in the block's language dropdown.
+- If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
+
+#### **Highlighting is done by the browser now**
+
+Prism colours the code client side. Its files load only on pages that contain a snippet, and only the languages that page uses. Visitors with JavaScript turned off get a plain but properly styled code box with the code intact. A language the plugin cannot resolve produces an unhighlighted-but-styled box rather than an error — nothing breaks and nothing 404s.
+
+#### **The classic editor's Visual tab is still not a place to write code**
+
+It never was. Snippets are supported in the block editor and in the classic editor's Text view. Switching a post to Visual mode can corrupt code inside shortcodes. That is documented behaviour, not a bug.
 
 ### **Installation**
 
 #### **Upgrading from v4.0 or later**
 Just click `update now` link below the plugin listing on the plugins page in your `wp-admin`. The plugin will handle any settings migration if needed. Easy peasy!!
+
+Do read [Important changes in 6.0](#important-changes-in-60) first. Your existing posts keep working, but there are a few things worth knowing before you open an old post in the block editor.
 
 #### **Upgrading from v3.x**
 Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` file & `ig_syntax_hilite` directory from plugins folder and follow the installation process below.
@@ -38,7 +93,9 @@ Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` and `geshi.
 
 ### **Plugin Usage**
 
-Using this syntax highlighter is fairly easy. There is one tag and 8 optional attributes. Here's how code is posted for it to be highlighted.
+In the block editor, add the **iG:Syntax Hiliter** block, paste your code into it and pick a language in the sidebar. The code is stored as plain text in the block's attributes, so nothing in the editor or in WordPress' content filters can get at it — paste whatever you like, entities and all.
+
+In the classic editor's Text view, use the shortcodes. There is one tag and a handful of optional attributes. Here's how code is posted for it to be highlighted.
 
 ```
 [sourcecode language="language_name"]
@@ -68,17 +125,15 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **Important :** Do not forget to close the tags, as your code will not be highlighted if you don't close your tags. Also, *don't nest tags*. Nesting of tags don't work, so don't try it, it'll ruin your output.
 
-**Important :** A WYSIWYG editor (like the one bundled with WordPress) will likely mess up your code when you paste it in the editor. If you are having that issue, then please don't report it as a bug. WYSIWYG editors are just not supported at present.
-
-***Similarly, Gutenberg Editor is not supported at present either.***
+**Important :** The classic editor's Visual (WYSIWYG) tab will mess up your code as soon as you paste it in. That is TinyMCE, not this plugin, and it happens before the plugin sees anything — so please don't report it as a bug. Write code in the block editor or in the classic editor's Text view.
 
 #### **(Optional) Plugin Attributes**
 
-**language :** Use this to specify the programming language whose code you are posting. This language has to be present in `geshi` directory inside plugin directory. If `language` attribute is not specified or if a non-existent language is specified in it then a generic code box is rendered. `lang` is the shorthand for `language` attribute.
+**language :** Use this to specify the programming language whose code you are posting. Any language Prism knows is accepted, as are languages you have dropped into `wp-content/uploads/igsyntax-hiliter/components/`. If `language` is not specified, or names something that cannot be resolved, a plain but properly styled code box is rendered instead. `lang` is the shorthand for `language` attribute.
 
 **firstline :** Use this to start line numbering from a number greater than 1.
 
-**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. Line numbers are actual line numbers of code and have no relation to the ones starting as per `firstline` attribute. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8
+**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8. Line numbers are the ones **as displayed** — so if you also use `firstline`, count from that number rather than from the top of the code. *(This changed in 6.0; GeSHi counted physical lines instead.)* A single range is capped at 10,000 lines — anything beyond that is dropped, so `highlight="1-999999999"` marks the first 10,000 lines and stops there.
 
 ```
 [sourcecode language="php" highlight="2,4-6,9"]
@@ -98,11 +153,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **gutter :** Use this to tell plugin whether to show line numbers in the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show line numbers for that particular code box.
 
-**plaintext :** Use this to tell plugin whether to show plain text option for the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show plain text option for that particular code box.
-
-**toolbar :** Use this to tell plugin whether to show tool-bar for the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show toolbar for that particular code box.
-
-**strict_mode :** Use this to tell the plugin to use GeSHi Strict Mode for a particular code box or not. This attribute accepts `always` or `never` or `maybe` as value. If you don't know what this means then its better to ignore this attribute and let it remain default.
+**plaintext, toolbar, strict_mode :** These are accepted and ignored. All three were GeSHi-era ideas with no Prism equivalent, and they were dropped in 6.0 rather than faked. They are still parsed so that old posts don't break, and they never reach the markup — but setting them does nothing. Don't use them in new posts.
 
 
 ### **Configuration**
@@ -111,32 +162,53 @@ Configuring **iG:Syntax Hiliter** is a piece of cake. Login to your WordPress ad
 
 When you click the `iG:Syntax Hiliter` configuration page, you are offered some configuration settings which you can set to your liking. Lets go through each of them.
 
-**Use plugin CSS for styling? :** This option allows you to tell the plugin whether it should use its own CSS for styling the code box (not the highlighted code, just code box) or not. If you want to use your own styling for the code box, tool-bar etc then you can set it to `NO`. By default its set to `YES`.
+**Theme :** Pick which of the bundled Prism themes is used to style code boxes. Choose `None` if you'd rather style code boxes yourself — nothing of the plugin's own CSS is loaded then. This replaces v5's *Use plugin CSS for styling?* option, and your old setting is carried over (`YES` becomes the default theme, `NO` becomes `None`).
 
-**GeSHi Strict Mode? :** This option allows you to tell the plugin the [strict mode](http://qbnz.com/highlighter/geshi-doc.html#using-strict-mode) setting to use with GeSHi. Strict mode can be set to be always on or off or you can set it to `MAYBE` to have GeSHi decide on its own using the language file of the language whose code you're highlighting. *If you don't have any clue about this then leave it at default setting.* By default its set to `MAYBE`. This option can be overridden for any code block using `strict_mode` attribute in the tag.
+**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name, language name and the copy button) above the code boxes or not.
 
-**Languages where GeSHi strict mode is disabled :** This option lets you specify a comma separated list of languages where the GeSHi strict mode should always be disabled. Strict mode is disabled for PHP by default.
+**Show copy-to-clipboard button? :** Puts a button on the toolbar that copies the snippet to the clipboard. This is what became of v5's *Show Plain Text Option?*, and your old setting carries over — the intent was always "let people get at the raw code", and copying it is a better way to do that than a second view.
 
-**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows plain text option, file name, language name) above the code boxes or not. This option can be overridden for any code block using `toolbar` attribute in the tag.
+**Show line numbers in code? :** This option allows you to tell the plugin whether to show the line numbers along with code in the code boxes or not. Line numbers along with code look great, are a great help when referring to some code from a code box. This option can be overridden for any code block using `gutter` attribute in the tag, or the equivalent toggle on the block.
 
-**Show Plain Text Option? :** This option allows you to tell the plugin whether to show the *Plain Text* view option on the code boxes or not. This option can be overridden for any code block using `plaintext` attribute in the tag.
+**Normalize whitespace? :** Trims leading and trailing blank lines and evens out indentation before highlighting. **Off by default**, deliberately — if your snippet's indentation is meaningful, this will change it. Turn it on only if you know your snippets need it.
 
-**Show line numbers in code? :** This option allows you to tell the plugin whether to show the line numbers along with code in the code boxes or not. Line numbers along with code look great, are a great help when referring to some code from a code box. This option can be overridden for any code block using `gutter` attribute in the tag.
-
-**Hilite code in comments? :** This option allows you to tell the plugin whether to highlight code posted in comments or not. If this is enabled, code posted in the comments will be highlighted as it is in the posts.
-
-**Link keywords/function names to Manual? :** This option allows you to tell the plugin whether to link keywords, function names etc to that language's online manual or not. This works only if this feature is enabled for that particular language in GeSHi language file.
+**Hilite code in comments? :** This option allows you to tell the plugin whether to highlight code posted in comments or not. If this is enabled, code posted in the comments will be highlighted as it is in the posts. Comments are not block content and there is no block editor for them, so this remains a shortcode-only feature.
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Rebuild Shorthand Tags :** Language files in the plugin's directory and current theme (parent & child) directory are scanned and their names are cached to allow shorthand tag usage for all languages. This cache is rebuilt automatically every week. But if you wish to rebuild it manually you can do so by clicking this button.
+**Uninstall :** A section at the bottom of the settings page. Its one tool converts every one of this plugin's blocks back into a `[sourcecode language="…"]` shortcode across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. See *Important changes in 6.0* above for why you would want it.
+
+*(Gone in 6.0: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
+
+
+### **Extending the plugin**
+
+**Adding a language.** Drop a Prism component file — `prism-yourlang.js` or `prism-yourlang.min.js` — into `wp-content/uploads/igsyntax-hiliter/components/`. The directory is not created for you; make it yourself. Because it lives in uploads it survives plugin updates. The language then works with `[sourcecode language="yourlang"]` and appears in the block's language dropdown.
+
+**Filters.**
+
+- `ig_syntax_hiliter/languages` — filters the finished language registry, so you can add, remove or rename languages programmatically.
+- `ig_syntax_hiliter/prism_components_url` — filters the URL Prism's autoloader fetches language files from, if you want to serve them from somewhere other than the plugin.
+- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin registers. Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0*), or to stop it claiming one you want for something else.
 
 
 ### **Frequently Asked Questions**
 
 **Q:** *My code looks all odd, characters appear as HTML entities. Why is your plugin screwing up my code?*
 
-**A:** If you are using the WYSIWYG (rich text) editor to compose your post then that is what's messing things up for you. iG:Syntax Hiliter does not support composing posts and posting code using WYSIWYG at present. If you are not using WYSIWYG editor and still have same issue, please report it.
+**A:** If you are writing your post in the classic editor's Visual (WYSIWYG) tab then that is what is messing things up for you. That tab is TinyMCE, it treats your code as HTML, and it does its damage before this plugin ever sees the content. It has never been supported. Use the block editor, or the classic editor's Text view. If you are using either of those and still see this, please report it.
+
+**Q:** *I opened an old post in the block editor and my code blocks turned into iG:Syntax Hiliter blocks. Why?*
+
+**A:** Because leaving them alone was worse. See *Important changes in 6.0* above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code, and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it, and it leaves the rest of your post byte-for-byte as it was.
+
+**Q:** *What happens to my code if I deactivate the plugin?*
+
+**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Uninstall** section of the settings page to turn every block back into a `[sourcecode]` shortcode.
+
+**Q:** *I used to add languages by putting GeSHi language files in my theme's `geshi` directory. What now?*
+
+**A:** That mechanism is gone with GeSHi. Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/` instead — it survives plugin updates — and use it with `[sourcecode language="…"]` or the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
 
 **Q:** *I see some code that I can improve. Do you accept pull requests?*
 

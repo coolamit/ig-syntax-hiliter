@@ -1,0 +1,32 @@
+/**
+ * Editor styling for the code snippet block.
+ *
+ * The point of this file is legibility: a snippet is edited as plain text, so it
+ * has to look like code rather than like prose.
+ */
+
+.wp-block-igsyntax-hiliter-code {
+
+	.igsh-code-block__input {
+		display: block;
+		box-sizing: border-box;
+		width: 100%;
+		padding: 1em;
+		border: 1px solid #e0e0e0;
+		border-radius: 2px;
+		background: #f6f7f7;
+		color: #1e1e1e;
+		font-family: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		tab-size: 4;
+		white-space: pre;
+		overflow-x: auto;
+		resize: none;
+	}
+
+	.igsh-code-block__input::placeholder {
+		color: #757575;
+		opacity: 1;
+	}
+}

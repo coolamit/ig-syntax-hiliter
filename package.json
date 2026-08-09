@@ -17,8 +17,11 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"build": "wp-scripts build",
+		"build": "npm run build:blocks && npm run build:admin-css",
+		"build:blocks": "wp-scripts build",
+		"build:admin-css": "sass --no-source-map --style=compressed --load-path=assets/scss assets/scss/admin.scss assets/css/admin.css",
 		"start": "wp-scripts start",
+		"watch:admin-css": "npm run build:admin-css -- --watch",
 		"lint:js": "wp-scripts lint-js",
 		"lint:style": "wp-scripts lint-style",
 		"lint:types": "tsc --noEmit",
@@ -27,7 +30,15 @@
 	"devDependencies": {
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",
+		"@wordpress/block-editor": "^16.1.0",
+		"@wordpress/blocks": "^15.25.0",
+		"@wordpress/components": "^38.0.0",
+		"@wordpress/data": "^10.52.0",
+		"@wordpress/element": "^8.4.0",
+		"@wordpress/i18n": "^6.25.0",
+		"@wordpress/rich-text": "^7.52.0",
 		"@wordpress/scripts": "^34.0.0",
+		"@wordpress/shortcode": "^4.52.0",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"typescript": "^5.9.3"
