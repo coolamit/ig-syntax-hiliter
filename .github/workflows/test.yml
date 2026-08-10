@@ -201,9 +201,13 @@ jobs:
 
       - name: TypeScript type check
         working-directory: ${{ env.PLUGIN_PATH }}
-        # `tsc --noEmit` over src/ and types/, configured by tsconfig.json. The
-        # block build is done by wp-scripts, which transpiles without type
-        # checking, so nothing else in this workflow would catch a type error.
+        # `tsc --noEmit` over both projects: src/ + types/ by tsconfig.json, and
+        # assets/src/js/ by tsconfig.assets.json. The block build is done by
+        # wp-scripts, which transpiles without type checking, so for src/ nothing
+        # else in this workflow would catch a type error. The plugin's own scripts
+        # are compiled by tsc itself with noEmitOnError, so the build step below
+        # would catch one too — this runs first so that a type error is reported as
+        # a type error rather than as a build failure.
         #
         # The sibling `lint:js` and `lint:style` scripts are deliberately NOT
         # run here: both are scoped at the whole tree and so lint the vendored
@@ -215,7 +219,8 @@ jobs:
       - name: Build block editor and plugin assets
         working-directory: ${{ env.PLUGIN_PATH }}
         # `npm run build` is `wp-scripts build` (src/ -> build/) followed by the
-        # sass and terser compiles (assets/src/ -> assets/build/). Both output
+        # sass compile and the tsc + terser compile (assets/src/ -> assets/build/,
+        # by way of a cache directory under node_modules/). Both output
         # trees are git-ignored, so both must be produced here: the integration
         # tier loads the plugin, which reads build/, and asserts the compiled
         # admin stylesheet exists at its enqueued path under assets/build/.

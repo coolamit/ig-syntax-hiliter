@@ -90,7 +90,7 @@ vendor/
 
 # Sources that are compiled before release.
 #   src/        -> build/          (wp-scripts / TypeScript)
-#   assets/src/ -> assets/build/   (sass for the scss, terser for the js)
+#   assets/src/ -> assets/build/   (sass for the scss, tsc + terser for the ts)
 #
 # Both source trees are excluded and both output trees SHIP. Neither output tree
 # is committed — .gitignore covers them — so both exist only because the release
@@ -117,7 +117,11 @@ phpcs.xml
 phpcs.xml.dist
 phpunit.xml
 phpunit.xml.dist
-tsconfig.json
+# A glob rather than the two names, because a third tsconfig would otherwise ship.
+# `tsconfig.assets.json` did exactly that until it was caught by an rsync dry run:
+# the line here said `tsconfig.json` and nothing else, and a new config beside it
+# was covered by nobody.
+tsconfig*.json
 # Ambient TypeScript declarations consumed only by `tsc --noEmit`. Checked:
 # nothing under assets/, classes/, templates/ or build/ is named `types`.
 types/

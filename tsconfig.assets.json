@@ -1,0 +1,48 @@
+{
+	// The plugin's own scripts: assets/src/js/ -> assets/build/js/.
+	//
+	// Separate from tsconfig.json because nothing about that file applies here.
+	// These are classic scripts, not modules — WordPress enqueues them with
+	// wp_enqueue_script() and they run in the global scope — so there is no JSX,
+	// no bundler resolution and no module system at all.
+	//
+	// Unlike tsconfig.json this one EMITS. `npm run build:js` compiles with it and
+	// then minifies what came out, so `noEmitOnError` is what makes a type error
+	// fail the build rather than ship. `npm run lint:types` runs it again with
+	// --noEmit on the command line, which overrides the setting below.
+	"compilerOptions": {
+		// ES2018 rather than src/'s ES2022: ig-prism-setup runs for every visitor
+		// to the site, not only for somebody with the block editor open. The lib
+		// has to reach ES2018 in any case for Promise.prototype.finally.
+		"target": "ES2018",
+		"module": "none",
+		"lib": [ "ES2018", "DOM", "DOM.Iterable" ],
+
+		"strict": true,
+		"noImplicitOverride": true,
+		"noUncheckedIndexedAccess": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+
+		"allowJs": false,
+		"forceConsistentCasingInFileNames": true,
+
+		// Every file here is a global script with no import or export, which is
+		// exactly what isolatedModules refuses to compile (TS1208).
+		"isolatedModules": false,
+
+		"skipLibCheck": true,
+		"useDefineForClassFields": true,
+
+		"noEmit": false,
+		"noEmitOnError": true,
+		"removeComments": false,
+		"outDir": "node_modules/.cache/igsh-js"
+	},
+
+	// The whole directory, so a script added to it needs no change here or in
+	// package.json — the same property the sass compile of assets/src/scss/ has.
+	"include": [ "assets/src/js/**/*" ]
+}

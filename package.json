@@ -20,14 +20,14 @@
 		"build": "npm run build:blocks && npm run build:css && npm run build:js",
 		"build:blocks": "wp-scripts build",
 		"build:css": "sass --no-source-map --style=compressed --load-path=assets/src/scss assets/src/scss:assets/build/css",
-		"build:js": "npm run build:js:admin && npm run build:js:prism-setup",
-		"build:js:admin": "terser assets/src/js/admin.js --compress --mangle --output assets/build/js/admin.js",
-		"build:js:prism-setup": "terser assets/src/js/ig-prism-setup.js --compress --mangle --output assets/build/js/ig-prism-setup.js",
+		"build:js": "npm run build:js:compile && npm run build:js:minify",
+		"build:js:compile": "tsc -p tsconfig.assets.json",
+		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",
 		"start": "wp-scripts start",
 		"watch:css": "npm run build:css -- --watch",
 		"lint:js": "wp-scripts lint-js",
 		"lint:style": "wp-scripts lint-style",
-		"lint:types": "tsc --noEmit",
+		"lint:types": "tsc --noEmit && tsc -p tsconfig.assets.json --noEmit",
 		"format": "wp-scripts format"
 	},
 	"devDependencies": {
