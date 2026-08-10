@@ -16,6 +16,11 @@ use iG\Syntax_Hiliter\Traits\Singleton;
 /**
  * Brings the plugin's stored settings up to date with the installed version.
  *
+ * This runs on every page load, and what it migrates is settings: the plugin's
+ * own rows in the options table, and nothing else. It never reads or writes post
+ * content, so it is not the tool which converts blocks back to shortcodes and it
+ * is not what runs when the plugin is deleted.
+ *
  * Versions are compared with `version_compare()` and never numerically. Every
  * version this plugin has ever stored is normalised to a three part semantic
  * version first, so that the float `5.1` an old install holds and the string

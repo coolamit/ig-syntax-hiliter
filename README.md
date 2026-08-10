@@ -35,7 +35,7 @@ The reason is that WordPress hands a classic post to the block editor as a singl
 
 This is a genuine trade-off, and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing, and the snippet silently disappears from the post.
 
-So the settings page has an **Uninstall** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+So the settings page has a **Before you deactivate** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
 
 One kind of snippet cannot be converted, and you should know about it: if the code inside a block itself contains the literal text `[/sourcecode]`, there is no shortcode that can hold it — the shortcode would end at that point and the rest of your code would be thrown away. The tool leaves those blocks exactly as it found them rather than truncating them, which means they stay blocks, and they stay invisible if the plugin is deactivated. If you have such a snippet, deal with it by hand before you deactivate.
 
@@ -205,7 +205,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Uninstall :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0* above for why you would want it.
+**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0* above for why you would want it.
 
 *(Gone in 6.0: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
 
@@ -219,7 +219,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 - `ig_syntax_hiliter/languages` — filters the finished language registry, so you can add, remove or rename languages programmatically.
 - `ig_syntax_hiliter/prism_components_url` — filters the URL Prism's autoloader fetches language files from, if you want to serve them from somewhere other than the plugin.
 - `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin claims. (Claims, not registers — the plugin deliberately never calls `add_shortcode()` for these tags, it matches them itself.) Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0*), or to stop it claiming one you want for something else.
-- `ig_syntax_hiliter/revert_batch_size` — filters how many posts the revert tool in the **Uninstall** section works through per request. Defaults to 20, and is clamped to between 1 and 200. Lower it on a host that times out, raise it to get through a large site in fewer requests.
+- `ig_syntax_hiliter/revert_batch_size` — filters how many posts the revert tool in the **Before you deactivate** section works through per request. Defaults to 20, and is clamped to between 1 and 200. Lower it on a host that times out, raise it to get through a large site in fewer requests.
 
 
 ### **Frequently Asked Questions**
@@ -234,7 +234,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Q:** *What happens to my code if I deactivate the plugin?*
 
-**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Uninstall** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. A block whose code contains a literal `[/sourcecode]` cannot be converted and is left alone, so that one still needs sorting out by hand.
+**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Before you deactivate** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. A block whose code contains a literal `[/sourcecode]` cannot be converted and is left alone, so that one still needs sorting out by hand.
 
 **Q:** *I used to add languages by putting GeSHi language files in the plugin's or my theme's `geshi` directory. What now?*
 

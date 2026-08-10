@@ -355,7 +355,7 @@
 		var clause = document.createElement( 'span' );
 
 		if ( isWarning ) {
-			clause.className = 'igsh-uninstall__warning';
+			clause.className = 'igsh-revert__warning';
 		}
 
 		clause.textContent = ' ' + String( text || '' );

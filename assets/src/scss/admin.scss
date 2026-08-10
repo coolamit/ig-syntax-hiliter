@@ -110,10 +110,11 @@ $igsh-radius: 3px;
 }
 
 //
-// Uninstall section. Deliberately quieter than a warning notice — it is not an
-// error, but it is not something to click by accident either.
+// The section which converts blocks back to shortcodes. Deliberately quieter
+// than a warning notice — it is not an error, but it is not something to click
+// by accident either.
 //
-.igsh-uninstall {
+.igsh-revert {
 	max-width: 46rem;
 	padding: 16px 20px;
 	border: 1px solid #dcdcde;

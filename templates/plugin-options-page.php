@@ -88,9 +88,9 @@
 		<?php esc_html_e( 'The plugin does not create that directory — make it yourself, and name each file prism-{language}.min.js. Files found there are picked up automatically and are offered alongside the bundled languages.', 'igsyntax-hiliter' ); ?>
 	</p>
 
-	<h2 class="igsh-uninstall__heading"><?php esc_html_e( 'Uninstall', 'igsyntax-hiliter' ); ?></h2>
+	<h2 class="igsh-revert__heading"><?php esc_html_e( 'Before you deactivate', 'igsyntax-hiliter' ); ?></h2>
 
-	<div class="igsh-uninstall">
+	<div class="igsh-revert">
 
 		<p>
 			<?php esc_html_e( 'A snippet stored as a block needs this plugin to be active in order to appear at all: switch the plugin off and the block renders as nothing, and the code vanishes from the post. A snippet stored as a shortcode stays visible as text you can do something about.', 'igsyntax-hiliter' ); ?>
@@ -100,20 +100,20 @@
 			<?php esc_html_e( 'The button below rewrites every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode carrying the same code and the same settings. It covers every public post type, and published, draft, pending, scheduled and private content alike — drafts included. Content in the trash is left alone, and nothing outside the blocks themselves is changed.', 'igsyntax-hiliter' ); ?>
 		</p>
 
-		<p class="igsh-uninstall__warning">
+		<p class="igsh-revert__warning">
 			<strong><?php esc_html_e( 'This rewrites your content and it cannot be undone.', 'igsyntax-hiliter' ); ?></strong>
 			<?php esc_html_e( 'Post revisions are left switched on, so each rewritten post keeps a revision of what it said before. Take a database backup first if you would rather not rely on that.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p>
-			<button type="button" class="button button-secondary" id="igsh-revert-blocks"><?php esc_html_e( 'Convert blocks back to shortcodes', 'igsyntax-hiliter' ); ?></button>
+			<button type="button" class="button button-secondary" id="igsh-revert-blocks"><?php esc_html_e( 'Convert code blocks back to shortcodes', 'igsyntax-hiliter' ); ?></button>
 		</p>
 
-		<p class="igsh-uninstall__progress" id="igsh-revert-progress" hidden>
+		<p class="igsh-revert__progress" id="igsh-revert-progress" hidden>
 			<progress id="igsh-revert-meter" value="0" max="1"></progress>
 		</p>
 
-		<p class="igsh-uninstall__status" id="igsh-revert-status" role="status" aria-live="polite"></p>
+		<p class="igsh-revert__status" id="igsh-revert-status" role="status" aria-live="polite"></p>
 
 	</div>
 
