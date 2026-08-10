@@ -113,6 +113,101 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Every documented way of naming a Gist still renders exactly what it rendered.
+	 *
+	 * The id is hardened against path segments that are not Gist ids, and this is
+	 * what says the hardening did not take a real Gist with it. A 32 character hex
+	 * id is what GitHub actually hands out, so it is the shape pinned here, on the
+	 * embed path and the link path both.
+	 *
+	 * @return void
+	 */
+	public function test_the_documented_forms_render_as_they_always_did(): void {
+
+		$id = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+
+		$this->assertStringContainsString(
+			$this->_expected_embed( $id ),
+			$this->_filter( 'the_content', sprintf( '[github id="%s"]', $id ) )
+		);
+
+		$this->assertStringContainsString(
+			$this->_expected_embed( $id ),
+			$this->_filter( 'the_content', sprintf( '[github gist="https://gist.github.com/someone/%s"]', $id ) )
+		);
+
+		$this->assertStringContainsString(
+			sprintf( '<a href="https://gist.github.com/%1$s" rel="nofollow">https://gist.github.com/%1$s</a>', $id ),
+			$this->_filter( 'the_excerpt', sprintf( '[github id="%s"]', $id ) )
+		);
+
+	}
+
+	/**
+	 * A path segment that is not a Gist id never reaches the URL.
+	 *
+	 * `sanitize_user()` stood in the sanitising slot until 6.0, and being a username
+	 * sanitiser it lets `. - _ @` and spaces through — so `..` went into the path of
+	 * a URL this plugin then printed. Both paths are checked because the embed and
+	 * the link are two different pieces of markup built from that one URL.
+	 *
+	 * @return void
+	 */
+	public function test_a_traversal_never_reaches_the_gist_url(): void {
+
+		$inputs = [
+			'[github gist="https://gist.github.com/someone/../evil"]',
+			'[github gist="https://gist.github.com/someone/.."]',
+			'[github id=".."]',
+			'[github id="../evil"]',
+		];
+
+		foreach ( $inputs as $input ) {
+
+			foreach ( [ 'the_content', 'the_excerpt' ] as $filter ) {
+
+				$this->assertStringNotContainsString(
+					'..',
+					$this->_filter( $filter, $input ),
+					sprintf( '`%1$s` put a traversal into the output of `%2$s`.', $input, $filter )
+				);
+			}
+		}
+
+	}
+
+	/**
+	 * An id which cannot be a Gist id prints nothing at all.
+	 *
+	 * Not a URL with the offending characters taken out of it: an id with characters
+	 * removed names a different Gist, so a refusal is the only honest answer.
+	 *
+	 * @return void
+	 */
+	public function test_an_id_that_cannot_be_a_gist_id_prints_nothing(): void {
+
+		$inputs = [
+			'[github id=".."]',
+			'[github id="a b"]',
+			'[github id="../evil"]',
+			'[github gist="https://gist.github.com/someone/.."]',
+		];
+
+		foreach ( $inputs as $input ) {
+
+			foreach ( [ 'the_content', 'the_excerpt' ] as $filter ) {
+
+				$this->assertStringNotContainsString(
+					'gist.github.com',
+					$this->_filter( $filter, $input ),
+					sprintf( '`%1$s` was printed as a Gist URL by `%2$s`.', $input, $filter )
+				);
+			}
+		}
+
+	}
+
+	/**
 	 * A bare `[github]` with no attributes renders nothing, and above all does not
 	 * fatal — the v5 signature took `array $atts`, which fatals on the empty string
 	 * a shortcode with no attributes used to be handed. WordPress hands callbacks an

@@ -168,7 +168,13 @@ class Gist_Embed {
 			return '';
 		}
 
-		$gist = sprintf( 'https://gist.github.com/%s', sanitize_user( (string) $id, true ) );
+		$id = $this->_sanitize_id( (string) $id );
+
+		if ( '' === $id ) {
+			return '';
+		}
+
+		$gist = sprintf( 'https://gist.github.com/%s', $id );
 
 		if ( in_array( current_filter(), $this->_link_filters, true ) ) {
 			return sprintf(
@@ -183,6 +189,34 @@ class Gist_Embed {
 		return sprintf( '<script src="%s.js"></script>', esc_url( $gist ) );
 
 	}    //end render()
+
+	/**
+	 * Method to sanitize a Gist id.
+	 *
+	 * The id becomes one path segment of a URL this plugin prints, so it is held to
+	 * what a Gist id is: letters and digits, nothing else. `sanitize_user()` stood
+	 * here until 6.0 and is the wrong tool — it sanitizes usernames, so it permits
+	 * `_ . - @` and spaces, and a `..` popped off the end of a `gist` URL therefore
+	 * went into that path whole.
+	 *
+	 * Anything else is refused outright rather than stripped down to the characters
+	 * that would survive, because a stripped id names a different Gist, and both
+	 * callers already read an empty id as "print nothing". A failed match, including
+	 * the `false` PCRE returns on an error, lands on the same refusal.
+	 *
+	 * @param string $id Gist id to sanitize.
+	 *
+	 * @return string
+	 */
+	protected function _sanitize_id( string $id ): string {
+
+		if ( 1 !== preg_match( '/^[A-Za-z0-9]+$/', $id ) ) {
+			return '';
+		}
+
+		return $id;
+
+	}    //end _sanitize_id()
 
 }    //end of class
 
