@@ -49,6 +49,15 @@ const transforms = {
 		},
 		{
 			type: 'raw',
+			/*
+			 * `core/code` declares a raw transform whose `isMatch` is identical to
+			 * this one, and gives it no priority. `findTransform()` puts every
+			 * candidate on a hook and takes the first result back, so an equal
+			 * priority is settled by registration order — and core's blocks are
+			 * always registered before a plugin's. Left at the default this
+			 * transform matched every paste and won none of them.
+			 */
+			priority: 9,
 			isMatch: ( node: Element ) =>
 				node.nodeName === 'PRE' &&
 				node.children.length === 1 &&
