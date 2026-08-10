@@ -20,6 +20,7 @@ Thumbs.db
 node_modules/
 
 .scratchpad/*
+.specs/*
 .claude/
 .ai/
 .agents/
