@@ -29,6 +29,19 @@ function ig_syntax_hiliter_uninstall_site(): void {
 		'ig-syntax-hiliter-options',
 		'ig-syntax-hiliter-version',
 		'ig-syntax-hiliter-migrated-from',
+
+		/*
+		 * Migrate removes the two below as well, which is not a reason to drop
+		 * them from here. Migrate only runs when the plugin boots: it is
+		 * triggered from Base's constructor, which is reached on `init`. A
+		 * plugin already deactivated when WordPress updated it to v6 never
+		 * gets there, and neither does one the Gatekeeper refuses to load for
+		 * being below the PHP 8.4 / WordPress 6.9 floor. Those are exactly the
+		 * installs still carrying these two rows — where migration never ran is
+		 * where the clean up still has work to do — and deleting the plugin is
+		 * the only pass which reaches them.
+		 */
+
 		'ig-syntax-hiliter-lang-time',
 		'igsh_options',    //the option name used up to v3.5
 	];
