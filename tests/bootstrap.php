@@ -51,7 +51,7 @@ function ig_syntax_hiliter_get_test_suite(): string {
 		return strtolower( trim( $suite ) );
 	}
 
-	$args  = (array) ( $_SERVER['argv'] ?? array() );  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- CLI arguments of the test runner, not web input.
+	$args  = (array) ( $_SERVER['argv'] ?? [] );  // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- CLI arguments of the test runner, not web input.
 	$count = count( $args );
 
 	for ( $i = 0; $i < $count; $i++ ) {

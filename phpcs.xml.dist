@@ -151,10 +151,12 @@
 		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
 
-	<!-- Short array syntax is the house style. -->
+	<!-- Short array syntax is the house style, and it is enforced: WPCS's mandate for
+	     `array()` is switched off and the opposite rule is switched on in its place. -->
 	<rule ref="Universal.Arrays.DisallowShortArraySyntax">
 		<severity>0</severity>
 	</rule>
+	<rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
 
 	<!-- A leading underscore marks a protected member. The visibility keyword is
 	     always present as well. -->
