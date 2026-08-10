@@ -19,6 +19,15 @@
 	var strings = config.i18n || {};
 	var toast = null;
 	var toastTimer = null;
+	var busyElements = [];
+	var pageBusy = false;
+
+	/*
+	 * How long a save is given before the page gives up on it. A save locks the
+	 * whole screen, so a server which answers nothing at all would otherwise
+	 * leave it locked until somebody thought to reload it.
+	 */
+	var SAVE_TIMEOUT_MS = 15000;
 
 	/**
 	 * Shows a short message in the page's live region.
@@ -52,13 +61,24 @@
 	/**
 	 * Calls one of the plugin's REST routes.
 	 *
-	 * @param {string} method Request method.
-	 * @param {string} route  Route path, relative to the plugin's namespace.
-	 * @param {Object} body   Optional request body.
+	 * A timeout is only worth having where the page is waiting on the answer with
+	 * everything locked, so only the save asks for one; the revert runs for as
+	 * long as its batches take and is given none. The clock is stopped whichever
+	 * way the request ends, success or failure, so that a request which answered
+	 * in time can never be aborted afterwards.
+	 *
+	 * A browser with no AbortController simply gets no timeout. That is the older
+	 * behaviour and it is a safe one: the page still locks and still unlocks on
+	 * every answer, it just has no way of giving up on silence.
+	 *
+	 * @param {string} method  Request method.
+	 * @param {string} route   Route path, relative to the plugin's namespace.
+	 * @param {Object} body    Optional request body.
+	 * @param {number} timeout Optional milliseconds to wait before giving up.
 	 *
 	 * @return {Promise<Object>} The decoded response body.
 	 */
-	function request( method, route, body ) {
+	function request( method, route, body, timeout ) {
 		var options = {
 			method: method,
 			credentials: 'same-origin',
@@ -67,35 +87,104 @@
 				Accept: 'application/json',
 			},
 		};
+		var controller = null;
+		var timer = null;
+		var expired = false;
+		var pending;
 
 		if ( body ) {
 			options.headers[ 'Content-Type' ] = 'application/json';
 			options.body = JSON.stringify( body );
 		}
 
-		return window.fetch( config.restUrl + route, options ).then( function ( response ) {
-			return response.json().then(
-				function ( payload ) {
-					if ( response.ok ) {
-						return payload;
+		if ( timeout && window.AbortController ) {
+			controller = new window.AbortController();
+			options.signal = controller.signal;
+
+			timer = window.setTimeout( function () {
+				expired = true;
+
+				controller.abort();
+			}, timeout );
+		}
+
+		/**
+		 * Stops the clock, however the request ended.
+		 */
+		function stopClock() {
+			if ( null !== timer ) {
+				window.clearTimeout( timer );
+
+				timer = null;
+			}
+		}
+
+		/*
+		 * A fetch which throws on its way out rather than returning a rejected
+		 * promise would never reach the caller's .catch(), and the page would stay
+		 * locked with nothing left to unlock it.
+		 */
+		try {
+			pending = window.fetch( config.restUrl + route, options );
+		} catch ( error ) {
+			stopClock();
+
+			return window.Promise.reject( error );
+		}
+
+		return pending
+			.then( function ( response ) {
+				return response.json().then(
+					function ( payload ) {
+						if ( response.ok ) {
+							return payload;
+						}
+
+						var error = new Error( ( payload && payload.message ) || response.statusText );
+
+						error.status = response.status;
+						error.code = payload && payload.code;
+
+						throw error;
+					},
+					function () {
+						var error = new Error( response.statusText );
+
+						error.status = response.status;
+
+						throw error;
 					}
+				);
+			} )
+			.then(
+				function ( payload ) {
+					stopClock();
 
-					var error = new Error( ( payload && payload.message ) || response.statusText );
-
-					error.status = response.status;
-					error.code = payload && payload.code;
-
-					throw error;
+					return payload;
 				},
-				function () {
-					var error = new Error( response.statusText );
+				function ( error ) {
+					stopClock();
 
-					error.status = response.status;
+					/*
+					 * An abort this asked for is handed on as the timeout it was, and
+					 * not as whatever the browser called it. The browser reports it as a
+					 * DOMException named AbortError, but a caller which has to recognise
+					 * it by that name is reading someone else's wording, and it cannot
+					 * tell an abort of ours from one anything else on the page asked for.
+					 * The message on it is never shown: a caller which times out words
+					 * that for itself.
+					 */
+					if ( expired ) {
+						var timedOut = new Error( 'timeout' );
+
+						timedOut.isTimeout = true;
+
+						throw timedOut;
+					}
 
 					throw error;
 				}
 			);
-		} );
 	}
 
 	/**
@@ -130,6 +219,59 @@
 	}
 
 	/**
+	 * Locks or unlocks the whole page for the length of a request.
+	 *
+	 * The screen saves one setting per request and all seven settings live in one
+	 * stored array, so two saves in quick succession are two overlapping requests:
+	 * the second re-reads that array out of the copy its own PHP process cached
+	 * when it started, writes its own idea of it back, and silently undoes the
+	 * first while both report success. Locking every control for the length of a
+	 * save is what makes a second request impossible rather than merely unlikely.
+	 *
+	 * Unlocking puts back exactly the elements this disabled, which is why they
+	 * are remembered rather than looked up again: a control already disabled for
+	 * some reason of its own was never ours to switch on, and a blanket pass over
+	 * the page would switch it on anyway.
+	 *
+	 * @param {boolean} isBusy Whether the page is working.
+	 */
+	function setBusy( isBusy ) {
+		if ( ! isBusy ) {
+			busyElements.forEach( function ( element ) {
+				element.disabled = false;
+			} );
+
+			busyElements = [];
+			pageBusy = false;
+
+			return;
+		}
+
+		if ( pageBusy ) {
+			return;
+		}
+
+		pageBusy = true;
+
+		var elements = Array.prototype.slice.call( document.querySelectorAll( '[data-igsh-option]' ) );
+		var button = document.getElementById( 'igsh-revert-blocks' );
+
+		if ( button ) {
+			elements.push( button );
+		}
+
+		elements.forEach( function ( element ) {
+			if ( element.disabled ) {
+				return;
+			}
+
+			element.disabled = true;
+
+			busyElements.push( element );
+		} );
+	}
+
+	/**
 	 * Sends one setting, and puts the control back if it does not save.
 	 *
 	 * @param {HTMLElement} control Control which changed.
@@ -139,11 +281,11 @@
 		var value = readControl( control );
 		var previous = control.dataset.igshPrevious;
 
-		control.disabled = true;
+		setBusy( true );
 
 		notify( strings.saving, false, true );
 
-		request( 'POST', 'option', { name: name, value: value } )
+		request( 'POST', 'option', { name: name, value: value }, SAVE_TIMEOUT_MS )
 			.then( function ( payload ) {
 				control.dataset.igshPrevious = payload && payload.value ? payload.value : value;
 
@@ -152,17 +294,27 @@
 				notify( ( payload && payload.message ) || strings.saved, false );
 			} )
 			.catch( function ( error ) {
+				var message = strings.saveFailed + ' ' + error.message;
+
+				/*
+				 * A save which timed out may still have been saved: the request was
+				 * abandoned, not cancelled, and the site may well have written it after
+				 * the page stopped listening. So the control goes back to what it showed
+				 * before, as it does for any other failure, and the message says that
+				 * what is on screen may no longer be what is stored.
+				 */
+				if ( error.isTimeout ) {
+					message = strings.saveTimedOut;
+				} else if ( 403 === error.status && 'rest_cookie_invalid_nonce' === error.code ) {
+					message = strings.reloadNeeded;
+				}
+
 				writeControl( control, previous );
 
-				notify(
-					403 === error.status && 'rest_cookie_invalid_nonce' === error.code
-						? strings.reloadNeeded
-						: strings.saveFailed + ' ' + error.message,
-					true
-				);
+				notify( message, true );
 			} )
 			.finally( function () {
-				control.disabled = false;
+				setBusy( false );
 			} );
 	}
 
@@ -280,12 +432,17 @@
 	/**
 	 * Runs the block to shortcode conversion, one batch at a time.
 	 *
-	 * @param {HTMLElement} button   Button which started it.
+	 * This takes the same lock a save takes — it rewrites content, and a setting
+	 * saved halfway through it has no business landing in the middle of that — but
+	 * it is deliberately given no timeout. A run legitimately lasts as long as the
+	 * site has posts to walk, and the button it disables is disabled by the lock,
+	 * so it keeps no idea of its own about what is switched off.
+	 *
 	 * @param {HTMLElement} progress Wrapper holding the progress meter.
 	 * @param {HTMLElement} meter    The progress meter itself.
 	 * @param {HTMLElement} status   Element the running total is written to.
 	 */
-	function runRevert( button, progress, meter, status ) {
+	function runRevert( progress, meter, status ) {
 		if ( ! window.confirm( strings.revertConfirm ) ) {
 			return;
 		}
@@ -299,7 +456,8 @@
 			partial: false,
 		};
 
-		button.disabled = true;
+		setBusy( true );
+
 		status.textContent = strings.revertRunning;
 
 		request( 'GET', 'revert' )
@@ -322,7 +480,7 @@
 				status.textContent = strings.revertFailed + ' ' + error.message;
 			} )
 			.finally( function () {
-				button.disabled = false;
+				setBusy( false );
 			} );
 
 		/**
@@ -381,7 +539,7 @@
 
 		if ( button && progress && meter && status ) {
 			button.addEventListener( 'click', function () {
-				runRevert( button, progress, meter, status );
+				runRevert( progress, meter, status );
 			} );
 		}
 	}

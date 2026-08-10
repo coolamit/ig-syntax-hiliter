@@ -475,6 +475,7 @@ class Admin extends Base {
 				'saving'            => __( 'Saving…', 'igsyntax-hiliter' ),
 				'saved'             => __( 'Setting saved.', 'igsyntax-hiliter' ),
 				'saveFailed'        => __( 'That setting could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
+				'saveTimedOut'      => __( 'Your site did not answer in time, so that setting has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
 				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
 				'revertConfirm'     => __(
 					"This will convert every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode, in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
