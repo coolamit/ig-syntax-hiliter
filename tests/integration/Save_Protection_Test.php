@@ -118,6 +118,25 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Method to build content the shortcode matcher gives up on part way through.
+	 *
+	 * The attribute part of core's shortcode pattern is a lazily quantified group
+	 * nested inside another one, so a `[php ` which never closes makes PCRE walk every
+	 * partition of what follows it before admitting there is no match. It stops and
+	 * reports a limit it hit long before it reaches the end.
+	 *
+	 * The snippet in front of that is ordinary and matches at once, which is the whole
+	 * point of the fixture: it puts the walk half way through the content before the
+	 * matcher gives up, which is the only state in which giving up has anything to
+	 * undo.
+	 *
+	 * @return string
+	 */
+	protected static function _matcher_killing_content(): string {
+		return "[php]echo 1;[/php]\n\n[php " . str_repeat( 'a/', 50000 ) . ' ] end';
+	}
+
+	/**
 	 * The filter pair is symmetric: what goes in comes out, slashes and all.
 	 *
 	 * @return void
@@ -424,6 +443,128 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		$this->assertGreaterThan( 100 * 1024, strlen( $content ), 'The fixture has to be well past where PCRE gives up.' );
 
 		$this->assertSame( $content, $this->_store( $content ) );
+
+	}
+
+	/**
+	 * A save pass the shortcode matcher gave up on protects nothing at all — not even
+	 * the snippet it had already reached.
+	 *
+	 * `preg_match()` reports a limit it hit in a way a caller reading the return value
+	 * alone cannot tell from "there is nothing more here", and the walk over the
+	 * content is resumable, so a pass which gave up half way would hand back content
+	 * carrying placeholders for the snippets it got to and the raw bytes of the ones it
+	 * did not. That stash is only ever unwound by the restore pass at the far end of
+	 * the same chain, and this is content PCRE has just proved it cannot cope with — so
+	 * the pass which has to put those placeholders back is the one most likely to give
+	 * up in its turn, and what reaches the database is a post with `{igshx…}` where its
+	 * code used to be. Whatever else giving up means, it has to mean the content was
+	 * left as it was found.
+	 *
+	 * @return void
+	 */
+	public function test_a_save_pass_the_matcher_gave_up_on_protects_nothing(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$content   = static::_matcher_killing_content();
+		$protector = Content_Protector::get_instance();
+		$limit     = (string) ini_get( 'pcre.backtrack_limit' );
+
+		// Pinned to PHP's own default so that a php.ini which lifts the ceiling turns this into a slow test rather than a hung one. Put back below.
+		ini_set( 'pcre.backtrack_limit', '1000000' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- See above.
+
+		$protected = $protector->protect_for_save( $content );
+		$error     = preg_last_error();
+		$restored  = $protector->restore_verbatim( $protected );
+		$filtered  = $this->_filter( 'content_save_pre', $content );
+
+		ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the value saved above.
+
+		$this->assertNotSame( PREG_NO_ERROR, $error, 'PCRE did not give up, so this is not the test it says it is.' );
+
+		$this->assertNotSame( '', $protected );
+		$this->assertSame( $content, $protected, 'A pass the matcher gave up on stashed the snippet it had already reached.' );
+		$this->assertSame( $content, $restored, 'And there was nothing for the restore pass to put back.' );
+
+		$this->assertNotSame( '', $filtered );
+		$this->assertSame( $content, $filtered, 'The post which provoked it is stored exactly as it was written.' );
+
+	}
+
+	/**
+	 * A restore pass which gave up does not store the post as nothing at all.
+	 *
+	 * This is the shape the shipped bug took. `preg_replace_callback()` hands back NULL
+	 * when it hits a backtrack, recursion or JIT stack limit, `(string) NULL` is the
+	 * empty string, and the restore pass sits on `content_save_pre` — so a post whose
+	 * size defeated PCRE was written to the database as zero bytes. Not truncated:
+	 * gone, along with every revision of it that the same request re-saved.
+	 *
+	 * The code inside the snippet is lost here either way: once the pass which puts the
+	 * author's bytes back has given up, the placeholder standing in for them is all
+	 * there is, and the stash it names does not outlive the request. What the guard
+	 * buys is the rest of the post — the prose, the other blocks, everything the
+	 * snippet was surrounded by — which is the difference between an edit an author can
+	 * see and undo and an entry that has to be recovered from a backup.
+	 *
+	 * PCRE is crippled between the two passes rather than for the whole request,
+	 * because the protect pass has to succeed for there to be anything to restore.
+	 *
+	 * @return void
+	 */
+	public function test_a_restore_pass_that_gave_up_does_not_empty_the_post(): void {
+
+		$this->_become_contributor();
+
+		$limit = (string) ini_get( 'pcre.backtrack_limit' );
+		$error = PREG_NO_ERROR;
+		$mend  = Shortcode_Handler::PRIORITY_RESTORE + 1;
+
+		$cripple = static function ( $content ) {
+
+			// A limit of zero is the one value every pattern fails against, however cheap it is to match. Put back by the callback below.
+			ini_set( 'pcre.backtrack_limit', '0' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- See above.
+
+			return $content;
+
+		};
+
+		$repair = static function ( $content ) use ( $limit, &$error ) {
+
+			$error = preg_last_error();
+
+			ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the value the callback above replaced.
+
+			return $content;
+
+		};
+
+		add_filter( 'content_save_pre', $cripple, 50 );
+		add_filter( 'content_save_pre', $repair, $mend );
+
+		try {
+			$stored = $this->_filter( 'content_save_pre', self::HOSTILE_CONTENT );
+		} finally {
+
+			ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- The callback above puts it back on the way through; this is the one that runs when the chain does not get that far.
+
+			remove_filter( 'content_save_pre', $cripple, 50 );
+			remove_filter( 'content_save_pre', $repair, $mend );
+
+		}
+
+		$this->assertNotSame( PREG_NO_ERROR, $error, 'PCRE did not give up, so this is not the test it says it is.' );
+
+		$this->assertNotSame( '', $stored, 'The post was stored as nothing at all, which is the bug this exists to stop.' );
+		$this->assertStringContainsString( 'Intro paragraph.', $stored, 'The prose in front of the snippet survived.' );
+		$this->assertStringContainsString( 'Outro paragraph.', $stored, 'And the prose behind it.' );
+
+		$this->assertStringContainsString(
+			Content_Protector::PLACEHOLDER_PREFIX,
+			$stored,
+			'The snippet is still a placeholder, which is what proves the restore pass really did give up.'
+		);
 
 	}
 
