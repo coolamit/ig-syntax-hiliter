@@ -85,7 +85,7 @@
 	<p><code class="igsh-settings__path"><?php echo esc_html( $dropin_path ); ?></code></p>
 
 	<p class="description">
-		<?php esc_html_e( 'The plugin does not create that directory — make it yourself, and name each file prism-{language}.min.js. Files found there are picked up automatically and are offered alongside the bundled languages.', 'igsyntax-hiliter' ); ?>
+		<?php esc_html_e( 'The plugin does not create that directory — make it yourself, and name each file prism-{language}.js or prism-{language}.min.js. Either form works, and the minified one is used if both are there. Files found there are picked up automatically and are offered alongside the bundled languages.', 'igsyntax-hiliter' ); ?>
 	</p>
 
 	<h2 class="igsh-revert__heading"><?php esc_html_e( 'Before you deactivate', 'igsyntax-hiliter' ); ?></h2>
