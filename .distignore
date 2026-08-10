@@ -67,6 +67,12 @@
 
 # Local tooling, editor and agent scratch space. None of it is even committed,
 # but a developer's working copy has it and rsync copies from disk.
+#
+# `.specs/` holds the PRD, the implementation plan and the session log. It is a
+# separate line from `.scratchpad/` and not a rename of it: the documents moved
+# out of the scratch directory and, in moving, left the exclusion that had been
+# covering them. Being in `.gitignore` is no help here — rsync reads the disk.
+.specs/
 .scratchpad/
 .claude/
 .ai/

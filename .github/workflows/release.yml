@@ -382,6 +382,14 @@ jobs:
           ^${PLUGIN_SLUG}/(COPYING|LICENSE|GNU GPL\.txt)\$
           PRESENT
 
+          # Named exclusions below, and one rule that is deliberately not named:
+          # nothing beginning with a dot may sit at the root of the archive. The
+          # plugin ships no such file, and every one that exists in a working
+          # copy is local tooling or agent scratch space. That matters because
+          # this list is a denylist, and a denylist only catches what somebody
+          # thought of: `.specs/` was created after these patterns were written,
+          # was not covered by `.distignore` for a while, and would have sailed
+          # past every line here. The dot rule catches the next one too.
           while IFS= read -r pattern; do
             [ -n "${pattern}" ] || continue
             if grep -Eq "${pattern}" "${entries}"; then
@@ -395,11 +403,10 @@ jobs:
           ^${PLUGIN_SLUG}/tests/
           ^${PLUGIN_SLUG}/src/
           ^${PLUGIN_SLUG}/assets/src/
-          ^${PLUGIN_SLUG}/\.git
+          ^${PLUGIN_SLUG}/\.
           ^${PLUGIN_SLUG}/(composer|package|package-lock)\.json\$
           ^${PLUGIN_SLUG}/(phpcs|phpunit)\.xml(\.dist)?\$
           ^${PLUGIN_SLUG}/(Makefile|CLAUDE\.md|tsconfig\.json)\$
-          ^${PLUGIN_SLUG}/\.(distignore|nvmrc|phpcs\.cache)\$
           FORBIDDEN
 
           if [ "${status}" -ne 0 ]; then
