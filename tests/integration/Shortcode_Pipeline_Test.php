@@ -113,9 +113,13 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertSame(
-			[ 'excerpt_save_pre', 'get_the_excerpt', 'the_excerpt', 'the_excerpt_rss' ],
+			[ 'get_the_excerpt', 'the_excerpt', 'the_excerpt_rss' ],
 			Shortcode_Handler::EXCERPT_FILTERS
 		);
+
+		// I5 — a filter which writes to the database has no business on a strip list.
+		$this->assertNotContains( 'excerpt_save_pre', Shortcode_Handler::EXCERPT_FILTERS );
+		$this->assertFalse( has_filter( 'excerpt_save_pre', [ $handler, 'strip' ] ) );
 
 		$this->assertSame( 1, has_filter( 'the_content', [ $handler, 'protect_display' ] ) );
 		$this->assertSame( 100, has_filter( 'the_content', [ $handler, 'restore_display' ] ) );
@@ -194,6 +198,31 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( Content_Protector::PLACEHOLDER_PREFIX, $this->_captured );
 		$this->assertStringNotContainsString( 'nothing should see this', $this->_captured );
 		$this->assertStringNotContainsString( '[php]', $this->_captured );
+
+	}
+
+	/**
+	 * A shortcode written inside another plugin's block attributes is that plugin's
+	 * text, not a snippet.
+	 *
+	 * `serialize_block_attributes()` escapes `<`, `>`, `&` and `--` in the JSON a
+	 * delimiter carries, but neither `[` nor `]`. A matcher which does not know where
+	 * delimiters are therefore rewrites inside one, and whatever it puts there is
+	 * sitting in an HTML comment which `do_blocks()` has yet to read.
+	 *
+	 * @return void
+	 */
+	public function test_a_shortcode_inside_another_plugins_block_delimiter_is_left_alone(): void {
+
+		$delimiter = '<!-- wp:acme/notice {"text":"Try [php]echo 1;[/php] today"} /-->';
+
+		add_filter( 'the_content', [ $this, 'spy_filter' ], 5 );
+
+		$this->_filter( 'the_content', $delimiter );
+
+		remove_filter( 'the_content', [ $this, 'spy_filter' ], 5 );
+
+		$this->assertSame( $delimiter, $this->_captured, 'The delimiter reached the block parser exactly as it was written.' );
 
 	}
 

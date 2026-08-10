@@ -1,5 +1,5 @@
 #
-# Release workflow — PRD CI-1..CI-7.
+# Release workflow.
 #
 # Fires on a `v*` tag. Two jobs:
 #
@@ -15,7 +15,7 @@
 # green on `master`.
 #
 # ---------------------------------------------------------------------------
-# CI-9 — the repo name is NOT the plugin slug
+# The repo name is NOT the plugin slug
 # ---------------------------------------------------------------------------
 #
 # GitHub repo:  ig-syntax-hiliter
@@ -55,7 +55,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # CI-9. The single source of truth for the slug in this workflow. Every use
+  # The single source of truth for the slug in this workflow. Every use
   # is this variable; no step reconstructs it from anything else.
   PLUGIN_SLUG: igsyntax-hiliter
 
@@ -237,7 +237,7 @@ jobs:
       # SLUG is load-bearing twice over: it selects the SVN URL (an incorrect
       # slug 404s and fails the job — verified: plugins.svn.wordpress.org
       # returns 200 for `igsyntax-hiliter` and 404 for `ig-syntax-hiliter`),
-      # and it is the CI-9 declaration that the slug is not the repo name.
+      # and it is the declaration that the slug is not the repo name.
       #
       # What it does NOT do — verified by reading build-zip.sh at the pinned
       # SHA — is give the archive a root directory. It runs `zip -r <repo>.zip .`
@@ -291,7 +291,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
 
       #
-      # The CI-9 assertion. Written so that it cannot pass vacuously: an empty
+      # The slug assertion. Written so that it cannot pass vacuously: an empty
       # listing, a listing with more than one root, or a root spelled anything
       # other than the slug all fail.
       #
@@ -482,7 +482,7 @@ jobs:
           mkdir -p dist
           unzip -q "${archive}" -d dist
 
-          # The same CI-9 assertion as in the build job, applied to what is
+          # The same slug assertion as in the build job, applied to what is
           # about to be handed to SVN. Cheap, and it catches any corruption or
           # substitution between the two jobs.
           roots="$( find dist -mindepth 1 -maxdepth 1 -printf '%f\n' | sort )"
@@ -530,7 +530,7 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          # CI-9 — never let this default to the repo name.
+          # Never let this default to the repo name.
           SLUG: ${{ env.PLUGIN_SLUG }}
           # Relative to the workspace; resolved by the action.
           BUILD_DIR: dist/${{ env.PLUGIN_SLUG }}

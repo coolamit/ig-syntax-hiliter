@@ -50,10 +50,13 @@ class Gist_Embed {
 	/**
 	 * Filters which cannot carry an embed, and get a link instead.
 	 *
+	 * Display filters, every one of them. A save filter would put the link in the
+	 * database in place of the author's `[github]` tag, which is a transformation
+	 * this plugin does not get to store (I5).
+	 *
 	 * @var array
 	 */
 	protected array $_link_filters = [
-		'excerpt_save_pre',
 		'get_the_excerpt',
 		'the_excerpt',
 		'the_excerpt_rss',
@@ -81,7 +84,7 @@ class Gist_Embed {
 
 		$embed_filters = [ 'the_content' ];
 
-		if ( 'yes' === strtolower( trim( (string) Option::get_instance()->get( 'gist_in_comments' ) ) ) ) {
+		if ( 'yes' === Shortcode_Handler::get_plugin_option( 'gist_in_comments', 'no' ) ) {
 			$embed_filters[] = 'comment_text';
 		} else {
 			$this->_link_filters[] = 'comment_text';

@@ -26,13 +26,8 @@
 		"useDefineForClassFields": true,
 
 		// @wordpress/scripts owns the build. tsc is only ever run for type checking.
-		"noEmit": true,
-
-		"baseUrl": ".",
-		"paths": {
-			"@/*": [ "src/*" ]
-		}
+		"noEmit": true
 	},
-	"include": [ "src/**/*" ],
+	"include": [ "src/**/*", "types/**/*" ],
 	"exclude": [ "node_modules", "build", "vendor", "assets/lib" ]
 }

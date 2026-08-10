@@ -13,10 +13,19 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  * Lifts snippets out of content before a filter chain runs and puts them back
  * after it has finished.
  *
- * Between the two passes the content carries nothing but inert HTML comments, so
+ * Between the two passes the content carries nothing but inert placeholders, so
  * core filters, third party filters and KSES never see a byte of code. The display
  * path puts rendered code boxes back; the save path puts the original bytes back,
  * byte for byte.
+ *
+ * Block delimiters are treated apart from the content around them. A delimiter
+ * carries its block's attributes as JSON, and `serialize_block_attributes()`
+ * escapes `<`, `>`, `&` and every `--` in there but neither `[` nor `]` — so a
+ * shortcode written inside a block attribute is matchable, and whatever is put in
+ * its place ends up inside an HTML comment. Shortcodes are therefore matched only
+ * outside delimiters, on every path; and on the save path this plugin's own
+ * delimiters are lifted out whole, which is what keeps KSES away from a block's
+ * code.
  *
  * The stash lives for the length of the request and restoration only ever touches
  * a placeholder whose key is in it, so a second protect/restore pass over the same
@@ -32,7 +41,21 @@ class Content_Protector {
 	 *
 	 * @var string
 	 */
-	const PLACEHOLDER_PREFIX = 'ig-shx';
+	const PLACEHOLDER_PREFIX = 'igshx';
+
+	/**
+	 * Characters `WP_Block_Parser` accepts as whitespace inside a block delimiter.
+	 *
+	 * @var string
+	 */
+	const DELIMITER_WHITESPACE = " \t\n\r\f\v";
+
+	/**
+	 * Characters a block name is built from.
+	 *
+	 * @var string
+	 */
+	const BLOCK_NAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-/';
 
 	/**
 	 * Stashed snippets, keyed by placeholder key.
@@ -44,7 +67,7 @@ class Content_Protector {
 	/**
 	 * Per request salt mixed into every placeholder key.
 	 *
-	 * Content which happens to contain a placeholder shaped comment can therefore
+	 * Content which happens to contain a placeholder shaped token can therefore
 	 * never collide with a real one, so authored text is never rewritten.
 	 *
 	 * @var string
@@ -52,18 +75,14 @@ class Content_Protector {
 	protected string $_salt = '';
 
 	/**
-	 * How many protected runs are currently in flight.
+	 * Runs currently in flight, innermost last.
 	 *
-	 * @var int
-	 */
-	protected int $_depth = 0;
-
-	/**
-	 * Whether the run in flight separates placeholders into their own paragraphs.
+	 * Each entry records the filter the run was started inside and whether that run
+	 * isolates its placeholders.
 	 *
-	 * @var bool
+	 * @var array
 	 */
-	protected bool $_isolate = false;
+	protected array $_runs = [];
 
 	/**
 	 * Counter used to keep stashed markup entries distinct.
@@ -87,37 +106,72 @@ class Content_Protector {
 	protected string $_pattern = '';
 
 	/**
-	 * Method to replace every snippet in the content with a placeholder.
+	 * Method to replace every snippet in the content with a placeholder, on its way
+	 * to the browser.
+	 *
+	 * Block delimiters are left exactly as they are: `do_blocks()` runs at
+	 * `the_content` priority 9 and has to be handed the delimiters it is looking for.
 	 *
 	 * @param string $content Content to protect.
-	 * @param bool   $isolate Whether to surround each placeholder with blank lines so that `wpautop` gives it a paragraph of its own.
 	 *
 	 * @return string
 	 */
-	public function protect( string $content, bool $isolate = false ): string {
+	public function protect_for_display( string $content ): string {
 
-		$this->_begin_run( $isolate );
+		$this->_begin_run( true );
 
-		$pattern = $this->_get_shortcode_pattern();
-
-		if ( '' === $pattern || ! str_contains( $content, '[' ) ) {
-			return $content;
-		}
-
-		return (string) preg_replace_callback(
-			$pattern,
+		return $this->_replace_shortcodes(
+			$content,
 			function ( array $matches ): string {
 				return $this->_protect_match( $matches );
-			},
-			$content
+			}
 		);
 
-	}    //end protect()
+	}    //end protect_for_display()
+
+	/**
+	 * Method to replace every snippet in the content with a placeholder, on its way
+	 * to the database.
+	 *
+	 * This plugin's block delimiters go too, whole. KSES reaches block attributes —
+	 * `wp_filter_post_kses()` → `pre_kses` → `wp_pre_kses_block_attributes()` →
+	 * `filter_block_content()` runs `wp_kses()` over every string attribute of every
+	 * block and re-serialises what comes back — so a delimiter left in the content is
+	 * a code body handed to KSES.
+	 *
+	 * Only this plugin's own delimiters are held back. Another plugin's block is
+	 * another plugin's business, and shielding it from KSES would be handing an
+	 * author without `unfiltered_html` a way around it.
+	 *
+	 * Shortcodes go first. A snippet whose code is a block delimiter — this plugin's
+	 * own documentation, for one — would otherwise be stashed with a placeholder
+	 * already inside it, and restoration is a single pass which never looks at what it
+	 * has just put back.
+	 *
+	 * @param string $content Content to protect.
+	 *
+	 * @return string
+	 */
+	public function protect_for_save( string $content ): string {
+
+		$this->_begin_run( false );
+
+		$content = $this->_replace_shortcodes(
+			$content,
+			function ( array $matches ): string {
+				return $this->_protect_match( $matches );
+			}
+		);
+
+		return $this->_protect_blocks( $content );
+
+	}    //end protect_for_save()
 
 	/**
 	 * Method to remove every snippet from the content.
 	 *
-	 * Used where a code box makes no sense, such as an excerpt.
+	 * Used where a code box makes no sense, such as an excerpt. Nothing is stashed
+	 * and nothing is restored, so this is only ever used on content being displayed.
 	 *
 	 * @param string $content Content to strip.
 	 *
@@ -125,14 +179,8 @@ class Content_Protector {
 	 */
 	public function strip( string $content ): string {
 
-		$pattern = $this->_get_shortcode_pattern();
-
-		if ( '' === $pattern || ! str_contains( $content, '[' ) ) {
-			return $content;
-		}
-
-		return (string) preg_replace_callback(
-			$pattern,
+		return $this->_replace_shortcodes(
+			$content,
 			static function ( array $matches ): string {
 
 				if ( '[' === $matches[1] && ']' === ( $matches[6] ?? '' ) ) {
@@ -141,8 +189,7 @@ class Content_Protector {
 
 				return '';
 
-			},
-			$content
+			}
 		);
 
 	}    //end strip()
@@ -178,13 +225,13 @@ class Content_Protector {
 		 * `wpautop` gives an isolated placeholder a paragraph of its own. Unwrapping
 		 * it here is what keeps a block level code box out of a `<p>`.
 		 */
-		$content = (string) preg_replace_callback(
+		$content = static::_replace(
 			sprintf( '#<p>\s*%s\s*</p>#', static::_get_placeholder_pattern() ),
 			$restore,
 			$content
 		);
 
-		return (string) preg_replace_callback(
+		return static::_replace(
 			sprintf( '#%s#', static::_get_placeholder_pattern() ),
 			$restore,
 			$content
@@ -207,7 +254,7 @@ class Content_Protector {
 			return $content;
 		}
 
-		return (string) preg_replace_callback(
+		return static::_replace(
 			sprintf( '#%s#', static::_get_placeholder_pattern() ),
 			function ( array $matches ): string {
 
@@ -233,10 +280,24 @@ class Content_Protector {
 	 * it protects against. A callback which asks this and then hands its markup to
 	 * `stash_markup()` gets the same immunity a shortcode gets.
 	 *
+	 * The filter the run was begun in has to still be running for the answer to be
+	 * yes. A run whose restore pass never happened — a chain torn down mid flight, a
+	 * callback which threw — would otherwise leave this saying yes for the rest of
+	 * the request, and every later caller would be handed a placeholder that nothing
+	 * is ever going to restore.
+	 *
 	 * @return bool
 	 */
 	public function is_protecting(): bool {
-		return ( 0 < $this->_depth );
+
+		$run = $this->_get_current_run();
+
+		if ( is_null( $run ) ) {
+			return false;
+		}
+
+		return ( '' === $run['filter'] || doing_filter( $run['filter'] ) );
+
 	}    //end is_protecting()
 
 	/**
@@ -266,13 +327,348 @@ class Content_Protector {
 	/**
 	 * Method to build the placeholder for a key.
 	 *
+	 * Deliberately not an HTML comment. A placeholder carrying `-->` closes any
+	 * comment it lands inside, which is what a block delimiter and an authored
+	 * comment both are. It has to survive `wptexturize`, `wpautop` and `wp_kses()`
+	 * untouched, so it carries nothing any of them acts on.
+	 *
 	 * @param string $key Placeholder key.
 	 *
 	 * @return string
 	 */
 	public static function get_placeholder( string $key ): string {
-		return sprintf( '<!--%s:%s-->', static::PLACEHOLDER_PREFIX, $key );
+		return sprintf( '{%s%s}', static::PLACEHOLDER_PREFIX, $key );
 	}    //end get_placeholder()
+
+	/**
+	 * Method to run a pattern over content, handing the content back untouched when
+	 * PCRE gives up on it.
+	 *
+	 * `preg_replace_callback()` returns NULL when it hits a backtrack, recursion or
+	 * JIT stack limit, and `(string) NULL` is the empty string. On a save filter that
+	 * stores an empty post, so failure has to mean "changed nothing" and never
+	 * "matched everything". `preg_last_error()` says which limit was hit; there is
+	 * nothing different to do about any of them, so only the failure itself is read.
+	 *
+	 * @param string   $pattern  Pattern with delimiters.
+	 * @param callable $callback Replacement callback.
+	 * @param string   $content  Content to work over.
+	 * @param int      $flags    Flags for `preg_replace_callback()`.
+	 *
+	 * @return string
+	 */
+	protected static function _replace( string $pattern, callable $callback, string $content, int $flags = 0 ): string {
+
+		$count  = 0;
+		$result = preg_replace_callback( $pattern, $callback, $content, -1, $count, $flags );
+
+		if ( ! is_string( $result ) || PREG_NO_ERROR !== preg_last_error() ) {
+			return $content;
+		}
+
+		return $result;
+
+	}    //end _replace()
+
+	/**
+	 * Method to run a callback over every shortcode outside a block delimiter.
+	 *
+	 * The matches are walked one at a time rather than handed to
+	 * `preg_replace_callback()`, because where matching resumes has to be decided
+	 * here. A callback can decline a match but cannot un-consume it, and a match
+	 * beginning inside a delimiter can reach a long way past the end of it — so a
+	 * declined match takes every shortcode it happens to span with it, and they are
+	 * never offered to the matcher at all.
+	 *
+	 * A match which begins outside a delimiter is protected whole even where it runs
+	 * across one, because that is a snippet whose code is block markup and the outer
+	 * construct is the one the author wrote.
+	 *
+	 * @param string   $content  Content to work over.
+	 * @param callable $callback Callback handed one flattened match, returning what stands in for it.
+	 *
+	 * @return string
+	 */
+	protected function _replace_shortcodes( string $content, callable $callback ): string {
+
+		$pattern = $this->_get_shortcode_pattern();
+
+		if ( '' === $pattern || ! str_contains( $content, '[' ) ) {
+			return $content;
+		}
+
+		$ranges    = static::_get_delimiter_ranges( $content );
+		$length    = strlen( $content );
+		$protected = '';
+		$copied    = 0;
+		$offset    = 0;
+
+		while ( $offset <= $length && 1 === preg_match( $pattern, $content, $matches, PREG_OFFSET_CAPTURE, $offset ) ) {
+
+			$start     = (int) $matches[0][1];
+			$raw       = (string) $matches[0][0];
+			$delimiter = static::_get_delimiter_end( $start, $ranges );
+
+			if ( ! is_null( $delimiter ) ) {
+
+				$offset = $delimiter;
+
+				continue;    //the block's data, not content
+
+			}
+
+			$protected .= substr( $content, $copied, $start - $copied ) . (string) $callback(
+				array_map(
+					static function ( array $capture ): string {
+						return (string) $capture[0];
+					},
+					$matches
+				)
+			);
+
+			$copied = $start + strlen( $raw );
+			$offset = $copied;
+
+		}
+
+		if ( PREG_NO_ERROR !== preg_last_error() ) {
+			return $content;
+		}
+
+		return ( 0 === $copied ) ? $content : $protected . substr( $content, $copied );
+
+	}    //end _replace_shortcodes()
+
+	/**
+	 * Method to replace every one of this plugin's block delimiters with a placeholder.
+	 *
+	 * @param string $content Content to protect.
+	 *
+	 * @return string
+	 */
+	protected function _protect_blocks( string $content ): string {
+
+		if ( ! str_contains( $content, Block::NAME ) ) {
+			return $content;
+		}
+
+		$protected = '';
+		$copied    = 0;
+		$search    = 0;
+
+		while ( true ) {
+
+			$open = strpos( $content, '<!--', $search );
+
+			if ( false === $open ) {
+				break;
+			}
+
+			$delimiter = static::_read_delimiter( $content, $open );
+
+			if ( is_null( $delimiter ) ) {
+
+				$search = $open + 4;
+
+				continue;    //some other comment
+
+			}
+
+			$search = $delimiter['end'];
+
+			if ( Block::NAME !== $delimiter['name'] ) {
+				continue;    //some other plugin's block, and its own business
+			}
+
+			$raw = substr( $content, $open, $delimiter['end'] - $open );
+
+			$protected .= substr( $content, $copied, $open - $copied ) . $this->_stash_entry(
+				$raw,
+				[
+					'raw'  => $raw,
+					'tag'  => '',
+					'atts' => '',
+					'code' => '',
+					'html' => $raw,
+				]
+			);
+
+			$copied = $delimiter['end'];
+
+		}
+
+		return ( 0 === $copied ) ? $content : $protected . substr( $content, $copied );
+
+	}    //end _protect_blocks()
+
+	/**
+	 * Method to find where every block delimiter in the content begins and ends.
+	 *
+	 * @param string $content Content to scan.
+	 *
+	 * @return array List of `[ start, end ]` byte offsets, end exclusive.
+	 */
+	protected static function _get_delimiter_ranges( string $content ): array {
+
+		$ranges = [];
+		$search = 0;
+
+		while ( true ) {
+
+			$open = strpos( $content, '<!--', $search );
+
+			if ( false === $open ) {
+				break;
+			}
+
+			$delimiter = static::_read_delimiter( $content, $open );
+
+			if ( is_null( $delimiter ) ) {
+
+				$search = $open + 4;
+
+				continue;
+
+			}
+
+			$ranges[] = [ $open, $delimiter['end'] ];
+			$search   = $delimiter['end'];
+
+		}
+
+		return $ranges;
+
+	}    //end _get_delimiter_ranges()
+
+	/**
+	 * Method to read one block delimiter.
+	 *
+	 * The delimiter is read by scanning rather than by matching the attribute JSON
+	 * with a pattern. The tempered pattern the block grammar is naturally written
+	 * with backtracks catastrophically: past a few tens of kilobytes of attributes
+	 * PCRE gives up and hands back NULL, and a snippet is exactly the content which
+	 * runs to that size. A scan has no such ceiling.
+	 *
+	 * Scanning for the closing `-->` is sound because `serialize_block_attributes()`
+	 * escapes `--`, `<` and `>` before the attributes are written, so no `-->` can
+	 * occur inside them. Should a hand written delimiter hold one anyway, the scan
+	 * carries on to the next `-->` rather than stopping short.
+	 *
+	 * @param string $content Content being read.
+	 * @param int    $offset  Offset of the `<!--` which opens the comment.
+	 *
+	 * @return array|null Two keys, `name` and `end`, or NULL when this comment is not a block delimiter.
+	 */
+	protected static function _read_delimiter( string $content, int $offset ): ?array {
+
+		$length = strlen( $content );
+		$cursor = $offset + 4;    //past the `<!--`
+		$gap    = strspn( $content, static::DELIMITER_WHITESPACE, $cursor );
+
+		if ( 1 > $gap ) {
+			return null;
+		}
+
+		$cursor += $gap;
+
+		if ( '/' === substr( $content, $cursor, 1 ) ) {
+			++$cursor;    //a closing delimiter
+		}
+
+		if ( $length < ( $cursor + 3 ) || 0 !== substr_compare( $content, 'wp:', $cursor, 3 ) ) {
+			return null;
+		}
+
+		$cursor += 3;
+		$name    = strspn( $content, static::BLOCK_NAME_CHARS, $cursor );
+
+		if ( 1 > $name ) {
+			return null;
+		}
+
+		$block_name = substr( $content, $cursor, $name );
+		$cursor    += $name;
+		$gap        = strspn( $content, static::DELIMITER_WHITESPACE, $cursor );
+
+		if ( 1 > $gap ) {
+			return null;
+		}
+
+		$start = $cursor + $gap;    //the `{` which opens the attributes, or the end of an attribute free delimiter
+
+		if ( '-->' === substr( $content, $start, 3 ) ) {
+
+			return [
+				'name' => $block_name,
+				'end'  => $start + 3,
+			];
+
+		}
+
+		if ( '/-->' === substr( $content, $start, 4 ) ) {
+
+			return [
+				'name' => $block_name,
+				'end'  => $start + 4,
+			];
+
+		}
+
+		if ( '{' !== substr( $content, $start, 1 ) ) {
+			return null;
+		}
+
+		$close = $start;
+
+		while ( true ) {
+
+			$close = strpos( $content, '-->', $close + 1 );
+
+			if ( false === $close ) {
+				return null;    //the comment is never closed
+			}
+
+			$end  = ( '/' === $content[ $close - 1 ] ) ? $close - 1 : $close;
+			$tail = $end;
+
+			while ( $end > $start && false !== strpos( static::DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
+				--$end;
+			}
+
+			// The block grammar puts whitespace between the attributes and the end of the delimiter.
+			if ( $tail === $end || '}' !== $content[ $end - 1 ] ) {
+				continue;
+			}
+
+			return [
+				'name' => $block_name,
+				'end'  => $close + 3,
+			];
+
+		}
+
+	}    //end _read_delimiter()
+
+	/**
+	 * Method to find where the delimiter holding an offset ends.
+	 *
+	 * @param int   $offset Byte offset to place.
+	 * @param array $ranges Ranges from `self::_get_delimiter_ranges()`.
+	 *
+	 * @return int|null End of the delimiter holding the offset, or NULL when it is in none of them.
+	 */
+	protected static function _get_delimiter_end( int $offset, array $ranges ): ?int {
+
+		foreach ( $ranges as $range ) {
+
+			if ( $offset >= $range[0] && $offset < $range[1] ) {
+				return $range[1];
+			}
+		}
+
+		return null;
+
+	}    //end _get_delimiter_end()
 
 	/**
 	 * Method to handle one matched shortcode.
@@ -317,7 +713,7 @@ class Content_Protector {
 
 		$placeholder = static::get_placeholder( $key );
 
-		if ( $this->_isolate ) {
+		if ( $this->_is_isolating() ) {
 			$placeholder = sprintf( "\n\n%s\n\n", $placeholder );
 		}
 
@@ -349,6 +745,20 @@ class Content_Protector {
 	}    //end _render_entry()
 
 	/**
+	 * Method to note that a protected run has finished.
+	 *
+	 * A run is begun in one filter callback and ended in another, so no single frame
+	 * spans both and no `finally` can close the pair. `self::is_protecting()` is
+	 * therefore built so that a run left in flight is harmless rather than relying on
+	 * this always being reached.
+	 *
+	 * @return void
+	 */
+	protected function _end_run(): void {
+		array_pop( $this->_runs );
+	}    //end _end_run()
+
+	/**
 	 * Method to note that a protected run has started.
 	 *
 	 * @param bool $isolate Whether placeholders get a paragraph of their own.
@@ -357,20 +767,39 @@ class Content_Protector {
 	 */
 	protected function _begin_run( bool $isolate ): void {
 
-		++$this->_depth;
-
-		$this->_isolate = $isolate;
+		$this->_runs[] = [
+			'filter'  => (string) current_filter(),
+			'isolate' => $isolate,
+		];
 
 	}    //end _begin_run()
 
 	/**
-	 * Method to note that a protected run has finished.
+	 * Method to get the innermost run in flight.
 	 *
-	 * @return void
+	 * @return array|null
 	 */
-	protected function _end_run(): void {
-		$this->_depth = max( 0, $this->_depth - 1 );
-	}    //end _end_run()
+	protected function _get_current_run(): ?array {
+
+		$key = array_key_last( $this->_runs );
+
+		return ( is_null( $key ) ) ? null : $this->_runs[ $key ];
+
+	}    //end _get_current_run()
+
+	/**
+	 * Method to check whether the run in flight separates placeholders into their own
+	 * paragraphs.
+	 *
+	 * @return bool
+	 */
+	protected function _is_isolating(): bool {
+
+		$run = $this->_get_current_run();
+
+		return ( ! is_null( $run ) && true === $run['isolate'] );
+
+	}    //end _is_isolating()
 
 	/**
 	 * Method to check whether the content can hold one of this plugin's placeholders.
@@ -427,7 +856,7 @@ class Content_Protector {
 	 * @return string
 	 */
 	protected static function _get_placeholder_pattern(): string {
-		return sprintf( '<!--%s:([0-9a-f]{32})-->', preg_quote( static::PLACEHOLDER_PREFIX, '#' ) );
+		return sprintf( '\{%s([0-9a-f]{32})\}', preg_quote( static::PLACEHOLDER_PREFIX, '#' ) );
 	}    //end _get_placeholder_pattern()
 
 }    //end of class

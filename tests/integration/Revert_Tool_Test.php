@@ -346,6 +346,162 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A big snippet is the one most worth rescuing and the one a pattern gives up on,
+	 * so the tool has to get through it. The fixture is built here rather than
+	 * committed, and is far past the size at which the tempered pattern this replaced
+	 * exhausted the PCRE JIT stack and quietly converted nothing.
+	 *
+	 * The rewrite is exercised on its own rather than over a post, because a post this
+	 * size cannot be got into the database while `Content_Protector` carries a pattern
+	 * of the same shape on `content_save_pre`.
+	 *
+	 * @return void
+	 */
+	public function test_a_snippet_far_too_big_for_a_pattern_is_converted(): void {
+
+		$code = '';
+
+		for ( $line = 0; $line < 3000; $line++ ) {
+			$code .= sprintf( "\$data[%d] = [ 'name' => \"row %d\", 'ok' => true ];\n", $line, $line );
+		}
+
+		$this->assertGreaterThan(
+			100 * KB_IN_BYTES,
+			strlen( $code ),
+			'The fixture is not big enough to be the test it says it is.'
+		);
+
+		$result = Block_Converter::convert_content(
+			"Before.\n\n" . $this->_block(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			) . "\n\nAfter."
+		);
+
+		$this->assertSame( 1, $result['converted'] );
+		$this->assertSame( 0, $result['skipped'] + $result['failed'] );
+
+		$this->assertSame(
+			sprintf( "Before.\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]\n\nAfter.", $code ),
+			$result['content']
+		);
+
+	}
+
+	/**
+	 * Code which reads like a delimiter does not end one. `serialize_block_attributes()`
+	 * escapes `-`, `<` and `>` on the way in, which is what the end of the delimiter is
+	 * found by, so the whole snippet comes back — braces, comment markers and all.
+	 *
+	 * As above, the rewrite is exercised on its own: a shortcode holding a delimiter in
+	 * its code does not survive `Content_Protector` on the way to the database.
+	 *
+	 * @return void
+	 */
+	public function test_a_delimiter_lookalike_in_the_code_survives(): void {
+
+		$code = sprintf(
+			"function f() {\n\treturn { a: 1 };\n}\n// <!-- wp:%s {\"code\":\"gotcha\"} /--> and a bare --> as well\n",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$result = Block_Converter::convert_content(
+			$this->_block(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			)
+		);
+
+		$this->assertSame( 1, $result['converted'] );
+
+		$this->assertSame(
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $code ),
+			$result['content']
+		);
+
+	}
+
+	/**
+	 * A delimiter the tool cannot read is reported as a failure, not as a post it
+	 * chose to leave alone. The two mean different things to a site owner: one is
+	 * theirs to look at, the other is the tool working as intended.
+	 *
+	 * @return void
+	 */
+	public function test_a_delimiter_that_cannot_be_read_is_a_failure_and_not_a_skip(): void {
+
+		$this->_become_administrator();
+
+		$content = sprintf(
+			"Before.\n\n<!-- wp:%s {\"code\": \"echo 1;\",} /-->\n\nAfter.",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['failed'] );
+		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A delimiter which is not self closing is not this plugin's block, whatever its
+	 * name says, and is left exactly where it was found.
+	 *
+	 * @return void
+	 */
+	public function test_a_delimiter_which_is_not_self_closing_is_left_byte_identical(): void {
+
+		$this->_become_administrator();
+
+		$content = sprintf(
+			"<!-- wp:%1\$s {\"code\":\"echo 1;\"} -->\n<pre>echo 1;</pre>\n<!-- /wp:%1\$s -->",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 0, $totals['converted'] + $totals['failed'] );
+		$this->assertSame( 1, $totals['skipped'] );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A block carrying no code has nothing to show a reader, so it is taken out
+	 * rather than written into the post as an empty shortcode.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_carrying_no_code_is_removed(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "Before.\n\n";
+		$suffix = "\n\nAfter.";
+
+		$post_id = self::factory()->post->create(
+			[ 'post_content' => wp_slash( $prefix . $this->_block( [] ) . $suffix ) ]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( 0, Block_Converter::count_remaining() );
+
+	}
+
+	/**
 	 * Decision 20 — the batching is cursor based, so it never slides over a post as
 	 * the rows it is walking stop matching.
 	 *

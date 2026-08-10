@@ -17,6 +17,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Block;
+use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
@@ -363,6 +364,77 @@ class Block_Render_Test extends WP_UnitTestCase {
 
 		$this->assertTrue( $this->_block_rendered, 'The block was really let into the excerpt, so this test is measuring something.' );
 		$this->assertStringNotContainsString( static::MARKER, $excerpt );
+
+	}
+
+	/**
+	 * A snippet whose code documents this plugin still renders.
+	 *
+	 * The code lives in the delimiter as JSON, and `serialize_block_attributes()`
+	 * escapes `<`, `>`, `&` and `--` there but neither `[` nor `]`. A shortcode
+	 * matcher which does not know where delimiters are therefore matches inside one,
+	 * and anything it substitutes is sitting in an HTML comment `do_blocks()` has yet
+	 * to read — a comment which the substitution can close early, taking the block
+	 * with it.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_whose_code_contains_a_shortcode_still_renders(): void {
+
+		$code = 'Use [php]echo 1;[/php] in your post.';
+
+		$output = $this->_filter(
+			'the_content',
+			static::_block(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			)
+		);
+
+		$this->assertStringContainsString( '<pre ', $output, 'The block rendered a code box at all.' );
+		$this->assertStringContainsString( $code, $output, 'The shortcode in the code is text, and it is all still there.' );
+
+	}
+
+	/**
+	 * A run left in flight renders normally rather than emitting a placeholder
+	 * nothing will restore.
+	 *
+	 * The protect pass and the restore pass are two separate filter callbacks, so no
+	 * frame spans both and no `finally` can close the pair. A filter which hands back
+	 * something that is not content — or which throws, or which tears the chain down
+	 * — leaves the run open. What must not follow is a code box replaced by a token
+	 * that never comes back.
+	 *
+	 * @return void
+	 */
+	public function test_a_run_left_in_flight_does_not_swallow_a_later_code_box(): void {
+
+		$protector = Content_Protector::get_instance();
+
+		$breaker = static function () {
+			return null;
+		};
+
+		add_filter( 'the_content', $breaker, 50 );
+
+		$this->_filter( 'the_content', '[php]echo 1;[/php]' );
+
+		remove_filter( 'the_content', $breaker, 50 );
+
+		$this->assertFalse( $protector->is_protecting(), 'The chain never reached the restore pass, so nothing is in flight.' );
+
+		$markup = Block::get_instance()->render(
+			[
+				'code'     => 'echo 2;',
+				'language' => 'php',
+			]
+		);
+
+		$this->assertStringContainsString( '<pre ', $markup );
+		$this->assertStringNotContainsString( Content_Protector::PLACEHOLDER_PREFIX, $markup );
 
 	}
 

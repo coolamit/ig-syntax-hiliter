@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use ReflectionProperty;
 use WP_UnitTestCase;
@@ -200,7 +201,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 		$output = $this->_filter( 'the_content', $stored );
 
 		$this->assertStringContainsString( sprintf( '<code class="language-%s">', $language ), $output, sprintf( '[%s] should render as %s.', $tag, $language ) );
-		$this->assertStringContainsString( esc_html( $code ), $output, sprintf( '[%s] mangled its code.', $tag ) );
+		$this->assertStringContainsString( Renderer::escape_verbatim( $code ), $output, sprintf( '[%s] mangled its code.', $tag ) );
 		$this->assertStringNotContainsString( sprintf( '[%s]', $tag ), $output );
 
 	}
@@ -217,7 +218,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<code class="language-python">', $output );
 		$this->assertStringContainsString( 'data-start="3"', $output );
-		$this->assertStringContainsString( esc_html( 'print( "hi" )' ), $output );
+		$this->assertStringContainsString( Renderer::escape_verbatim( 'print( "hi" )' ), $output );
 
 	}
 
@@ -270,10 +271,6 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	public function test_excerpts_strip_code_rather_than_rendering_it(): void {
 
 		foreach ( Shortcode_Handler::EXCERPT_FILTERS as $filter ) {
-
-			if ( 'excerpt_save_pre' === $filter ) {
-				continue;
-			}
 
 			$output = $this->_filter( $filter, 'before [php]$secret = 1;[/php] after' );
 

@@ -53,10 +53,6 @@
 			<file>autoloader.php</file>
 			<file>ig-syntax-hiliter.php</file>
 		</include>
-		<exclude>
-			<file>classes/geshi.php</file>
-			<directory suffix=".php">geshi</directory>
-		</exclude>
 	</coverage>
 
 </phpunit>

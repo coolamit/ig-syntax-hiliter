@@ -10,10 +10,10 @@
 
 		Only rewritten v6 files are checked. The rule set is not weakened to
 		accommodate the v5 code; this list grows instead, as files are replaced.
-		Still outstanding: classes/validate.php, cache.php, helper.php — all three
-		carry code orphaned by the v6 rewrite and are not clean yet.
+		Still outstanding: classes/cache.php — it carries code orphaned by the v6
+		rewrite and is not clean yet.
 
-		When the last one lands, these entries collapse to `<file>classes</file>`.
+		When it lands, these entries collapse to `<file>classes</file>`.
 	-->
 	<file>tests</file>
 	<file>templates</file>
@@ -36,6 +36,9 @@
 	<file>classes/block-converter.php</file>
 	<file>classes/admin.php</file>
 	<file>classes/option.php</file>
+	<file>classes/helper.php</file>
+	<file>classes/validate.php</file>
+	<file>classes/traits/singleton.php</file>
 
 	<!--
 		#############################################################################
@@ -166,8 +169,7 @@
 		<exclude-pattern>*/tests/*</exclude-pattern>
 	</rule>
 
-	<!-- Short array syntax is the house style: the v5 source has 45 short array
-	     literals and no long ones. -->
+	<!-- Short array syntax is the house style. -->
 	<rule ref="Universal.Arrays.DisallowShortArraySyntax">
 		<severity>0</severity>
 	</rule>

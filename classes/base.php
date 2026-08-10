@@ -34,10 +34,10 @@ abstract class Base {
 	/**
 	 * Singleton instances, keyed by class name.
 	 *
-	 * This class deliberately does NOT use the Singleton trait: a static
-	 * property declared in a trait used by a parent is shared by every child of
-	 * that parent, so the first child instantiated would be handed back to all
-	 * the others. Instances are keyed by class name instead.
+	 * The Singleton trait is deliberately not used here: a static property
+	 * declared in a trait used by a parent is shared by every child of that
+	 * parent, so the first child instantiated would be handed back to all the
+	 * others.
 	 *
 	 * @var array<string, static>
 	 */
@@ -51,22 +51,12 @@ abstract class Base {
 	protected $_option;
 
 	/**
-	 * Validation helper.
-	 *
-	 * @var \iG\Syntax_Hiliter\Validate
-	 */
-	protected $_validate;
-
-	/**
 	 * Default constructor for all children.
 	 */
 	protected function __construct() {
 
 		//init options
 		$this->_option = Option::get_instance();
-
-		//init validation
-		$this->_validate = Validate::get_instance();
 
 		/*
 		 * Migrate settings if the plugin has been upgraded and a migration is

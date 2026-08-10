@@ -10,11 +10,10 @@ namespace iG\Syntax_Hiliter;
 /**
  * Turns a snippet into the markup the highlighter expects.
  *
- * `render_snippet()` holds the only `esc_html()` call applied to snippet code
- * anywhere in the plugin, and every path which needs a code box goes through it.
- * A language class is written only once the registry has confirmed the language can
- * be loaded, which is what keeps the browser from asking for a file that is not
- * there.
+ * `render_snippet()` holds the only escaping applied to snippet code anywhere in
+ * the plugin, and every path which needs a code box goes through it. A language
+ * class is written only once the registry has confirmed the language can be loaded,
+ * which is what keeps the browser from asking for a file that is not there.
  */
 class Renderer {
 
@@ -120,10 +119,41 @@ class Renderer {
 			'<pre %1$s><code class="language-%2$s">%3$s</code></pre>',
 			static::_build_attributes( $attributes ),
 			esc_attr( $language ),
-			esc_html( $snippet->code )
+			static::escape_verbatim( $snippet->code )
 		);
 
 	}    //end render_snippet()
+
+	/**
+	 * Method to escape text so that a reader is shown the bytes an author typed.
+	 *
+	 * This is the definition of the plugin's escaping, and `render_snippet()` is the
+	 * only thing which applies it (I1). It differs from `esc_html()` and `esc_attr()`
+	 * in one respect: it encodes an ampersand that already begins an entity as well
+	 * as one that does not.
+	 *
+	 * That difference is the whole point. A highlighter shows source exactly as it
+	 * was written, and source routinely contains entities as literal text — `&amp;`
+	 * in an XML snippet, `&nbsp;` in an HTML one, `&lt;` in a PHP string. Leaving
+	 * those alone hands the browser the entity rather than the text: an author who
+	 * writes `&lt;b&gt;` is shown `<b>`, one who writes `a&nbsp;b` gets a real
+	 * non-breaking space, and `&#60;` comes back spelled `&#060;`. Nothing at render
+	 * time can tell an entity an author typed from one they meant literally, so the
+	 * only coherent rule is to treat every byte as literal text. This is also what
+	 * GeSHi did in v5, whose `hsc()` translated `&` unconditionally.
+	 *
+	 * @param string $text Text exactly as the author wrote it.
+	 *
+	 * @return string
+	 */
+	public static function escape_verbatim( string $text ): string {
+
+		// `esc_html()` is `_wp_specialchars( $text, ENT_QUOTES, false, false )`, so this is
+		// that call with double encoding turned on and nothing else changed — the site's
+		// own charset still decides how the bytes are read.
+		return _wp_specialchars( $text, ENT_QUOTES, false, true );
+
+	}    //end escape_verbatim()
 
 	/**
 	 * Method to work out which language a snippet is highlighted as.
@@ -222,6 +252,11 @@ class Renderer {
 	/**
 	 * Method to build an HTML attribute string.
 	 *
+	 * `data-file` carries a label the author typed and the bundled themes paint it
+	 * with `attr()`, so it is escaped the same way the code is: an entity in a file
+	 * name is text, not an entity. Every other value here is built by this class out
+	 * of digits and a language id, which the escaping leaves alone either way.
+	 *
 	 * @param array $attributes Attribute name to value.
 	 *
 	 * @return string
@@ -231,7 +266,7 @@ class Renderer {
 		$markup = [];
 
 		foreach ( $attributes as $name => $value ) {
-			$markup[] = sprintf( '%s="%s"', $name, esc_attr( $value ) );
+			$markup[] = sprintf( '%s="%s"', $name, static::escape_verbatim( (string) $value ) );
 		}
 
 		return implode( ' ', $markup );

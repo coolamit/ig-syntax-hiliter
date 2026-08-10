@@ -35,7 +35,9 @@ The reason is that WordPress hands a classic post to the block editor as a singl
 
 This is a genuine trade-off, and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing, and the snippet silently disappears from the post.
 
-So the settings page has an **Uninstall** section containing a tool that converts every one of this plugin's blocks back into a `[sourcecode language="…"]` shortcode across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+So the settings page has an **Uninstall** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+
+One kind of snippet cannot be converted, and you should know about it: if the code inside a block itself contains the literal text `[/sourcecode]`, there is no shortcode that can hold it — the shortcode would end at that point and the rest of your code would be thrown away. The tool leaves those blocks exactly as it found them rather than truncating them, which means they stay blocks, and they stay invisible if the plugin is deactivated. If you have such a snippet, deal with it by hand before you deactivate.
 
 #### **Only the tags the plugin actually shipped are recognised**
 
@@ -51,18 +53,40 @@ plus the aliases `as`, `html` and `js`, plus `[sourcecode]` and `[github]`.
 
 A tag this plugin never shipped is left completely alone — not registered, not rendered, not converted. If your post contains `[email]`, it stays `[email]` and goes to whichever plugin owns it. That is deliberate: claiming a wider set of tags would mean taking shortcodes away from other plugins, which is a worse problem than the one it would solve.
 
-#### **Languages added by dropping GeSHi files into your theme are no longer supported**
+#### **Some old tags now highlight as a different language**
 
-Since v4.1 you could add a language by putting a GeSHi language file in a `geshi/` directory in your theme and using its filename as a tag. GeSHi is gone in 6.0, and that mechanism goes with it. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
+Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. The mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts.
+
+Most of it is uncontroversial: `html`, `html4strict`, `html5` and `xml` all become `markup`; `mysql` and `postgresql` become `sql`; `oracle11` becomes `plsql`; `jquery` becomes `javascript`; `rails` becomes `ruby`; `pcre` becomes `regex`; `actionscript3` and `as` become `actionscript`; `java5` becomes `java`; `js` becomes `javascript`; `apache` becomes `apacheconf`; `vb` and `vbnet` both become `visual-basic`; and `code` and `text` become `none`, which is a styled but deliberately unhighlighted box.
+
+Three of them change the language, not just its name, so your code will be coloured by different rules than it was in v5:
+
+- **`asp` is highlighted as ASP.NET.** GeSHi's `asp` was *classic* ASP, which Prism has no component for.
+- **`perl6` is highlighted as Perl.** Perl 6 is a different language — it has been called Raku since 2019 — and Prism has no component for it.
+- **`c_mac` is highlighted as plain C.**
+
+Your code itself is untouched in every case; only the colouring differs.
+
+#### **Languages added by dropping in GeSHi files are no longer supported**
+
+Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory, and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0 and both mechanisms go with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
 
 There are two ways to deal with that, neither as convenient as dropping in a file used to be:
 
 - Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/`. That directory is outside the plugin, so it survives plugin updates. The language then works in `[sourcecode language="…"]` and shows up in the block's language dropdown.
 - If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
 
+The changelog entries for v3.0 and v4.1 still describe the drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0 does. Neither mechanism works in 6.0.
+
 #### **Highlighting is done by the browser now**
 
 Prism colours the code client side. Its files load only on pages that contain a snippet, and only the languages that page uses. Visitors with JavaScript turned off get a plain but properly styled code box with the code intact. A language the plugin cannot resolve produces an unhighlighted-but-styled box rather than an error — nothing breaks and nothing 404s.
+
+#### **`strip_shortcodes()` now strips this plugin's tags too**
+
+Worth knowing if you write themes or plugins. This plugin hooks `strip_shortcodes_tagnames`, so *any* call to `strip_shortcodes()` anywhere on the site — yours, your theme's, another plugin's — now removes `[php]`, `[code]`, `[html]`, `[js]`, `[c]`, `[sourcecode]` and the rest of this plugin's tags along with the shortcodes WordPress knows about.
+
+That is deliberate. The plugin does not register its tags globally any more, so core has no idea they are shortcodes, and an automatic excerpt would otherwise print a whole snippet as prose. Naming the tags to core fixes that everywhere at once — but it is wider than the excerpt path. If you were relying on `strip_shortcodes()` leaving `[php]…[/php]` standing in some other bit of content, it no longer will.
 
 #### **The classic editor's Visual tab is still not a place to write code**
 
@@ -149,7 +173,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 [/sourcecode]
 ```
 
-**file :** Use this to show a file name/path. This is displayed in the tool-bar shown above code box.
+**file :** Use this to show a file name/path. This is displayed in the tool-bar shown above code box. The whole path goes into the page as you typed it; if it is too long for the toolbar the browser trims what it shows with an ellipsis, but the full path is still there in the page source. v5 cut the label down to 30 characters on the server before it ever reached the page, so if you were leaning on that to keep a long path out of your HTML, it no longer applies.
 
 **gutter :** Use this to tell plugin whether to show line numbers in the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show line numbers for that particular code box.
 
@@ -164,7 +188,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Theme :** Pick which of the bundled Prism themes is used to style code boxes. Choose `None` if you'd rather style code boxes yourself — nothing of the plugin's own CSS is loaded then. This replaces v5's *Use plugin CSS for styling?* option, and your old setting is carried over (`YES` becomes the default theme, `NO` becomes `None`).
 
-**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name, language name and the copy button) above the code boxes or not.
+**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name and the copy button) above the code boxes or not. The language name is no longer shown there — v5 printed it, 6.0 does not.
 
 **Show copy-to-clipboard button? :** Puts a button on the toolbar that copies the snippet to the clipboard. This is what became of v5's *Show Plain Text Option?*, and your old setting carries over — the intent was always "let people get at the raw code", and copying it is a better way to do that than a second view.
 
@@ -176,7 +200,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Uninstall :** A section at the bottom of the settings page. Its one tool converts every one of this plugin's blocks back into a `[sourcecode language="…"]` shortcode across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. See *Important changes in 6.0* above for why you would want it.
+**Uninstall :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0* above for why you would want it.
 
 *(Gone in 6.0: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
 
@@ -189,7 +213,8 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 - `ig_syntax_hiliter/languages` — filters the finished language registry, so you can add, remove or rename languages programmatically.
 - `ig_syntax_hiliter/prism_components_url` — filters the URL Prism's autoloader fetches language files from, if you want to serve them from somewhere other than the plugin.
-- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin registers. Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0*), or to stop it claiming one you want for something else.
+- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin claims. (Claims, not registers — the plugin deliberately never calls `add_shortcode()` for these tags, it matches them itself.) Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0*), or to stop it claiming one you want for something else.
+- `ig_syntax_hiliter/revert_batch_size` — filters how many posts the revert tool in the **Uninstall** section works through per request. Defaults to 20, and is clamped to between 1 and 200. Lower it on a host that times out, raise it to get through a large site in fewer requests.
 
 
 ### **Frequently Asked Questions**
@@ -204,11 +229,11 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Q:** *What happens to my code if I deactivate the plugin?*
 
-**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Uninstall** section of the settings page to turn every block back into a `[sourcecode]` shortcode.
+**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Uninstall** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. A block whose code contains a literal `[/sourcecode]` cannot be converted and is left alone, so that one still needs sorting out by hand.
 
-**Q:** *I used to add languages by putting GeSHi language files in my theme's `geshi` directory. What now?*
+**Q:** *I used to add languages by putting GeSHi language files in the plugin's or my theme's `geshi` directory. What now?*
 
-**A:** That mechanism is gone with GeSHi. Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/` instead — it survives plugin updates — and use it with `[sourcecode language="…"]` or the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
+**A:** Both of those mechanisms are gone with GeSHi. Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/` instead — it survives plugin updates — and use it with `[sourcecode language="…"]` or the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
 
 **Q:** *I see some code that I can improve. Do you accept pull requests?*
 

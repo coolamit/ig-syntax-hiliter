@@ -1,7 +1,7 @@
 # Files and directories that are NOT part of the released plugin.
 #
 # What ships is the runtime PHP, the compiled block assets in build/, the
-# vendored Prism library in assets/lib/prism/, the runtime css/js/images under
+# vendored Prism library in assets/lib/prism/, the runtime css and js under
 # assets/, templates/, the readmes, the changelog and the licence files.
 #
 # ---------------------------------------------------------------------------
@@ -79,9 +79,14 @@ node_modules/
 vendor/
 
 # Sources that are compiled before release.
-#   src/         -> build/           (wp-scripts / TypeScript)
-#   assets/scss/ -> assets/css/      (generated, committed, never hand-edited)
+#   src/                   -> build/                 (wp-scripts / TypeScript)
+#   assets/scss/admin.scss -> assets/css/admin.css   (sass; committed, never
+#                                                     hand-edited)
 # assets/css/ is therefore SHIPPED and assets/scss/ is not.
+#
+# assets/css/ is NOT wholly generated: frontend-chrome.css is hand written and
+# has no SCSS source, so clearing assets/css/ before a rebuild destroys it. Only
+# admin.css is reproducible from assets/scss/.
 src/
 assets/scss/
 
@@ -95,6 +100,9 @@ phpcs.xml.dist
 phpunit.xml
 phpunit.xml.dist
 tsconfig.json
+# Ambient TypeScript declarations consumed only by `tsc --noEmit`. Checked:
+# nothing under assets/, classes/, templates/ or build/ is named `types`.
+types/
 .nvmrc
 .distignore
 

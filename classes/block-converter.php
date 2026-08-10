@@ -82,6 +82,13 @@ class Block_Converter {
 	const DEFAULT_BATCH_SIZE = 20;
 
 	/**
+	 * The characters the block grammar counts as whitespace, which is PCRE's `\s`.
+	 *
+	 * @var string
+	 */
+	const DELIMITER_WHITESPACE = " \t\n\r\f\v";
+
+	/**
 	 * Largest batch the plugin will accept, whatever the filter asks for.
 	 *
 	 * @var int
@@ -213,22 +220,35 @@ class Block_Converter {
 
 			$result = static::convert_content( (string) $row->post_content );
 
-			if ( 1 > $result['converted'] ) {
-				++$counts['skipped'];
+			if ( 0 < $result['converted'] && ! static::_save_content( $post_id, $result['content'] ) ) {
+
+				++$counts['failed'];
+
 				continue;
+
 			}
 
-			$saved = wp_update_post(
-				[
-					'ID'           => $post_id,
-					'post_content' => wp_slash( $result['content'] ),
-				],
-				true
-			);
+			/*
+			 * A delimiter the tool could not read is a failure and is reported as one,
+			 * even where the rest of the post converted, because the site owner has a
+			 * block left that nothing here can turn back into a shortcode. A block the
+			 * tool chose to leave alone is not a failure, and neither is a post whose
+			 * content held the marker but no delimiter of this plugin's.
+			 */
+			if ( 0 < $result['failed'] ) {
 
-			if ( is_wp_error( $saved ) || 1 > (int) $saved ) {
 				++$counts['failed'];
+
 				continue;
+
+			}
+
+			if ( 1 > $result['converted'] ) {
+
+				++$counts['skipped'];
+
+				continue;
+
 			}
 
 			++$counts['converted'];
@@ -248,13 +268,37 @@ class Block_Converter {
 	}    //end process_batch()
 
 	/**
+	 * Method to write a post's rewritten content back.
+	 *
+	 * @param int    $post_id Post to write to.
+	 * @param string $content Content to write.
+	 *
+	 * @return bool Whether the content was written.
+	 */
+	protected static function _save_content( int $post_id, string $content ): bool {
+
+		$saved = wp_update_post(
+			[
+				'ID'           => $post_id,
+				'post_content' => wp_slash( $content ),
+			],
+			true
+		);
+
+		return ( ! is_wp_error( $saved ) && 0 < (int) $saved );
+
+	}    //end _save_content()
+
+	/**
 	 * Method to rewrite every one of this plugin's blocks in a piece of content.
 	 *
-	 * Nothing but the matched delimiters is touched.
+	 * Nothing but the delimiters this plugin wrote is touched: the content is copied
+	 * across a byte at a time around them, so everything else arrives on the other
+	 * side exactly as it went in.
 	 *
 	 * @param string $content Content to rewrite.
 	 *
-	 * @return array Three keys: `content`, the rewritten content; `converted`, how many blocks became shortcodes; and `skipped`, how many could not.
+	 * @return array Four keys: `content`, the rewritten content; `converted`, how many blocks became shortcodes; `skipped`, how many were deliberately left alone; and `failed`, how many could not be read.
 	 */
 	public static function convert_content( string $content ): array {
 
@@ -262,49 +306,160 @@ class Block_Converter {
 			'content'   => $content,
 			'converted' => 0,
 			'skipped'   => 0,
+			'failed'    => 0,
 		];
 
 		if ( ! str_contains( $content, static::BLOCK_MARKER ) ) {
 			return $result;
 		}
 
-		$converted = 0;
-		$skipped   = 0;
+		$rewritten = '';
+		$copied    = 0;
+		$search    = 0;
 
-		$rewritten = preg_replace_callback(
-			static::_get_block_pattern(),
-			static function ( array $matches ) use ( &$converted, &$skipped ): string {
+		while ( true ) {
 
-				$attributes = static::_decode_attributes( (string) ( $matches['attrs'] ?? '' ) );
-				$shortcode  = ( is_null( $attributes ) ) ? null : static::block_to_shortcode( $attributes );
+			$open = strpos( $content, '<!--', $search );
 
-				if ( is_null( $shortcode ) ) {
+			if ( false === $open ) {
+				break;
+			}
 
-					++$skipped;
+			$delimiter = static::_read_delimiter( $content, $open );
 
-					return $matches[0];    //left exactly as it was found
+			if ( is_null( $delimiter ) ) {
 
-				}
+				$search = $open + 4;
 
-				++$converted;
+				continue;    //some other comment, or some other block
 
-				return $shortcode;
+			}
 
-			},
-			$content
-		);
+			$search     = $delimiter['end'];
+			$attributes = static::_decode_attributes( $delimiter['attrs'] );
 
-		if ( is_null( $rewritten ) ) {
-			return $result;    //the rewrite failed, so the content is not changed at all
+			if ( is_null( $attributes ) ) {
+
+				++$result['failed'];
+
+				continue;    //this plugin's block, and unreadable, which is not the same as choosing to leave it
+
+			}
+
+			$shortcode = static::block_to_shortcode( $attributes );
+
+			if ( is_null( $shortcode ) ) {
+
+				++$result['skipped'];
+
+				continue;    //left exactly as it was found
+
+			}
+
+			$rewritten .= substr( $content, $copied, $open - $copied ) . $shortcode;
+			$copied     = $delimiter['end'];
+
+			++$result['converted'];
+
 		}
 
-		return [
-			'content'   => $rewritten,
-			'converted' => $converted,
-			'skipped'   => $skipped,
-		];
+		if ( 0 < $result['converted'] ) {
+			$result['content'] = $rewritten . substr( $content, $copied );
+		}
+
+		return $result;
 
 	}    //end convert_content()
+
+	/**
+	 * Method to read one of this plugin's self closing block delimiters.
+	 *
+	 * The end of the delimiter is found by scanning for the `-->` that closes the
+	 * HTML comment, rather than by matching the attribute JSON. Matching the JSON is
+	 * what a pattern does, and the tempered pattern the block grammar is written with
+	 * backtracks catastrophically once the attributes run to a few tens of kilobytes.
+	 * That is precisely the content this tool exists to rescue, so it cannot be the
+	 * content the tool gives up on. A scan has no such limit.
+	 *
+	 * Scanning is sound because `serialize_block_attributes()` escapes `-`, `<` and
+	 * `>` before the attributes are written, so however a snippet is written no `-->`
+	 * can occur inside them. Should a delimiter be hand written and hold one anyway,
+	 * the scan carries on to the next `-->`, so the delimiter is still read whole.
+	 *
+	 * @param string $content Content being read.
+	 * @param int    $offset  Offset of the `<!--` which opens the comment.
+	 *
+	 * @return array|null Two keys, `attrs` and `end`, or NULL when this is not one of this plugin's self closing delimiters.
+	 */
+	protected static function _read_delimiter( string $content, int $offset ): ?array {
+
+		$name        = sprintf( 'wp:%s', static::BLOCK_NAME );
+		$name_length = strlen( $name );
+		$after       = $offset + 4;    //past the `<!--`
+		$gap         = strspn( $content, static::DELIMITER_WHITESPACE, $after );
+
+		if ( 1 > $gap || strlen( $content ) < ( $after + $gap + $name_length ) ) {
+			return null;
+		}
+
+		if ( 0 !== substr_compare( $content, $name, $after + $gap, $name_length ) ) {
+			return null;
+		}
+
+		$body = $after + $gap + $name_length;
+		$gap  = strspn( $content, static::DELIMITER_WHITESPACE, $body );
+
+		if ( 1 > $gap ) {
+			return null;    //a longer block name which merely begins with this one
+		}
+
+		$start = $body + $gap;    //the `{` which opens the attributes, or the `/` which closes an empty delimiter
+
+		if ( '/-->' === substr( $content, $start, 4 ) ) {
+
+			return [
+				'attrs' => '',
+				'end'   => $start + 4,
+			];
+
+		}
+
+		if ( '{' !== substr( $content, $start, 1 ) ) {
+			return null;    //not self closing, or carrying something which is not attributes
+		}
+
+		$close = $start;
+
+		while ( true ) {
+
+			$close = strpos( $content, '-->', $close + 1 );
+
+			if ( false === $close ) {
+				return null;    //the comment is never closed
+			}
+
+			if ( '/' !== $content[ $close - 1 ] ) {
+				continue;    //a closing delimiter, not a self closing one
+			}
+
+			$end = $close - 1;    //the `/`
+
+			while ( $end > $start && false !== strpos( static::DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
+				--$end;
+			}
+
+			if ( ( $close - 1 ) === $end || '}' !== $content[ $end - 1 ] ) {
+				continue;    //the attributes do not end here, so neither does the delimiter
+			}
+
+			return [
+				'attrs' => substr( $content, $start, $end - $start ),
+				'end'   => $close + 3,
+			];
+
+		}
+
+	}    //end _read_delimiter()
 
 	/**
 	 * Method to write one block's attributes as a shortcode.
@@ -314,11 +469,21 @@ class Block_Converter {
 	 *
 	 * @param array $attributes Block attributes, as they were stored in the delimiter.
 	 *
-	 * @return string|null The shortcode, or NULL when the snippet cannot be written as one.
+	 * @return string|null The shortcode, an empty string when there is no snippet to write one for, or NULL when the snippet cannot be written as one.
 	 */
 	public static function block_to_shortcode( array $attributes ): ?string {
 
 		$code = ( isset( $attributes['code'] ) && is_scalar( $attributes['code'] ) ) ? (string) $attributes['code'] : '';
+
+		/*
+		 * A block holding no code shows a reader nothing, so there is nothing to write
+		 * a shortcode around. It is dropped rather than replaced by an empty shortcode,
+		 * which would show a reader nothing either and would leave noise behind in the
+		 * post content.
+		 */
+		if ( '' === $code ) {
+			return '';
+		}
 
 		/*
 		 * A shortcode ends at its own closing tag, so code which contains that tag
@@ -497,26 +662,6 @@ class Block_Converter {
 		];
 
 	}    //end _get_where_clause()
-
-	/**
-	 * Method to get the pattern which matches this plugin's block delimiter.
-	 *
-	 * The block carries everything in its attributes and has no inner content, so it
-	 * is always serialised as a single self closing delimiter. The attribute group is
-	 * shaped the way the WordPress block parser shapes its own: it runs to the brace
-	 * which closes the delimiter rather than to the first brace it meets, so a snippet
-	 * with braces in it is matched whole.
-	 *
-	 * @return string
-	 */
-	protected static function _get_block_pattern(): string {
-
-		return sprintf(
-			'#<!--\s+wp:%s\s+(?P<attrs>\{(?:(?!\}\s+/?-->).)*?\}\s+)?/-->#s',
-			preg_quote( static::BLOCK_NAME, '#' )
-		);
-
-	}    //end _get_block_pattern()
 
 	/**
 	 * Method to read a block delimiter's attributes.

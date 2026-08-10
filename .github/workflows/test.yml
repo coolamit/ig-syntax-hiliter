@@ -1,5 +1,5 @@
 #
-# CI test workflow — PRD CI-8 / NFR-6.
+# CI test workflow.
 #
 # Runs PHP lint, PHPCS (WordPress Coding Standards), the JS/TS build and both
 # PHPUnit tiers on a four-combination matrix:
@@ -8,8 +8,8 @@
 #   PHP 8.4   |    x     |     x
 #   PHP 8.5   |    x     |     x
 #
-# This is the *test* workflow only. The release workflow (CI-1..CI-7) is a
-# separate file and is not part of this one.
+# This is the *test* workflow only. The release workflow is a separate file and
+# is not part of this one.
 #
 name: Tests
 
@@ -36,7 +36,7 @@ concurrency:
 
 env:
   #
-  # CI-9: the GitHub repo is named `ig-syntax-hiliter`, the plugin slug is
+  # The GitHub repo is named `ig-syntax-hiliter`, the plugin slug is
   # `igsyntax-hiliter` (no first hyphen). They are NOT the same string and no
   # step here may assume the checkout directory is named after the repo.
   #
@@ -74,14 +74,14 @@ jobs:
       fail-fast: false
       matrix:
         php:
-          - '8.4'   # NFR-1 floor.
+          - '8.4'   # Minimum supported PHP version.
           - '8.5'
         wp:
           # An exact version is an exact pin. `<branch>.x` means "resolve the
           # latest patch of that branch at run time" — see the resolve step.
           #
-          # 6.9.0 is pinned by explicit decision (PRD CI-8): it is the declared
-          # floor (NFR-2), and we assume no breaking changes across 6.9.x
+          # 6.9.0 is pinned by explicit decision: it is the declared minimum
+          # supported version, and we assume no breaking changes across 6.9.x
           # patches rather than testing every one. Do not float this to 6.9.x.
           - '6.9.0'
           # The 7.0 leg tracks the newest 7.0 patch release on purpose, so that
@@ -124,11 +124,11 @@ jobs:
       - name: Check out plugin into a WordPress plugins directory
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # CI-9 — see the note on env.PLUGIN_PATH above.
+          # See the note on env.PLUGIN_PATH above.
           path: ${{ env.PLUGIN_PATH }}
           persist-credentials: false
 
-      - name: Assert the plugin directory is named after the slug (CI-9)
+      - name: Assert the plugin directory is named after the slug
         working-directory: ${{ env.PLUGIN_PATH }}
         run: |
           actual="$( basename "$PWD" )"
@@ -201,10 +201,26 @@ jobs:
         # when it does.
         run: composer run lint
 
-      - name: Build block editor assets
+      - name: TypeScript type check
         working-directory: ${{ env.PLUGIN_PATH }}
-        # `wp-scripts build`. build/ is git-ignored, so it must be produced
-        # here — the integration tier loads the plugin, which reads build/.
+        # `tsc --noEmit` over src/ and types/, configured by tsconfig.json. The
+        # block build is done by wp-scripts, which transpiles without type
+        # checking, so nothing else in this workflow would catch a type error.
+        #
+        # The sibling `lint:js` and `lint:style` scripts are deliberately NOT
+        # run here: both are scoped at the whole tree and so lint the vendored
+        # Prism bundles and the compiled assets/css/admin.css, which produces
+        # thousands of failures that say nothing about this plugin's sources.
+        # Wire them in once they are scoped to src/ and assets/scss/.
+        run: npm run lint:types
+
+      - name: Build block editor and admin assets
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # `npm run build` is `wp-scripts build` followed by the sass compile of
+        # assets/scss/admin.scss. build/ is git-ignored, so it must be produced
+        # here — the integration tier loads the plugin, which reads build/. The
+        # sass half rewrites assets/css/admin.css, which is committed; if that
+        # leaves the tree dirty, the committed file was stale.
         run: npm run build
 
       #

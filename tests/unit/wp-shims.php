@@ -1,9 +1,9 @@
 <?php
 /**
- * The three WordPress functions the domain core cannot avoid, shimmed.
+ * The few WordPress functions the domain core cannot avoid, shimmed.
  *
- * `esc_html()` and `esc_attr()` are what the renderer's tests are about, and
- * `apply_filters()` is what the tag list and registry extension points run
+ * `_wp_specialchars()` and `esc_attr()` are what the renderer's tests are about,
+ * and `apply_filters()` is what the tag list and registry extension points run
  * through. Anything in the domain core needing more of WordPress than this
  * belongs in the integration tier.
  *
@@ -15,15 +15,22 @@
 
 declare( strict_types = 1 );
 
-if ( ! function_exists( 'esc_html' ) ) {
+if ( ! function_exists( '_wp_specialchars' ) ) {
 	/**
-	 * Escapes a string for use in HTML.
+	 * Converts the HTML special characters, optionally encoding entities twice.
 	 *
-	 * @param string $text Text to escape.
+	 * The site charset a WordPress install would look up is UTF-8 here.
+	 *
+	 * @param string $text          Text to convert.
+	 * @param int    $quote_style   Which quotes to convert.
+	 * @param bool   $charset       Charset, ignored by the shim.
+	 * @param bool   $double_encode Whether to encode an existing entity again.
 	 * @return string
 	 */
-	function esc_html( $text ) {  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Shim for the WordPress function of the same name.
-		return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8', false );
+	function _wp_specialchars( $text, $quote_style = ENT_NOQUOTES, $charset = false, $double_encode = false ) {  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Shim for the WordPress function of the same name.
+		unset( $charset );
+
+		return htmlspecialchars( (string) $text, (int) $quote_style, 'UTF-8', (bool) $double_encode );
 	}
 }
 

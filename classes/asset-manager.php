@@ -258,7 +258,7 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_theme(): void {
 
-		$theme = $this->_get_option( 'theme', static::DEFAULT_THEME );
+		$theme = Shortcode_Handler::get_plugin_option( 'theme', static::DEFAULT_THEME );
 
 		if ( static::THEME_NONE !== $theme ) {
 
@@ -318,7 +318,7 @@ class Asset_Manager {
 		$version = static::_get_version();
 		$engine  = [ static::_handle( 'engine' ) ];
 
-		if ( $this->_is_option_on( 'toolbar', 'yes' ) ) {
+		if ( static::_is_option_on( 'toolbar', 'yes' ) ) {
 
 			wp_enqueue_style(
 				static::_handle( 'toolbar' ),
@@ -335,7 +335,7 @@ class Asset_Manager {
 				true
 			);
 
-			if ( $this->_is_option_on( 'copy_code', 'yes' ) ) {
+			if ( static::_is_option_on( 'copy_code', 'yes' ) ) {
 				wp_enqueue_script(
 					static::_handle( 'copy-to-clipboard' ),
 					static::_get_library_url( 'plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js' ),
@@ -389,7 +389,7 @@ class Asset_Manager {
 		}
 
 		// Off by default: it strips common leading indentation, which is often deliberate in a snippet.
-		if ( $this->_is_option_on( 'normalize_whitespace', 'no' ) ) {
+		if ( static::_is_option_on( 'normalize_whitespace', 'no' ) ) {
 			wp_enqueue_script(
 				static::_handle( 'normalize-whitespace' ),
 				static::_get_library_url( 'plugins/normalize-whitespace/prism-normalize-whitespace.min.js' ),
@@ -478,26 +478,6 @@ class Asset_Manager {
 	}    //end _enqueue_setup()
 
 	/**
-	 * Method to read one plugin option with a fallback.
-	 *
-	 * @param string $name     Option name.
-	 * @param string $fallback Value to use when the option is missing or unusable.
-	 *
-	 * @return string
-	 */
-	protected function _get_option( string $name, string $fallback ): string {
-
-		$value = Option::get_instance()->get( $name );
-
-		if ( ! is_string( $value ) || '' === trim( $value ) ) {
-			return $fallback;
-		}
-
-		return strtolower( trim( $value ) );
-
-	}    //end _get_option()
-
-	/**
 	 * Method to check whether a yes/no option is on.
 	 *
 	 * @param string $name     Option name.
@@ -505,8 +485,8 @@ class Asset_Manager {
 	 *
 	 * @return bool
 	 */
-	protected function _is_option_on( string $name, string $fallback ): bool {
-		return ( 'yes' === $this->_get_option( $name, $fallback ) );
+	protected static function _is_option_on( string $name, string $fallback ): bool {
+		return ( 'yes' === Shortcode_Handler::get_plugin_option( $name, $fallback ) );
 	}    //end _is_option_on()
 
 	/**

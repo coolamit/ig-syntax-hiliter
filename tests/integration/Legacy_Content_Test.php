@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Legacy_Map;
+use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
@@ -191,7 +192,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 
 		$fixture  = static::_fixture();
 		$boxes    = $this->_code_boxes( $output );
-		$expected = esc_html( static::_payload() );
+		$expected = Renderer::escape_verbatim( static::_payload() );
 
 		$this->assertCount( count( $fixture ), $boxes, sprintf( '%s: one code box per snippet.', $context ) );
 
@@ -228,9 +229,12 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 
 		$this->_assert_fixture_rendered( $output, 'single post view' );
 
-		// Entities the author typed stay as the author typed them, encoded once.
-		$this->assertStringContainsString( 'entities: &amp; &lt; &#039;', $output );
-		$this->assertStringNotContainsString( '&amp;lt;script', $output );
+		// An entity the author typed is text, and is shown to the reader as the text it is.
+		$this->assertStringContainsString( 'entities: &amp;amp; &amp;lt; &amp;#039;', $output );
+
+		// A character the author typed is encoded once, and once only.
+		$this->assertStringContainsString( '&lt;script src=', $output );
+		$this->assertStringNotContainsString( '&amp;lt;script src=', $output );
 
 	}
 
@@ -265,7 +269,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 		}
 
 		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( esc_html( static::_payload() ), $output );
+		$this->assertStringContainsString( Renderer::escape_verbatim( static::_payload() ), $output );
 
 	}
 
@@ -289,7 +293,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 		$feed = get_the_content_feed( 'rss2' );
 
 		$this->assertStringContainsString( '<code class="language-php">', $feed );
-		$this->assertStringContainsString( esc_html( static::_payload() ), $feed );
+		$this->assertStringContainsString( Renderer::escape_verbatim( static::_payload() ), $feed );
 
 		$this->assertStringNotContainsString( '<script src="https://example.com/x.js">', $feed );  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Asserting the fixture's code is NOT emitted as markup.
 		$this->assertStringNotContainsString( '<?php', $feed );

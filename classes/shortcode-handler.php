@@ -63,10 +63,14 @@ class Shortcode_Handler {
 	/**
 	 * Filters which carry a summary, where a code box makes no sense.
 	 *
+	 * Display filters, every one of them. `excerpt_save_pre` looks like it belongs
+	 * here and does not: it writes to the database, and stripping is a display
+	 * decision (I5). A manual excerpt is stored with its shortcodes intact and the
+	 * filters below take them off on the way out.
+	 *
 	 * @var array
 	 */
 	const EXCERPT_FILTERS = [
-		'excerpt_save_pre',
 		'get_the_excerpt',
 		'the_excerpt',
 		'the_excerpt_rss',
@@ -92,7 +96,7 @@ class Shortcode_Handler {
 
 		$this->_hooked = true;
 
-		$hilite_comments = ( 'yes' === $this->_get_option( 'hilite_comments', 'yes' ) );
+		$hilite_comments = ( 'yes' === static::get_plugin_option( 'hilite_comments', 'yes' ) );
 
 		$display_filters = [ 'the_content' ];
 		$strip_filters   = static::EXCERPT_FILTERS;
@@ -134,7 +138,7 @@ class Shortcode_Handler {
 			return $content;
 		}
 
-		return Content_Protector::get_instance()->protect( $content, true );
+		return Content_Protector::get_instance()->protect_for_display( $content );
 
 	}    //end protect_display()
 
@@ -172,7 +176,7 @@ class Shortcode_Handler {
 			return $content;
 		}
 
-		return Content_Protector::get_instance()->protect( $content, false );
+		return Content_Protector::get_instance()->protect_for_save( $content );
 
 	}    //end protect_save()
 
@@ -196,9 +200,8 @@ class Shortcode_Handler {
 	/**
 	 * Method to remove snippets from content which cannot carry a code box.
 	 *
-	 * One of these filters, `excerpt_save_pre`, writes to the database. Nothing is
-	 * stripped in wp-admin, so an author editing there cannot lose a shortcode out
-	 * of the excerpt field.
+	 * Every filter this is hooked to renders; none of them stores. What is stripped
+	 * here is a copy on its way to a summary, never the author's excerpt.
 	 *
 	 * @param mixed $content Content being filtered.
 	 *
@@ -206,7 +209,7 @@ class Shortcode_Handler {
 	 */
 	public function strip( $content ) {
 
-		if ( ! is_string( $content ) || is_admin() ) {
+		if ( ! is_string( $content ) ) {
 			return $content;
 		}
 
@@ -303,12 +306,15 @@ class Shortcode_Handler {
 	/**
 	 * Method to read one plugin option with a fallback.
 	 *
+	 * The one reader every caller shares, so that a missing or unusable value means
+	 * the same thing wherever it is read.
+	 *
 	 * @param string $name     Option name.
 	 * @param string $fallback Value to use when the option is missing or unusable.
 	 *
 	 * @return string
 	 */
-	protected function _get_option( string $name, string $fallback ): string {
+	public static function get_plugin_option( string $name, string $fallback ): string {
 
 		$value = Option::get_instance()->get( $name );
 
@@ -318,7 +324,7 @@ class Shortcode_Handler {
 
 		return strtolower( trim( $value ) );
 
-	}    //end _get_option()
+	}    //end get_plugin_option()
 
 }    //end of class
 

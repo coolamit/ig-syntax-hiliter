@@ -140,15 +140,122 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * Code which already holds entities is not encoded a second time.
+	 * An entity the author typed is text, and stays text.
+	 *
+	 * A highlighter which decodes what it was given shows something the author did
+	 * not write, so the ampersand that opens an entity is encoded exactly like the
+	 * one that does not. Byte for byte, because the way an entity is spelled is part
+	 * of the snippet.
 	 *
 	 * @return void
 	 */
-	public function test_existing_entities_are_not_double_encoded(): void {
+	public function test_entities_the_author_typed_are_never_decoded_or_respelled(): void {
 
-		$markup = $this->renderer->render_snippet( new Snippet( '&amp; &lt;', 'php' ) );
+		$cases = [
+			'&amp;lt;b&amp;gt;'       => '&amp;amp;lt;b&amp;amp;gt;',
+			'&lt;b&gt;bold&lt;/b&gt;' => '&amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt;',
+			'a&nbsp;b'                => 'a&amp;nbsp;b',
+			'&#60;script&#62;'        => '&amp;#60;script&amp;#62;',
+			'&lt;b&gt; & "x"'         => '&amp;lt;b&amp;gt; &amp; &quot;x&quot;',
+		];
 
-		$this->assertStringContainsString( '<code class="language-php">&amp; &lt;</code>', $markup );
+		foreach ( $cases as $typed => $expected ) {
+
+			$this->renderer->reset_counter();
+
+			$this->assertStringContainsString(
+				sprintf( '<code class="language-php">%s</code>', $expected ),
+				$this->renderer->render_snippet( new Snippet( (string) $typed, 'php' ) ),
+				sprintf( '"%s" was not left as the author typed it.', $typed )
+			);
+
+		}
+
+	}
+
+	/**
+	 * The round trip, stated once: whatever the author typed, one decode of what the
+	 * reader is served gives their bytes back. That is the property the escaping
+	 * exists for, and it holds down both paths into the renderer.
+	 *
+	 * @return void
+	 */
+	public function test_the_reader_sees_exactly_what_the_author_typed(): void {
+
+		$code = "&amp; &lt;b&gt; &nbsp; &#60; & < > \" ' <b>bold</b>\n\$x = 'a' . \"b\";";
+
+		$paths = [
+			'shortcode' => Snippet::from_shortcode_atts( [ 'language' => 'php' ], $code ),
+			'block'     => Snippet::from_block_attributes(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			),
+		];
+
+		foreach ( $paths as $path => $snippet ) {
+
+			$this->renderer->reset_counter();
+
+			$markup = $this->renderer->render_snippet( $snippet );
+
+			$this->assertSame(
+				1,
+				preg_match( '#<code[^>]*>(.*)</code></pre>$#s', $markup, $matches ),
+				sprintf( 'The %s path rendered no code element.', $path )
+			);
+
+			$this->assertSame(
+				$code,
+				html_entity_decode( $matches[1], ENT_QUOTES, 'UTF-8' ),
+				sprintf( 'The %s path did not give the author back their bytes.', $path )
+			);
+
+			// Nothing the author typed reaches the reader as markup of its own.
+			$this->assertStringNotContainsString( '<b>', $matches[1], sprintf( 'The %s path let a tag through.', $path ) );
+
+		}
+
+	}
+
+	/**
+	 * Ordinary code is encoded once and once only — the fix for the entities above
+	 * must not turn `<` into `&amp;lt;`.
+	 *
+	 * @return void
+	 */
+	public function test_ordinary_code_is_not_double_escaped(): void {
+
+		$markup = $this->renderer->render_snippet( new Snippet( 'if ( $a < $b && $c > $d )', 'php' ) );
+
+		$this->assertStringContainsString(
+			'<code class="language-php">if ( $a &lt; $b &amp;&amp; $c &gt; $d )</code>',
+			$markup
+		);
+
+	}
+
+	/**
+	 * A file label is a label, not markup, so an entity in it is shown rather than
+	 * decoded. The themes paint it out of the attribute, which the browser decodes
+	 * once on the way.
+	 *
+	 * @return void
+	 */
+	public function test_a_file_label_keeps_the_entities_the_author_typed(): void {
+
+		$markup = $this->renderer->render_snippet(
+			Snippet::from_shortcode_atts(
+				[
+					'language' => 'php',
+					'file'     => 'a&amp;b &lt;c&gt;.php',
+				],
+				'x'
+			)
+		);
+
+		$this->assertStringContainsString( 'data-file="a&amp;amp;b &amp;lt;c&amp;gt;.php"', $markup );
 
 	}
 
