@@ -52,7 +52,7 @@ class Gist_Embed {
 	 *
 	 * Display filters, every one of them. A save filter would put the link in the
 	 * database in place of the author's `[github]` tag, which is a transformation
-	 * this plugin does not get to store (I5).
+	 * this plugin does not get to store.
 	 *
 	 * @var array
 	 */

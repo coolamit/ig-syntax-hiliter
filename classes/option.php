@@ -71,17 +71,37 @@ class Option {
 	/**
 	 * Getter method to fetch a single option by name
 	 *
+	 * A key which exists but holds NULL — which only a hand edited option or a
+	 * third party can produce — reads as this setting's default. Every caller of
+	 * this expects a usable value, a `yes`/`no` or a theme name, and none of them
+	 * is written to receive NULL.
+	 *
 	 * @param string $name Option name.
 	 *
-	 * @return mixed
+	 * @return mixed The stored value, this setting's default when there is none, or FALSE when the plugin has no such setting.
 	 */
 	public function get( string $name ) {
 
-		if ( ! empty( $name ) && isset( $this->_options[ $name ] ) ) {
-			return $this->_options[ $name ];
+		if ( empty( $name ) || ! array_key_exists( $name, $this->_default_options ) ) {
+			return false;
 		}
 
-		return false;
+		return $this->_options[ $name ] ?? $this->_default_options[ $name ];
+
+	}
+
+	/**
+	 * Method to get the value a setting has when the site has never changed it.
+	 *
+	 * @param string $name Option name.
+	 *
+	 * @return string The default, or an empty string when the plugin has no such setting.
+	 */
+	public function get_default( string $name ): string {
+
+		$value = $this->_default_options[ $name ] ?? '';
+
+		return ( is_scalar( $value ) ) ? (string) $value : '';
 
 	}
 
@@ -98,6 +118,15 @@ class Option {
 	 * Method to save an option. It takes care of sanitizing the value before
 	 * saving it and saves an option only if the option name already exists.
 	 *
+	 * The stored array is read again immediately before it is written, and the one
+	 * setting named here is applied to what was read. The snapshot this object took
+	 * when it was built is never what gets written: the settings screen saves one
+	 * setting per request, so two settings changed in quick succession are two
+	 * overlapping requests, and a request which wrote its own snapshot back would
+	 * put the other request's setting back the way it was before. Both requests
+	 * would report success and one of the two settings would not be in the
+	 * database.
+	 *
 	 * @param string $name  Option name.
 	 * @param mixed  $value Value to save.
 	 *
@@ -105,7 +134,10 @@ class Option {
 	 */
 	public function save( string $name, $value ): bool {
 
-		if ( empty( $name ) || ! isset( $this->_options[ $name ] ) ) {
+		//the set of settings this plugin has is what decides whether a name may be saved,
+		//rather than the array in hand: a key which exists but holds NULL is still one of
+		//this plugin's settings, and must not be left unsavable
+		if ( empty( $name ) || ! array_key_exists( $name, $this->_default_options ) ) {
 			return false;
 		}
 
@@ -123,17 +155,15 @@ class Option {
 			$value = strtolower( trim( sanitize_title( $value ) ) );
 		}
 
-		if ( ! empty( $value ) || true === $can_be_empty ) {
-
-			$this->_options[ $name ] = $value;
-
-			$this->commit();    //lets save in DB as well
-
-			return true;
-
+		if ( empty( $value ) && true !== $can_be_empty ) {
+			return false;
 		}
 
-		return false;
+		$this->_load_all_options();    //whatever is stored now, not what was stored when this object was built
+
+		$this->_options[ $name ] = $value;
+
+		return $this->commit();    //lets save in DB as well
 
 	}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-6 — an unknown language degrades to a plain box and asks the browser for nothing.
+ * An unknown language degrades to a plain box and asks the browser for nothing.
  *
  * What a plain box looks like is `Renderer_Test`'s business. What is checked here is
  * the half of the criterion that markup cannot show: that nothing on the page ever
@@ -88,8 +88,8 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-6 — nothing on the page asks for the bogus language, and the box is still
-	 * given the engine and a theme to be styled by.
+	 * Nothing on the page asks for the bogus language, and the box is still given
+	 * the engine and a theme to be styled by.
 	 *
 	 * This is the criterion: no request for a language file that is not there, so no
 	 * 404. The check is against what was actually registered, not against markup.
@@ -119,7 +119,7 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-6 — a language the registry does know is not enqueued either.
+	 * A language the registry does know is not enqueued either.
 	 *
 	 * Language files are fetched at runtime by the engine's own loader, which only
 	 * asks for what the registry confirmed. Enqueuing components eagerly would put

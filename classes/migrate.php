@@ -78,7 +78,11 @@ class Migrate {
 		$this->_db_version = $this->_get_last_version();
 
 		if ( '' !== $this->_db_version && version_compare( $this->_db_version, static::_normalize_version( $this->_get_plugin_version() ), '>=' ) ) {
+
+			$this->_maybe_rewrite_stored_version();
+
 			return;    //up to date, nothing to migrate
+
 		}
 
 		if ( '' === $this->_db_version ) {
@@ -101,6 +105,41 @@ class Migrate {
 		update_option( Base::PLUGIN_ID . '-version', $this->_get_plugin_version() );
 
 	}    //end settings()
+
+	/**
+	 * Method to write the running version back when what is stored is the same
+	 * version spelled differently.
+	 *
+	 * Versions are compared normalised, so a stored `6.0.0-beta1` or `6.0` reads as
+	 * `6.0.0` and never reaches the write at the end of `settings()`. The option
+	 * then keeps that spelling for good, and every later read pays to normalise it
+	 * again.
+	 *
+	 * Only a stored version which normalises to exactly the running one is touched.
+	 * A version from the future is left alone, spelling and all: this version knows
+	 * nothing about what a later one means by it, and rewriting it would be a
+	 * downgrade of the site's record of itself.
+	 *
+	 * @return void
+	 */
+	protected function _maybe_rewrite_stored_version(): void {
+
+		$version = $this->_get_plugin_version();
+
+		if ( '' === $version || static::_normalize_version( $version ) !== $this->_db_version ) {
+			return;    //some other version is stored, it is not this one's to rewrite
+		}
+
+		$stored = get_option( Base::PLUGIN_ID . '-version', '' );
+		$stored = ( is_scalar( $stored ) ) ? (string) $stored : '';
+
+		if ( $stored === $version ) {
+			return;    //already spelled the way this version spells it
+		}
+
+		update_option( Base::PLUGIN_ID . '-version', $version );
+
+	}    //end _maybe_rewrite_stored_version()
 
 	/**
 	 * Method to normalise a version to three numeric parts.
@@ -201,6 +240,12 @@ class Migrate {
 	 * exist under the same names; the third, "show plain text", became the copy
 	 * to clipboard button in v6.
 	 *
+	 * Booleans is what that version wrote, but not necessarily what is there twenty
+	 * years later, so each value is read as a flag rather than trusted to be a bool.
+	 * An install holding `0` means the setting off, and `0` handed to Option as it
+	 * stands is refused as an empty value — which would leave the setting on the v6
+	 * default, turning the owner's "off" into "on".
+	 *
 	 * @return void
 	 */
 	protected function _settings_from_35(): void {
@@ -223,7 +268,10 @@ class Migrate {
 				continue;
 			}
 
-			$this->_option->save( $new_name, Helper::bool_to_yesno( $old_options[ $old_name ] ) );
+			$this->_option->save(
+				$new_name,
+				$this->_flag_to_yesno( $old_options[ $old_name ], $this->_option->get_default( $new_name ) )
+			);
 
 		}
 
@@ -290,6 +338,31 @@ class Migrate {
 		return ( Validate::get_instance()->is_yesno( $value ) ) ? $value : $fallback;
 
 	}    //end _to_yesno()
+
+	/**
+	 * Method to read a stored flag as a yes/no setting.
+	 *
+	 * This is for the values older versions stored as booleans. `TRUE`, `1`, `'1'`,
+	 * `'on'` and `'yes'` all mean the same thing to the person who set them, and so
+	 * do their opposites; anything which is neither is not a flag at all and takes
+	 * the fallback.
+	 *
+	 * @param mixed  $value    Value as it was stored.
+	 * @param string $fallback Value to use when the stored one cannot be read as a flag.
+	 *
+	 * @return string
+	 */
+	protected function _flag_to_yesno( $value, string $fallback ): string {
+
+		$flag = ( is_scalar( $value ) ) ? filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) : null;
+
+		if ( is_null( $flag ) ) {
+			return $fallback;
+		}
+
+		return ( true === $flag ) ? 'yes' : 'no';
+
+	}    //end _flag_to_yesno()
 
 	/**
 	 * Method to remove what the old version left behind.

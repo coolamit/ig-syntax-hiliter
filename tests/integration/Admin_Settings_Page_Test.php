@@ -11,16 +11,16 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Language_Registry;
+use iG\Syntax_Hiliter\Option;
+use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
  * The settings screen renders, shows the v6 settings and nothing else, and asks the
  * browser for no jQuery.
  *
- * Rendering it at all is the point of the first test: the screen was switched off
- * for the whole of M1 and M2 because the v5 class called methods that had been
- * deleted with the GeSHi language scan, and loading it would have fataled inside
- * wp-admin.
+ * Rendering it at all is the point of the first test: a settings screen that fatals
+ * inside wp-admin is invisible until an administrator opens it.
  */
 class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
@@ -90,8 +90,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The settings GeSHi took with it are gone from the screen, and the two things
-	 * M4 added to it are on it.
+	 * The settings GeSHi took with it are gone from the screen, and the drop-in
+	 * language directory and the revert tool are on it.
 	 *
 	 * @return void
 	 */
@@ -105,18 +105,85 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			$this->assertStringNotContainsString( $gone, $html, sprintf( 'The removed %s setting is still on the screen.', $gone ) );
 		}
 
-		// FR-6.3 — the screen states where a site puts its own language files.
+		// The screen states where a site puts its own language files.
 		$this->assertStringContainsString( Language_Registry::DROPIN_DIR, $html );
 		$this->assertStringEndsWith( Language_Registry::DROPIN_DIR . '/', Admin::get_dropin_display_path() );
 
-		// Decision 20 — the way out of the block format is offered here.
+		// The revert tool, the way out of the block format, is offered on this screen.
 		$this->assertStringContainsString( 'igsh-revert-blocks', $html );
 
 	}
 
 	/**
-	 * AC-13 — the settings screen carries no jQuery dependency of its own, and its
-	 * assets load on that screen and nowhere else.
+	 * Method to pull one setting's control out of the rendered page.
+	 *
+	 * @param string $html Markup the page printed.
+	 * @param string $name Setting whose control is wanted.
+	 *
+	 * @return string The opening tag of the control, or an empty string when there is no such control.
+	 */
+	protected function _get_control( string $html, string $name ): string {
+
+		$found = preg_match(
+			sprintf( '#<input\b[^>]*data-igsh-option="%s"[^>]*>#s', preg_quote( $name, '#' ) ),
+			$html,
+			$matches
+		);
+
+		return ( 1 === $found ) ? $matches[0] : '';
+
+	}
+
+	/**
+	 * A stored value the setting does not offer draws the control at that setting's
+	 * own default.
+	 *
+	 * It used to draw the first choice, which for every toggle on this screen is
+	 * "yes". Every reader of a yes/no setting compares it against `yes`, so an
+	 * unrecognised value behaves as off — and the screen said on. A control which
+	 * already looks right is one nobody puts right.
+	 *
+	 * @return void
+	 */
+	public function test_a_stored_value_outside_the_schema_draws_the_setting_default(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$option   = Option::get_instance();
+		$property = new ReflectionProperty( Option::class, '_options' );
+		$before   = $property->getValue( $option );
+
+		$property->setValue(
+			$option,
+			array_merge(
+				(array) $before,
+				[
+					'normalize_whitespace' => 'perhaps',    //this setting is off by default
+					'hilite_comments'      => 'perhaps',    //and this one is on by default
+				]
+			)
+		);
+
+		try {
+			$html = $this->_render();
+		} finally {
+			$property->setValue( $option, $before );
+		}
+
+		$off = $this->_get_control( $html, 'normalize_whitespace' );
+		$on  = $this->_get_control( $html, 'hilite_comments' );
+
+		$this->assertNotSame( '', $off, 'The normalize_whitespace control is not on the page at all.' );
+		$this->assertNotSame( '', $on, 'The hilite_comments control is not on the page at all.' );
+
+		$this->assertStringNotContainsString( 'checked', $off, 'A setting which is off by default was drawn as on.' );
+		$this->assertStringContainsString( 'checked', $on );
+
+	}
+
+	/**
+	 * The settings screen carries no jQuery dependency of its own, and its assets
+	 * load on that screen and nowhere else.
 	 *
 	 * @return void
 	 */

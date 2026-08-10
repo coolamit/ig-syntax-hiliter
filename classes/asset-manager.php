@@ -55,6 +55,23 @@ class Asset_Manager {
 	const THEME_NONE = 'none';
 
 	/**
+	 * `wp_footer` priority at which the assets are first decided.
+	 *
+	 * @var int
+	 */
+	const PRIORITY_DECIDE = 1;
+
+	/**
+	 * `wp_footer` priority at which the decision is taken again.
+	 *
+	 * Core prints the footer scripts and the late styles from `wp_footer` at 20, so
+	 * this is the last moment at which enqueuing anything still reaches the page.
+	 *
+	 * @var int
+	 */
+	const PRIORITY_DECIDE_AGAIN = 19;
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @var \iG\Syntax_Hiliter\Asset_Manager|null
@@ -115,7 +132,15 @@ class Asset_Manager {
 	 * Method to hook the asset manager up to WordPress.
 	 *
 	 * Assets are decided at `wp_footer` priority 1, late enough for the whole page to
-	 * have rendered and so for the snippet signal to be trustworthy.
+	 * have rendered and so for the snippet signal to be trustworthy, and early enough
+	 * that a theme printing its own scripts part way down the footer still gets them.
+	 *
+	 * The decision is then taken a second time, just before core prints the footer.
+	 * Plenty of things render content from `wp_footer` itself — a modal, a late list
+	 * of related posts, a comment list built on demand — and a snippet which appeared
+	 * that way used to end up on the page with no highlighting at all and no way of
+	 * ever getting any. `enqueue()` is idempotent, so the second pass costs a few
+	 * no-op calls when there is nothing new to add.
 	 *
 	 * @return void
 	 */
@@ -127,7 +152,8 @@ class Asset_Manager {
 
 		$this->_hooked = true;
 
-		add_action( 'wp_footer', [ $this, 'enqueue' ], 1 );
+		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE );
+		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE_AGAIN );
 
 	}    //end register_hooks()
 
@@ -177,6 +203,10 @@ class Asset_Manager {
 
 	/**
 	 * Method to enqueue the front end assets.
+	 *
+	 * Safe to call more than once in a request: enqueuing a handle which is already
+	 * registered does nothing, and the one call which is not idempotent — handing the
+	 * setup script its configuration — is guarded.
 	 *
 	 * @return void
 	 */
@@ -276,7 +306,7 @@ class Asset_Manager {
 
 		wp_enqueue_style(
 			static::_handle( 'chrome' ),
-			Helper::get_asset_url( 'css/frontend-chrome.css' ),
+			Helper::get_asset_url( 'build/css/frontend-chrome.css' ),
 			[],
 			static::_get_version()
 		);
@@ -433,9 +463,15 @@ class Asset_Manager {
 				return;
 			}
 
+			/*
+			 * The registry is filterable, so the file name reaching this line is not
+			 * guaranteed to be one `scan_dropins()` vetted. Encoding it keeps whatever
+			 * it holds inside a single path segment of the drop-in directory instead of
+			 * letting a `#` cut the URL short or a `/` walk out of it.
+			 */
 			wp_enqueue_script(
 				static::_handle( sprintf( 'language-%s', $language ) ),
-				sprintf( '%s/%s', $base_url, $file ),
+				sprintf( '%s/%s', $base_url, rawurlencode( $file ) ),
 				[ static::_handle( 'engine' ) ],
 				static::_get_version(),
 				true
@@ -452,6 +488,7 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_setup(): void {
 
+		$handle       = static::_handle( 'setup' );
 		$dependencies = [ static::_handle( 'autoloader' ) ];
 
 		if ( wp_script_is( static::_handle( 'toolbar' ), 'enqueued' ) ) {
@@ -459,15 +496,26 @@ class Asset_Manager {
 		}
 
 		wp_enqueue_script(
-			static::_handle( 'setup' ),
-			Helper::get_asset_url( 'js/ig-prism-setup.js' ),
+			$handle,
+			Helper::get_asset_url( 'build/js/ig-prism-setup.js' ),
 			$dependencies,
 			static::_get_version(),
 			true
 		);
 
+		/*
+		 * Localising a handle twice does not replace the configuration it already
+		 * carries, it prepends to it, and a page which decided its assets more than
+		 * once would end up with two copies of the same object. The handle itself is
+		 * asked whether it has been given one, rather than a flag of our own, so that
+		 * the answer cannot outlive the registration it is about.
+		 */
+		if ( false !== wp_scripts()->get_data( $handle, 'data' ) ) {
+			return;
+		}
+
 		wp_localize_script(
-			static::_handle( 'setup' ),
+			$handle,
 			'igSyntaxHiliter',
 			[
 				'componentsUrl' => $this->get_components_url(),

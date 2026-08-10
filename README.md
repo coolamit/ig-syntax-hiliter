@@ -157,7 +157,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **firstline :** Use this to start line numbering from a number greater than 1.
 
-**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8. Line numbers are the ones **as displayed** — so if you also use `firstline`, count from that number rather than from the top of the code. *(This changed in 6.0; GeSHi counted physical lines instead.)* A single range is capped at 10,000 lines — anything beyond that is dropped, so `highlight="1-999999999"` marks the first 10,000 lines and stops there.
+**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8. Line numbers are the ones **as displayed** — so if you also use `firstline`, count from that number rather than from the top of the code. *(This changed in 6.0; GeSHi counted physical lines instead.)* The whole attribute is capped at 10,000 lines in total — not 10,000 per range — and once that many have been collected the rest of the attribute is ignored. So `highlight="1-999999999"` marks the first 10,000 lines and stops there, and so does `highlight="1-8000,20000-30000"`, which reaches the cap 2,000 lines into its second range.
 
 ```
 [sourcecode language="php" highlight="2,4-6,9"]
@@ -173,7 +173,12 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 [/sourcecode]
 ```
 
-**file :** Use this to show a file name/path. This is displayed in the tool-bar shown above code box. The whole path goes into the page as you typed it; if it is too long for the toolbar the browser trims what it shows with an ellipsis, but the full path is still there in the page source. v5 cut the label down to 30 characters on the server before it ever reached the page, so if you were leaning on that to keep a long path out of your HTML, it no longer applies.
+**file :** Use this to show a file name/path. Where it appears depends on the **Show Toolbar?** setting:
+
+- **Toolbar on** — the label sits in the toolbar, which sits over the top right of the box and fades in when a visitor hovers over the code box or moves keyboard focus into it. v5's toolbar was drawn into the box and was always on screen; Prism's is not.
+- **Toolbar off** — the label is painted in the top right corner of the code box itself, and is always visible. In v5, turning the toolbar off hid the file label with it; in 6.0 the label still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
+
+The whole path goes into the page exactly as you typed it. If it is too long for the space, the browser trims what it *shows* with an ellipsis, but the full path is still there in the page source. Two v5 behaviours are gone: v5 cut the label to 30 characters on the server before it ever reached the page, and v5 ran the label through `wp_strip_all_tags()`, which quietly ate the type parameter out of names like `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` — and everything after an unbalanced `<`. 6.0 collapses runs of whitespace and otherwise leaves the label alone; it is never treated as markup anywhere it is used, so there was nothing for the stripping to protect.
 
 **gutter :** Use this to tell plugin whether to show line numbers in the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show line numbers for that particular code box.
 
@@ -188,7 +193,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Theme :** Pick which of the bundled Prism themes is used to style code boxes. Choose `None` if you'd rather style code boxes yourself — nothing of the plugin's own CSS is loaded then. This replaces v5's *Use plugin CSS for styling?* option, and your old setting is carried over (`YES` becomes the default theme, `NO` becomes `None`).
 
-**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name and the copy button) above the code boxes or not. The language name is no longer shown there — v5 printed it, 6.0 does not.
+**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name and the copy button) above the code boxes or not. The language name is no longer shown there — v5 printed it, 6.0 does not. Unlike v5's, this toolbar is not drawn into the box: it fades in when a visitor hovers over the code box or moves keyboard focus into it. Turning it off does not hide the `file` label, which is painted on the box itself instead — see the `file` attribute above.
 
 **Show copy-to-clipboard button? :** Puts a button on the toolbar that copies the snippet to the clipboard. This is what became of v5's *Show Plain Text Option?*, and your old setting carries over — the intent was always "let people get at the raw code", and copying it is a better way to do that than a second view.
 

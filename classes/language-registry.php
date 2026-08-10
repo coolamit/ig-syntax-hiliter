@@ -48,6 +48,17 @@ class Language_Registry {
 	const LIBRARY_DIR = 'assets/lib/prism';
 
 	/**
+	 * How long a built registry is cached for, in seconds.
+	 *
+	 * A drop-in appearing or disappearing changes the cache key, so this is not what
+	 * picks those up; it is only a backstop for a filesystem whose directory times
+	 * cannot be trusted. Rebuilding costs a couple of milliseconds, once a day.
+	 *
+	 * @var int
+	 */
+	const CACHE_EXPIRY = 86400;
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @var \iG\Syntax_Hiliter\Language_Registry|null
@@ -74,6 +85,27 @@ class Language_Registry {
 	 * @param array $registry Registry array in the shape `parse_manifest()` returns.
 	 */
 	public function __construct( array $registry = [] ) {
+
+		$this->_ingest( $registry );
+
+	}    //end __construct()
+
+	/**
+	 * Method to read a registry array into this object, replacing whatever it held.
+	 *
+	 * Separate from the constructor so that `get_instance()` can publish an instance
+	 * before the extension filter runs and then update that same object afterwards,
+	 * rather than swapping it for a second one which anything holding a reference to
+	 * the first would never see.
+	 *
+	 * @param array $registry Registry array in the shape `parse_manifest()` returns.
+	 *
+	 * @return void
+	 */
+	protected function _ingest( array $registry ): void {
+
+		$this->_languages = [];
+		$this->_aliases   = [];
 
 		$languages = ( is_array( $registry['languages'] ?? null ) ) ? $registry['languages'] : [];
 		$aliases   = ( is_array( $registry['aliases'] ?? null ) ) ? $registry['aliases'] : [];
@@ -107,7 +139,7 @@ class Language_Registry {
 
 		}
 
-	}    //end __construct()
+	}    //end _ingest()
 
 	/**
 	 * Method to get the shared registry instance.
@@ -121,13 +153,34 @@ class Language_Registry {
 		}
 
 		$registry = Cache::create( static::_get_cache_key() )
-						->expires_in( YEAR_IN_SECONDS )
+						->expires_in( static::CACHE_EXPIRY )
 						->updates_with( [ static::class, 'build' ] )
 						->get();
 
 		if ( ! is_array( $registry ) ) {
-			$registry = static::build();
+			/*
+			 * Nothing usable came back, which covers a first run with no option to read
+			 * as well as a build which failed inside the cache. Build it once more here,
+			 * but do not let a failure take the page down with it: an empty registry
+			 * means every snippet renders as unhighlighted code, which is a far cheaper
+			 * outcome than a fatal part way through `the_content`.
+			 */
+			try {
+				$registry = static::build();
+			} catch ( \Throwable $e ) {
+				$registry = [];
+			}
 		}
+
+		/*
+		 * The instance is published before the filter runs. A callback which asks the
+		 * registry what it currently holds — the obvious thing to do when deciding what
+		 * to change — would otherwise re-enter this method with nothing memoised and
+		 * recurse until the process died. It is filled in again below, in place, so
+		 * that anything the callback took a reference to ends up holding the filtered
+		 * registry rather than the one it was shown.
+		 */
+		static::$_instance = new static( (array) $registry );
 
 		/**
 		 * Filters the finished language registry.
@@ -136,9 +189,16 @@ class Language_Registry {
 		 *
 		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding `title`, `file` and `dropin`; and `aliases`, mapping alias to canonical id.
 		 */
-		$registry = apply_filters( static::FILTER_LANGUAGES, $registry );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
+		$filtered = apply_filters( static::FILTER_LANGUAGES, $registry );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
-		static::$_instance = new static( (array) $registry );
+		/*
+		 * Reading three hundred languages in takes long enough to be worth not doing
+		 * twice for nothing. With no callback listening, the filter hands back the very
+		 * array it was given and this comparison is a pointer check.
+		 */
+		if ( $filtered !== $registry ) {
+			static::$_instance->_ingest( (array) $filtered );
+		}
 
 		return static::$_instance;
 
@@ -304,7 +364,14 @@ class Language_Registry {
 
 			$name = basename( $file );
 
-			if ( ! preg_match( '/^prism-([a-z0-9_+#-]+?)(\.min)?\.js$/i', $name, $matches ) ) {
+			/*
+			 * The id is held to what the highlighter itself will accept. Its own class
+			 * matcher reads `language-([\w-]+)`, so an id carrying anything else — `#`
+			 * and `+` being the tempting ones — never reaches the grammar it names, and
+			 * `#` would truncate the file URL at a fragment on the way there as well.
+			 * No bundled component id uses either character; `csharp` and `cpp` do.
+			 */
+			if ( ! preg_match( '/^prism-([a-z0-9_-]+?)(\.min)?\.js$/i', $name, $matches ) ) {
 				continue;
 			}
 
@@ -485,7 +552,9 @@ class Language_Registry {
 	 * Method to build the cache key.
 	 *
 	 * The plugin version is part of the key, so a plugin update invalidates the
-	 * cache and nothing else has to.
+	 * cache and nothing else has to. So is a signature of the drop-in directory,
+	 * because a site owner who drops a language file in has done everything the
+	 * settings screen asks of them and expects to see it, not to wait out an expiry.
 	 *
 	 * @return string
 	 */
@@ -493,9 +562,31 @@ class Language_Registry {
 
 		$version = ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0';
 
-		return sprintf( 'ig-syntax-hiliter-languages-%s', $version );
+		return sprintf( 'ig-syntax-hiliter-languages-%s-%s', $version, static::_get_dropin_signature() );
 
 	}    //end _get_cache_key()
+
+	/**
+	 * Method to get a signature which changes whenever the drop-in directory does.
+	 *
+	 * A directory's modification time moves when a file inside it is created, removed
+	 * or renamed, and the registry is built from nothing but those names — what is
+	 * inside a drop-in never reaches it. One `stat` is cheap enough to spend on every
+	 * request which renders a snippet, which listing the directory would not be.
+	 *
+	 * @return string
+	 */
+	protected static function _get_dropin_signature(): string {
+
+		$dir = static::get_dropin_dir();
+
+		if ( '' === $dir || ! is_dir( $dir ) ) {
+			return 'none';
+		}
+
+		return (string) (int) filemtime( $dir );
+
+	}    //end _get_dropin_signature()
 
 }    //end of class
 

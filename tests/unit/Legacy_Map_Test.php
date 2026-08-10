@@ -73,8 +73,8 @@ class Legacy_Map_Test extends TestCase {
 	const SHIPPED_ALIASES = [ 'as', 'html', 'js' ];
 
 	/**
-	 * Decision 18 — every shipped tag and alias is claimed, plus the generic tag,
-	 * and nothing else. A tag the plugin never shipped is another plugin's to claim.
+	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing
+	 * else. A tag the plugin never shipped is another plugin's to claim.
 	 *
 	 * @return void
 	 */

@@ -18,9 +18,10 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  * except that what comes back is the author's original bytes rather than markup —
  * KSES is bracketed, never bypassed, and nothing transformed is ever stored.
  *
- * Contexts which carry a summary rather than a page get a strip pass instead, and
- * the plugin's tags are declared to `strip_shortcodes()` so that the summary core
- * builds for itself is stripped too.
+ * Contexts which carry a summary rather than a page get a strip pass instead. The
+ * summary WordPress builds for itself out of the post body gets one of its own, run
+ * ahead of everything else on `the_content`, because core's `strip_shortcodes()`
+ * cannot be trusted with source code — see `self::strip_for_excerpt()`.
  */
 class Shortcode_Handler {
 
@@ -51,6 +52,16 @@ class Shortcode_Handler {
 	const PRIORITY_STRIP = 2;
 
 	/**
+	 * Priority at which snippets leave the body an automatic excerpt is built from.
+	 *
+	 * Ahead of `self::PRIORITY_PROTECT`, so that the content the protect pass is
+	 * handed has no snippet left in it to shield.
+	 *
+	 * @var int
+	 */
+	const PRIORITY_STRIP_BODY = 0;
+
+	/**
 	 * Filters whose content is saved rather than displayed.
 	 *
 	 * @var array
@@ -61,17 +72,24 @@ class Shortcode_Handler {
 	];
 
 	/**
+	 * Filter WordPress builds an automatic excerpt inside.
+	 *
+	 * @var string
+	 */
+	const EXCERPT_FILTER = 'get_the_excerpt';
+
+	/**
 	 * Filters which carry a summary, where a code box makes no sense.
 	 *
 	 * Display filters, every one of them. `excerpt_save_pre` looks like it belongs
 	 * here and does not: it writes to the database, and stripping is a display
-	 * decision (I5). A manual excerpt is stored with its shortcodes intact and the
+	 * decision. A manual excerpt is stored with its shortcodes intact and the
 	 * filters below take them off on the way out.
 	 *
 	 * @var array
 	 */
 	const EXCERPT_FILTERS = [
-		'get_the_excerpt',
+		self::EXCERPT_FILTER,
 		'the_excerpt',
 		'the_excerpt_rss',
 	];
@@ -106,6 +124,8 @@ class Shortcode_Handler {
 		} else {
 			$strip_filters[] = 'comment_text';
 		}
+
+		add_filter( 'the_content', [ $this, 'strip_for_excerpt' ], static::PRIORITY_STRIP_BODY );
 
 		foreach ( $display_filters as $filter ) {
 			add_filter( $filter, [ $this, 'protect_display' ], static::PRIORITY_PROTECT );
@@ -218,13 +238,80 @@ class Shortcode_Handler {
 	}    //end strip()
 
 	/**
+	 * Method to remove snippets from the body an automatic excerpt is built from.
+	 *
+	 * `wp_trim_excerpt()` builds a summary for a post which has no excerpt of its own
+	 * by running the post body through `strip_shortcodes()`, then through the whole
+	 * `the_content` chain, then through `wp_trim_words()`. Core's strip is the wrong
+	 * tool for this plugin's tags and cannot be made into the right one, so the strip
+	 * happens here instead, on the same body, moments later, with the matcher the rest
+	 * of the plugin uses.
+	 *
+	 * What is wrong with core's strip is `do_shortcodes_in_html_tags()`, which
+	 * `strip_shortcodes()` runs first. It splits the content with `wp_html_split()`
+	 * and escapes every `[` and `]` inside anything that split reads as an element —
+	 * and an element is a `<` and everything up to the next `>`, or to the end of the
+	 * content when there is no `>` at all. Source code is full of a `<` which opens no
+	 * element: `<?php`, `<<<EOT`, `List<T`, `if ( a < b )`. The escaping then reaches
+	 * across the snippet's own closing tag, so core's pattern sees an opening tag with
+	 * no closing one, removes just that, and hands back the code and a stray `[/php]`
+	 * as prose. `wp_trim_words()` then either shows the code or, when the `<` reads as
+	 * a tag to `strip_tags()`, eats everything after it — the rest of the post's prose
+	 * with it. A `<` in the prose ahead of a snippet does the same to the opening tag.
+	 *
+	 * Running here rather than at `self::PRIORITY_RESTORE` means the code leaves the
+	 * content before anything else on `the_content` is handed it, which is what the
+	 * protect pass would otherwise have to guarantee.
+	 *
+	 * @param mixed $content Content being filtered.
+	 *
+	 * @return mixed
+	 */
+	public function strip_for_excerpt( $content ) {
+
+		if ( ! static::is_generating_excerpt() ) {
+			return $content;
+		}
+
+		return $this->strip( $content );
+
+	}    //end strip_for_excerpt()
+
+	/**
+	 * Method to check whether WordPress is building an excerpt out of a post body.
+	 *
+	 * `wp_trim_excerpt()` is hooked to `self::EXCERPT_FILTER`, so every step it takes —
+	 * the shortcode strip, the `the_content` chain, the word trim — runs with that
+	 * filter still on the stack. Core's own state therefore says which of its two jobs
+	 * `the_content` is doing, and it says so from a stack, so an excerpt taken part way
+	 * through a render answers yes only for as long as it is in flight.
+	 *
+	 * Deliberately not a flag of this plugin's own. A flag set in one filter callback
+	 * and cleared in another has no frame able to hold a `finally`: a callback which
+	 * throws between the two leaves it set, and every code box for the rest of the
+	 * request is blanked by it.
+	 *
+	 * @return bool
+	 */
+	public static function is_generating_excerpt(): bool {
+		return doing_filter( static::EXCERPT_FILTER );
+	}    //end is_generating_excerpt()
+
+	/**
 	 * Method to declare this plugin's tags to `strip_shortcodes()`.
 	 *
 	 * The tags are never handed to `add_shortcode()`, so core cannot tell they are
-	 * shortcodes and leaves them in place. `wp_trim_excerpt()` strips shortcodes out
-	 * of the post body and then runs what is left through `the_content` to build an
-	 * automatic excerpt, so without this a snippet would be rendered into a code box
-	 * and `wp_trim_words()` would take the markup off and leave the code as prose.
+	 * shortcodes and leaves them in place. Anything which summarises a post by calling
+	 * `strip_shortcodes()` for itself would otherwise be handed the code as prose, so
+	 * the tags are declared here.
+	 *
+	 * They are withheld from the one caller this plugin can do better than. While an
+	 * excerpt is being generated the call comes from `wp_trim_excerpt()`, whose strip
+	 * damages exactly the content this plugin exists to carry — `self::strip_for_excerpt()`
+	 * has the reasoning — and the same body reaches `the_content` immediately
+	 * afterwards, where the strip is done properly. Claiming the tags there as well
+	 * would not add a second chance; it would destroy the content before the good pass
+	 * ever saw it.
 	 *
 	 * @param mixed $tags Shortcode tags core is about to strip.
 	 *
@@ -232,7 +319,7 @@ class Shortcode_Handler {
 	 */
 	public function claim_stripped_tags( $tags ) {
 
-		if ( ! is_array( $tags ) ) {
+		if ( ! is_array( $tags ) || static::is_generating_excerpt() ) {
 			return $tags;
 		}
 

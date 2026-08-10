@@ -134,8 +134,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-3 — a contributor saves a script tag inside a snippet, the stored content
-	 * is byte identical to what was submitted, and saving it again changes nothing.
+	 * A contributor saves a script tag inside a snippet, the stored content is byte
+	 * identical to what was submitted, and saving it again changes nothing.
 	 *
 	 * @return void
 	 */
@@ -237,8 +237,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-3 / FR-4.5 / I5 through the block path — the door Decision 17 pushes authors
-	 * through.
+	 * Byte identical storage through the block path, which is where automatic
+	 * conversion of legacy content leaves an author's code.
 	 *
 	 * KSES reaches block attributes: `wp_filter_post_kses()` → `pre_kses` →
 	 * `wp_pre_kses_block_attributes()` → `filter_block_content()` runs `wp_kses()`
@@ -289,8 +289,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * I5 — a manual excerpt is stored exactly as it was written, and stripped only on
-	 * the way out.
+	 * A manual excerpt is stored exactly as it was written, and stripped only on the
+	 * way out.
 	 *
 	 * `excerpt_save_pre` writes to the database. Stripping there deletes the author's
 	 * bytes outright, and the Gist pipeline hooked to the same filter stored rendered

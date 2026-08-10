@@ -194,9 +194,16 @@ class Block_Converter {
 	/**
 	 * Method to convert one batch of posts.
 	 *
+	 * Every post examined lands in exactly one of `converted`, `skipped` and
+	 * `failed`, so those three add up to `processed` and can drive a progress meter.
+	 * `blocks_left_alone` counts blocks rather than posts and overlaps all three: it
+	 * is the only place a block the tool declined to rewrite inside a post which
+	 * otherwise converted is reported at all. The two units are never worth adding
+	 * together.
+	 *
 	 * @param \WP_REST_Request $request Request being served.
 	 *
-	 * @return \WP_REST_Response
+	 * @return \WP_REST_Response Post counts `processed`, `converted`, `skipped` and `failed`; `blocks_left_alone`, how many blocks in the batch the tool deliberately declined to rewrite; the `cursor` to carry on from; and `done`.
 	 */
 	public function process_batch( WP_REST_Request $request ): WP_REST_Response {
 
@@ -205,10 +212,11 @@ class Block_Converter {
 		$rows       = static::_get_batch( $cursor, $batch_size );
 
 		$counts = [
-			'processed' => 0,
-			'converted' => 0,
-			'skipped'   => 0,
-			'failed'    => 0,
+			'processed'         => 0,
+			'converted'         => 0,
+			'skipped'           => 0,
+			'failed'            => 0,
+			'blocks_left_alone' => 0,
 		];
 
 		foreach ( $rows as $row ) {
@@ -219,6 +227,13 @@ class Block_Converter {
 			$cursor  = max( $cursor, $post_id );
 
 			$result = static::convert_content( (string) $row->post_content );
+
+			/*
+			 * A block the tool chose to leave is left whatever becomes of the rest of
+			 * the post, so it is counted here, ahead of the branches below which put
+			 * the post in a bucket and skip past the rest of the loop.
+			 */
+			$counts['blocks_left_alone'] += $result['skipped'];
 
 			if ( 0 < $result['converted'] && ! static::_save_content( $post_id, $result['content'] ) ) {
 
@@ -296,6 +311,13 @@ class Block_Converter {
 	 * across a byte at a time around them, so everything else arrives on the other
 	 * side exactly as it went in.
 	 *
+	 * A delimiter which sits inside one of this plugin's shortcodes is not a block. It
+	 * is a snippet whose code is block markup — this plugin's own documentation, for
+	 * one — and it is left exactly where it was found. That is what makes running the
+	 * tool a second time safe: the shortcode the first run wrote carries the delimiter
+	 * from the block's code in its body, and rewriting that would nest a shortcode
+	 * inside another one's code and lose the snippet from the closing tag onwards.
+	 *
 	 * @param string $content Content to rewrite.
 	 *
 	 * @return array Four keys: `content`, the rewritten content; `converted`, how many blocks became shortcodes; `skipped`, how many were deliberately left alone; and `failed`, how many could not be read.
@@ -313,29 +335,24 @@ class Block_Converter {
 			return $result;
 		}
 
+		$delimiters = static::_get_delimiters( $content );
+		$shortcodes = static::_get_shortcode_ranges( $content, $delimiters );
+
+		if ( is_null( $shortcodes ) ) {
+			return $result;    //where the shortcodes are is unknown, so nothing here can be rewritten safely
+		}
+
 		$rewritten = '';
 		$copied    = 0;
-		$search    = 0;
 
-		while ( true ) {
+		foreach ( $delimiters as $delimiter ) {
 
-			$open = strpos( $content, '<!--', $search );
+			$open = $delimiter['open'];
 
-			if ( false === $open ) {
-				break;
+			if ( ! is_null( static::_get_enclosing_end( $open, $shortcodes ) ) ) {
+				continue;    //the author's code, which merely reads like a block
 			}
 
-			$delimiter = static::_read_delimiter( $content, $open );
-
-			if ( is_null( $delimiter ) ) {
-
-				$search = $open + 4;
-
-				continue;    //some other comment, or some other block
-
-			}
-
-			$search     = $delimiter['end'];
 			$attributes = static::_decode_attributes( $delimiter['attrs'] );
 
 			if ( is_null( $attributes ) ) {
@@ -370,6 +387,139 @@ class Block_Converter {
 		return $result;
 
 	}    //end convert_content()
+
+	/**
+	 * Method to find every one of this plugin's self closing block delimiters in a
+	 * piece of content.
+	 *
+	 * @param string $content Content to scan.
+	 *
+	 * @return array List of delimiters, each with `open`, `attrs` and `end`, in the order they appear.
+	 */
+	protected static function _get_delimiters( string $content ): array {
+
+		$delimiters = [];
+		$search     = 0;
+
+		while ( true ) {
+
+			$open = strpos( $content, '<!--', $search );
+
+			if ( false === $open ) {
+				break;
+			}
+
+			$delimiter = static::_read_delimiter( $content, $open );
+
+			if ( is_null( $delimiter ) ) {
+
+				$search = $open + 4;
+
+				continue;    //some other comment, or some other block
+
+			}
+
+			$delimiter['open'] = $open;
+			$delimiters[]      = $delimiter;
+			$search            = $delimiter['end'];
+
+		}
+
+		return $delimiters;
+
+	}    //end _get_delimiters()
+
+	/**
+	 * Method to find where every one of this plugin's shortcodes in a piece of content
+	 * begins and ends.
+	 *
+	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
+	 * tags are bounded exactly as `do_shortcode()` bounds them, and the same way
+	 * `Content_Protector` bounds them on the save path.
+	 *
+	 * The matches are walked one at a time rather than handed to
+	 * `preg_replace_callback()`, because where matching resumes has to be decided here.
+	 * A match which begins inside a block delimiter is that block's attribute data
+	 * rather than a shortcode — `serialize_block_attributes()` escapes `<`, `>`, `&`
+	 * and `--` in there but neither `[` nor `]` — and it can reach a long way past the
+	 * end of the delimiter. Matching therefore resumes at the end of the delimiter, so
+	 * that every real shortcode such a match spanned is still offered to the matcher
+	 * instead of being swallowed with it.
+	 *
+	 * A match which begins outside a delimiter owns every byte it covers, delimiters
+	 * included, because that is a snippet whose code is block markup and the shortcode
+	 * is the construct the author wrote.
+	 *
+	 * @param string $content    Content to scan.
+	 * @param array  $delimiters Delimiters from `self::_get_delimiters()`.
+	 *
+	 * @return array|null List of ranges, each with `open` and `end`, end exclusive; or NULL when PCRE gave up on the content.
+	 */
+	protected static function _get_shortcode_ranges( string $content, array $delimiters ): ?array {
+
+		$tags = Legacy_Map::get_tags();
+
+		if ( empty( $tags ) || ! str_contains( $content, '[' ) ) {
+			return [];
+		}
+
+		$pattern = sprintf( '/%s/', get_shortcode_regex( $tags ) );
+		$length  = strlen( $content );
+		$ranges  = [];
+		$offset  = 0;
+
+		while ( $offset <= $length && 1 === preg_match( $pattern, $content, $matches, PREG_OFFSET_CAPTURE, $offset ) ) {
+
+			$start     = (int) $matches[0][1];
+			$delimiter = static::_get_enclosing_end( $start, $delimiters );
+
+			if ( ! is_null( $delimiter ) ) {
+
+				$offset = $delimiter;
+
+				continue;    //the block's data, not content
+
+			}
+
+			$end      = $start + strlen( (string) $matches[0][0] );
+			$ranges[] = [
+				'open' => $start,
+				'end'  => $end,
+			];
+			$offset   = $end;
+
+		}
+
+		/*
+		 * `preg_match()` hands back FALSE when it hits a backtrack, recursion or JIT
+		 * stack limit, which from here is indistinguishable from having run out of
+		 * matches. This runs on the way to a post being written, so a scan that gave up
+		 * has to mean "the shortcodes are unknown" and never "there were none".
+		 */
+		return ( PREG_NO_ERROR === preg_last_error() ) ? $ranges : null;
+
+	}    //end _get_shortcode_ranges()
+
+	/**
+	 * Method to find where the range holding an offset ends.
+	 *
+	 * @param int   $offset Byte offset to place.
+	 * @param array $ranges Ranges, each with `open` and `end`, end exclusive.
+	 *
+	 * @return int|null End of the range holding the offset, or NULL when it is in none of them.
+	 */
+	protected static function _get_enclosing_end( int $offset, array $ranges ): ?int {
+
+		foreach ( $ranges as $range ) {
+
+			if ( $offset >= $range['open'] && $offset < $range['end'] ) {
+				return $range['end'];
+			}
+		}
+
+		return null;
+
+	}    //end _get_enclosing_end()
 
 	/**
 	 * Method to read one of this plugin's self closing block delimiters.
@@ -538,7 +688,14 @@ class Block_Converter {
 	}    //end block_to_shortcode()
 
 	/**
-	 * Method to count the posts which still hold one of this plugin's blocks.
+	 * Method to count the posts whose content holds the block marker.
+	 *
+	 * The count is a `LIKE` over `post_content` and knows nothing about where in the
+	 * content the marker sits, so a post whose only marker is inside a snippet's code
+	 * goes on being counted after the tool has decided to leave it alone. Reading every
+	 * matching post to tell the two apart is the work of a whole run, and this is a
+	 * progress figure, so the count stays cheap and generous: it is the number of posts
+	 * worth looking at, which is exactly what `self::_get_batch()` hands out.
 	 *
 	 * @return int
 	 */

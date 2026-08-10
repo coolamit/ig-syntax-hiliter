@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-11 — an existing install's settings survive the upgrade to v6.
+ * An existing install's settings survive the upgrade to v6.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -217,6 +217,106 @@ class Migrate_Test extends WP_UnitTestCase {
 		$this->assertFalse( get_option( Migrate::V35_OPTION_NAME, false ) );
 		$this->assertSame( '3.5.0', get_option( Base::PLUGIN_ID . '-migrated-from' ) );
 		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+
+	}
+
+	/**
+	 * That version wrote booleans, but twenty years on an install may hold the
+	 * integers or the strings some other hand put there. `0` means the setting off,
+	 * and off is the one answer this must never turn into the v6 default of on.
+	 *
+	 * @return void
+	 */
+	public function test_a_v35_install_which_stored_its_flags_as_integers_keeps_its_settings(): void {
+
+		update_option(
+			Migrate::V35_OPTION_NAME,
+			[
+				'PLAIN_TEXT'     => 0,
+				'PARSE_COMMENTS' => 1,
+				'LINE_NUMBERS'   => '0',
+			]
+		);
+
+		$this->_migrate();
+
+		$options = get_option( Base::PLUGIN_ID . '-options' );
+
+		$this->assertSame( 'no', $options['copy_code'], 'A setting the owner had switched off came out switched on.' );
+		$this->assertSame( 'yes', $options['hilite_comments'] );
+		$this->assertSame( 'no', $options['show_line_numbers'], 'A setting the owner had switched off came out switched on.' );
+
+	}
+
+	/**
+	 * A v3.5 value which cannot be read as a flag at all lands on the v6 default,
+	 * because everything downstream compares a setting against `yes` and anything
+	 * else is silently off.
+	 *
+	 * @return void
+	 */
+	public function test_a_v35_value_which_is_not_a_flag_lands_on_the_v6_default(): void {
+
+		update_option(
+			Migrate::V35_OPTION_NAME,
+			[
+				'PLAIN_TEXT'     => 'perhaps',
+				'PARSE_COMMENTS' => [ 'yes' ],
+			]
+		);
+
+		$this->_migrate();
+
+		$options = get_option( Base::PLUGIN_ID . '-options' );
+
+		$this->assertSame( 'yes', $options['copy_code'] );
+		$this->assertSame( 'yes', $options['hilite_comments'] );
+
+	}
+
+	/**
+	 * A stored version which is this one spelled some other way normalises to this
+	 * one, so the migration correctly does nothing — and used to leave that spelling
+	 * in the option for good.
+	 *
+	 * @return void
+	 */
+	public function test_a_non_canonical_stored_version_is_rewritten_to_the_running_one(): void {
+
+		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
+		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
+
+		$this->_migrate();
+
+		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+
+		//the install was already up to date, so nothing was migrated
+		$this->assertSame( static::V6_DEFAULTS, get_option( Base::PLUGIN_ID . '-options' ) );
+		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
+
+	}
+
+	/**
+	 * The guard on the test above: a version from the future is left exactly as it
+	 * is, spelling and all. This version does not know what a later one means by
+	 * what it stored, and rewriting it would downgrade the install's record of
+	 * itself.
+	 *
+	 * @return void
+	 */
+	public function test_a_version_from_the_future_is_left_alone(): void {
+
+		foreach ( [ '7.0.0', '7.0.0-rc1', '7.1' ] as $version ) {
+
+			update_option( Base::PLUGIN_ID . '-version', $version );
+			update_option( Base::PLUGIN_ID . '-options', [ 'toolbar' => 'no' ] );
+
+			$this->_migrate();
+
+			$this->assertSame( $version, get_option( Base::PLUGIN_ID . '-version' ) );
+			$this->assertSame( [ 'toolbar' => 'no' ], get_option( Base::PLUGIN_ID . '-options' ) );
+
+		}
 
 	}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-10 — a URL inside code is text, not a link.
+ * A URL inside code is text, not a link.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -91,7 +91,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-10 — a URL in a post stays plain text even when a theme or plugin puts
+	 * A URL in a post stays plain text even when a theme or plugin puts
 	 * `make_clickable` on the content, while prose around the snippet is still
 	 * linked, so this is measuring the snippet and not a dead filter chain.
 	 *
@@ -115,7 +115,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-10 — and in a comment, where core hangs `make_clickable` by default.
+	 * The same holds in a comment, where core hangs `make_clickable` by default.
 	 *
 	 * @return void
 	 */
@@ -134,7 +134,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-10 — the Autolinker component is not bundled and is never loaded.
+	 * The Autolinker component is not bundled and is never loaded.
 	 *
 	 * @return void
 	 */

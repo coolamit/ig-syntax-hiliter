@@ -70,23 +70,62 @@ trait Asset_Test_Helpers {
 	}
 
 	/**
-	 * Method to run the asset manager's footer pass.
+	 * Method to list the `wp_footer` priorities the asset manager is registered at.
+	 *
+	 * Read off the hook rather than asserted against a constant, so that this says
+	 * "whenever the manager decides" and not "at the priorities it happens to use
+	 * today".
+	 *
+	 * @return array Numerically indexed list of priorities, in the order they run.
+	 */
+	protected function _manager_footer_priorities(): array {
+
+		$manager    = Asset_Manager::get_instance();
+		$priorities = [];
+
+		foreach ( (array) ( $GLOBALS['wp_filter']['wp_footer']->callbacks ?? [] ) as $priority => $callbacks ) {
+
+			foreach ( $callbacks as $callback ) {
+
+				if ( ! is_array( $callback['function'] ?? null ) || ( $callback['function'][0] ?? null ) !== $manager ) {
+					continue;
+				}
+
+				$priorities[] = (int) $priority;
+
+			}
+		}
+
+		return $priorities;
+
+	}
+
+	/**
+	 * Method to run the asset manager's footer passes.
 	 *
 	 * Everything else on `wp_footer` is taken off first: the WordPress install under
 	 * test brings its own callbacks, which print markup and raise deprecations that
 	 * have nothing to do with this plugin. The assertion above them is what keeps
 	 * this honest — the manager really is wired to the hook it is being run through.
 	 *
+	 * Every priority the manager sits at goes back on, not just the first. It decides
+	 * more than once during a footer, and a helper which restored one of those passes
+	 * would quietly stop the tests using it from seeing what the other one does.
+	 *
 	 * @return void
 	 */
 	protected function _fire_footer(): void {
 
-		$manager = Asset_Manager::get_instance();
+		$manager    = Asset_Manager::get_instance();
+		$priorities = $this->_manager_footer_priorities();
 
-		$this->assertSame( 1, has_action( 'wp_footer', [ $manager, 'enqueue' ] ), 'The asset manager decides at wp_footer priority 1.' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
+		$this->assertNotEmpty( $priorities, 'The asset manager decides during wp_footer.' );
 
 		remove_all_actions( 'wp_footer' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-		add_action( 'wp_footer', [ $manager, 'enqueue' ], 1 );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
+
+		foreach ( $priorities as $priority ) {
+			add_action( 'wp_footer', [ $manager, 'enqueue' ], $priority );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
+		}
 
 		do_action( 'wp_footer' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
 

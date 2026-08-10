@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-1 — a post written any time since 2004 renders unmangled.
+ * A post written any time since 2004 renders unmangled.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -15,7 +15,7 @@ use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
 /**
- * Renders a fixture post carrying the payload AC-1 names — a script tag, entities,
+ * Renders a fixture post carrying the whole legacy payload — a script tag, entities,
  * PHP tags, mixed HTML/JS — through the display chain, and checks the code comes
  * back byte for byte, escaped exactly once.
  *
@@ -42,7 +42,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	 * Method to build the code every snippet in the fixture carries.
 	 *
 	 * One payload for every snippet, so a single expected string covers the whole
-	 * fixture. It holds everything AC-1 names: a script tag, HTML entities, PHP open
+	 * fixture. It holds the whole legacy surface: a script tag, HTML entities, PHP open
 	 * and close tags, mixed HTML/JS, both kinds of quote, a bare URL, and a line
 	 * which looks like another plugin's shortcode.
 	 *
@@ -219,7 +219,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — the legacy surface renders in a single post view, escaped once.
+	 * The legacy surface renders in a single post view, escaped once.
 	 *
 	 * @return void
 	 */
@@ -239,7 +239,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — and an archive loop is wired to the same pipeline.
+	 * An archive loop is wired to the same pipeline.
 	 *
 	 * @return void
 	 */
@@ -274,8 +274,8 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — and so is the RSS feed, where a snippet is code rather than markup the
-	 * reader executes.
+	 * The RSS feed is wired to it too, where a snippet is code rather than markup
+	 * the reader executes.
 	 *
 	 * @return void
 	 */
@@ -301,7 +301,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — the attribute grammar survives the display chain.
+	 * The attribute grammar survives the display chain.
 	 *
 	 * @return void
 	 */
@@ -330,7 +330,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — a manual excerpt carries no code, and no leftover shortcode either.
+	 * A manual excerpt carries no code, and no leftover shortcode either.
 	 *
 	 * @return void
 	 */
@@ -347,7 +347,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — an automatic excerpt carries no code either.
+	 * An automatic excerpt carries no code either.
 	 *
 	 * @return void
 	 */

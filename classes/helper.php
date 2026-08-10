@@ -145,26 +145,6 @@ class Helper {
 
 	}
 
-	/**
-	 * This function accepts a boolean value and converts it into "yes" if value
-	 * is TRUE else "no"
-	 *
-	 * @param mixed $value Value to convert. Anything which is not a bool is returned untouched.
-	 *
-	 * @return mixed
-	 */
-	public static function bool_to_yesno( $value ) {
-
-		if ( ! is_bool( $value ) ) {
-			return $value;
-		}
-
-		$value = ( true === $value ) ? 'yes' : 'no';
-
-		return $value;
-
-	}
-
 }    //end of class
 
 //EOF

@@ -180,7 +180,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * I3 — one renderer. The block and the shortcode reach it through separate
+	 * There is one renderer. The block and the shortcode reach it through separate
 	 * attribute mappers, so the two are free to drift apart without anything
 	 * noticing. This is what notices.
 	 *
@@ -218,7 +218,8 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-2 through the block path — the whole point of the release.
+	 * The production bug this pipeline exists for, through the block path — the
+	 * whole point of the release.
 	 *
 	 * `do_blocks()` hands the callback's markup straight back into a filter chain
 	 * which has not run yet, so without the protector every priority 10 filter on
@@ -265,9 +266,9 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * I1 — one escape point. The block's code reaches the renderer as JSON out of
-	 * the delimiter rather than as shortcode content, which is the path along which
-	 * a second escape could be added without anyone noticing at the renderer.
+	 * There is one escape point. The block's code reaches the renderer as JSON out
+	 * of the delimiter rather than as shortcode content, which is the path along
+	 * which a second escape could be added without anyone noticing at the renderer.
 	 *
 	 * @return void
 	 */
@@ -291,7 +292,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-8 — a page whose only snippet is a block still loads the highlighter.
+	 * A page whose only snippet is a block still loads the highlighter.
 	 *
 	 * The signal is raised by the renderer, so a callback which ever built its own
 	 * markup instead would leave a block only page with unhighlighted, unstyled
@@ -326,8 +327,9 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 through the block path — the defect which was found and fixed for
-	 * shortcodes, coming back through a door nobody has walked through yet.
+	 * Code leaking into an excerpt through the block path — the defect which was
+	 * found and fixed for shortcodes, coming back through a door nobody has walked
+	 * through yet.
 	 *
 	 * `wp_trim_excerpt()` unhooks `do_blocks` and calls `excerpt_remove_blocks()`,
 	 * which renders the blocks on its allow list itself. This block is not on that
@@ -439,7 +441,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * I4 — a language the registry cannot resolve degrades.
+	 * A language the registry cannot resolve degrades.
 	 *
 	 * Nothing filters a block attribute on its way in: the shortcode path drops
 	 * what it does not recognise through `shortcode_atts()`, while whatever JSON is

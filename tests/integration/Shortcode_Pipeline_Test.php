@@ -93,8 +93,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * FR-4.1 / FR-4.2 / FR-4.5 — the plugin's hooks sit where they are supposed to
-	 * sit, on both the display filters and the save filters.
+	 * The plugin's hooks sit where they are supposed to sit, on both the display
+	 * filters and the save filters.
 	 *
 	 * @return void
 	 */
@@ -117,7 +117,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 			Shortcode_Handler::EXCERPT_FILTERS
 		);
 
-		// I5 — a filter which writes to the database has no business on a strip list.
+		// A filter which writes to the database has no business on a strip list.
 		$this->assertNotContains( 'excerpt_save_pre', Shortcode_Handler::EXCERPT_FILTERS );
 		$this->assertFalse( has_filter( 'excerpt_save_pre', [ $handler, 'strip' ] ) );
 
@@ -142,9 +142,9 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 18 — a tag the plugin never shipped is not the plugin's. It is
-	 * neither registered nor rendered nor stripped. `[sourcecode]` always is,
-	 * whatever language it names, and an unresolvable one degrades.
+	 * A tag the plugin never shipped is not the plugin's. It is neither registered
+	 * nor rendered nor stripped. `[sourcecode]` always is, whatever language it
+	 * names, and an unresolvable one degrades.
 	 *
 	 * @return void
 	 */
@@ -183,7 +183,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * I2 — while the filter chain runs, the content holds no code.
+	 * While the filter chain runs, the content holds no code.
 	 *
 	 * @return void
 	 */
@@ -227,8 +227,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-2 — the production bug this pipeline exists for: a script tag inside a code
-	 * box, with a filter at priority 10 that strips scripts and autolinks URLs.
+	 * The production bug this pipeline exists for: a script tag inside a code box,
+	 * with a filter at priority 10 that strips scripts and autolinks URLs.
 	 *
 	 * @return void
 	 */
@@ -270,7 +270,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The seam M3's block render callback needs.
+	 * The seam the block's render callback needs.
 	 *
 	 * `do_blocks()` runs at `the_content` priority 9, so anything a render callback
 	 * emits is exposed to the filters at 10. A callback which asks whether a

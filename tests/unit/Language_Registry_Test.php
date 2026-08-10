@@ -218,6 +218,34 @@ class Language_Registry_Test extends TestCase {
 	}
 
 	/**
+	 * A drop-in id is held to the characters the highlighter can carry.
+	 *
+	 * `#` and `+` are the tempting ones — a site owner shipping a grammar of their
+	 * own is quite likely to name the file after the language rather than after
+	 * Prism's id for it. Neither survives the round trip: the class attribute the
+	 * renderer writes is read back with `language-([\w-]+)`, which stops at both, and
+	 * a `#` in the file name truncates the script URL at a fragment on the way there.
+	 * A drop-in accepted under such a name is one which can never load, so it is not
+	 * accepted.
+	 *
+	 * @return void
+	 */
+	public function test_dropin_ids_the_highlighter_could_not_use_are_rejected(): void {
+
+		$dir = $this->make_temp_dir();
+
+		file_put_contents( $dir . '/prism-c#.min.js', '// c sharp' );
+		file_put_contents( $dir . '/prism-c++.min.js', '// c plus plus' );
+		file_put_contents( $dir . '/prism-my_lang-2.min.js', '// perfectly usable' );
+
+		$registry = Language_Registry::scan_dropins( $dir );
+
+		$this->assertSame( [ 'my_lang-2' ], array_keys( $registry['languages'] ) );
+		$this->assertSame( 'prism-my_lang-2.min.js', $registry['languages']['my_lang-2']['file'] );
+
+	}
+
+	/**
 	 * A drop-in directory which does not exist is not an error, and is not created.
 	 *
 	 * @return void
@@ -300,8 +328,8 @@ class Language_Registry_Test extends TestCase {
 	}
 
 	/**
-	 * FR-2.4 — resolution is case insensitive, whitespace tolerant and alias aware,
-	 * and anything it cannot confirm resolves to nothing at all. An alias pointing
+	 * Resolution is case insensitive, whitespace tolerant and alias aware, and
+	 * anything it cannot confirm resolves to nothing at all. An alias pointing
 	 * at a language which is not there is one of those, having been discarded when
 	 * the registry was built.
 	 *
@@ -388,7 +416,8 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( 'bash', $registry->resolve( 'shell' ) );
 
-		// I4 depends on "none" being a convention of the highlighter, not a language it can load.
+		// The unknown language fallback depends on "none" being a convention of the
+		// highlighter, not a language it can load.
 		$this->assertFalse( $registry->has( Language_Registry::NO_LANGUAGE ) );
 
 		// The core file is not a language either.

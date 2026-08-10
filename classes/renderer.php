@@ -128,9 +128,10 @@ class Renderer {
 	 * Method to escape text so that a reader is shown the bytes an author typed.
 	 *
 	 * This is the definition of the plugin's escaping, and `render_snippet()` is the
-	 * only thing which applies it (I1). It differs from `esc_html()` and `esc_attr()`
+	 * only thing which applies it. It differs from `esc_html()` and `esc_attr()`
 	 * in one respect: it encodes an ampersand that already begins an entity as well
-	 * as one that does not.
+	 * as one that does not. It also never hands back an empty string for text which
+	 * was not empty, which the comment on the second pass below has the reasoning for.
 	 *
 	 * That difference is the whole point. A highlighter shows source exactly as it
 	 * was written, and source routinely contains entities as literal text — `&amp;`
@@ -151,7 +152,30 @@ class Renderer {
 		// `esc_html()` is `_wp_specialchars( $text, ENT_QUOTES, false, false )`, so this is
 		// that call with double encoding turned on and nothing else changed — the site's
 		// own charset still decides how the bytes are read.
-		return _wp_specialchars( $text, ENT_QUOTES, false, true );
+		$escaped = _wp_specialchars( $text, ENT_QUOTES, false, true );
+
+		if ( '' !== $escaped || '' === $text ) {
+			return $escaped;
+		}
+
+		/*
+		 * Nothing else empties a string this function was given something to escape, and
+		 * an empty code box is the one failure a highlighter must never have. It happens
+		 * when a byte cannot be read in the site's charset: `htmlspecialchars()` returns
+		 * the empty string for text invalid in the target charset unless it is told to
+		 * substitute, and `_wp_specialchars()` cannot be told — it overwrites any quote
+		 * style it does not recognise with ENT_QUOTES, so ENT_SUBSTITUTE never reaches
+		 * the call it would have to reach. So the failure is caught instead, and the
+		 * second pass substitutes U+FFFD for the unreadable bytes and keeps the rest.
+		 *
+		 * Reached only once the site's own charset has already refused the text, which
+		 * is why naming a charset here cannot change how any renderable snippet is read.
+		 * A latin1 charset reads every byte, so this is the UTF-8 site whose column is
+		 * still latin1 — the install that has been carrying its content since before
+		 * WordPress 4.2, which is exactly the content this plugin exists to keep
+		 * rendering.
+		 */
+		return htmlspecialchars( $text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', true );
 
 	}    //end escape_verbatim()
 
@@ -252,10 +276,12 @@ class Renderer {
 	/**
 	 * Method to build an HTML attribute string.
 	 *
-	 * `data-file` carries a label the author typed and the bundled themes paint it
-	 * with `attr()`, so it is escaped the same way the code is: an entity in a file
-	 * name is text, not an entity. Every other value here is built by this class out
-	 * of digits and a language id, which the escaping leaves alone either way.
+	 * `data-file` carries a label the author typed, and the label is painted out of
+	 * this attribute — by `assets/src/scss/frontend-chrome.scss` with `attr()`, and
+	 * by the toolbar button in `assets/src/js/ig-prism-setup.js` with `textContent`
+	 * — so it is escaped the same way the code is: an entity in a file name is text,
+	 * not an entity. Every other value here is built by this class out of digits and a
+	 * language id, which the escaping leaves alone either way.
 	 *
 	 * @param array $attributes Attribute name to value.
 	 *

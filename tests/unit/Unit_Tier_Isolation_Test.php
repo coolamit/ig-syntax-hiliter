@@ -1,6 +1,6 @@
 <?php
 /**
- * NFR-6 — the unit tier runs with no WordPress installation.
+ * The unit tier runs with no WordPress installation.
  *
  * @package iG_Syntax_Hiliter
  */

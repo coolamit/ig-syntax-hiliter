@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-11 — deleting the plugin leaves nothing of it in the options table.
+ * Deleting the plugin leaves nothing of it in the options table.
  *
  * @package iG_Syntax_Hiliter
  */

@@ -143,7 +143,7 @@ class Admin extends Base {
 			'toolbar'              => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show the toolbar', 'igsyntax-hiliter' ),
-				'description' => __( 'Puts a small toolbar above each code box, which carries the language name, the file label and the copy button.', 'igsyntax-hiliter' ),
+				'description' => __( 'Puts a small toolbar above each code box, which carries the file label and the copy button.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'copy_code'            => [
@@ -269,7 +269,10 @@ class Admin extends Base {
 	 */
 	public static function validate_option_value( $value, $request ) {
 
-		$name   = ( $request instanceof WP_REST_Request ) ? sanitize_key( (string) $request['name'] ) : '';
+		//the name is whatever was sent, which is not necessarily a string: casting an array
+		//raises a warning, and a warning printed ahead of the response body is what the
+		//caller reads instead of the 400 this returns
+		$name   = ( $request instanceof WP_REST_Request && is_scalar( $request['name'] ) ) ? sanitize_key( (string) $request['name'] ) : '';
 		$schema = static::get_settings_schema();
 
 		if ( ! isset( $schema[ $name ] ) ) {
@@ -374,8 +377,15 @@ class Admin extends Base {
 			$value = $options[ $name ] ?? '';
 			$value = ( is_scalar( $value ) ) ? (string) $value : '';
 
+			/*
+			 * A stored value the setting does not offer falls back to that setting's own
+			 * default, and not to its first choice. Every consumer of a yes/no setting
+			 * compares against `yes`, so an unrecognised value behaves as off; falling
+			 * back to the first choice would draw the control as on, and a control which
+			 * already looks right is one nobody puts right.
+			 */
 			$setting['name']  = $name;
-			$setting['value'] = ( isset( $setting['choices'][ $value ] ) ) ? $value : (string) array_key_first( $setting['choices'] );
+			$setting['value'] = ( isset( $setting['choices'][ $value ] ) ) ? $value : $this->_option->get_default( $name );
 
 			$settings[ $name ] = $setting;
 
@@ -435,9 +445,9 @@ class Admin extends Base {
 		$handle  = sprintf( '%s-admin', static::PLUGIN_ID );
 		$version = (string) IG_SYNTAX_HILITER_VERSION;
 
-		wp_enqueue_style( $handle, Helper::get_asset_url( 'css/admin.css' ), [], $version );
+		wp_enqueue_style( $handle, Helper::get_asset_url( 'build/css/admin.css' ), [], $version );
 
-		wp_enqueue_script( $handle, Helper::get_asset_url( 'js/admin.js' ), [], $version, true );
+		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [], $version, true );
 
 		wp_add_inline_script(
 			$handle,
@@ -462,19 +472,42 @@ class Admin extends Base {
 			'restUrl' => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'i18n'    => [
-				'saving'        => __( 'Saving…', 'igsyntax-hiliter' ),
-				'saved'         => __( 'Setting saved.', 'igsyntax-hiliter' ),
-				'saveFailed'    => __( 'That setting could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
-				'reloadNeeded'  => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
-				'revertConfirm' => __(
+				'saving'            => __( 'Saving…', 'igsyntax-hiliter' ),
+				'saved'             => __( 'Setting saved.', 'igsyntax-hiliter' ),
+				'saveFailed'        => __( 'That setting could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
+				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
+				'revertConfirm'     => __(
 					"This will convert every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode, in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
 					'igsyntax-hiliter'
 				),
-				'revertNone'    => __( 'There are no blocks to convert.', 'igsyntax-hiliter' ),
-				'revertRunning' => __( 'Converting… do not close this page.', 'igsyntax-hiliter' ),
-				/* translators: 1: number of posts converted, 2: number of posts skipped. */
-				'revertDone'    => __( 'Finished. %1$d converted, %2$d left alone.', 'igsyntax-hiliter' ),
-				'revertFailed'  => __( 'The conversion stopped because a request failed. Nothing already converted has been lost — run it again to carry on.', 'igsyntax-hiliter' ),
+				'revertNone'        => __( 'There are no blocks to convert.', 'igsyntax-hiliter' ),
+				'revertRunning'     => __( 'Converting… do not close this page.', 'igsyntax-hiliter' ),
+
+				/*
+				 * The next five strings are the closing report between them. The first
+				 * is always shown; each of the next four is appended only when what it
+				 * reports happened, so a clean run reads as one short sentence. Each
+				 * count names what it counts and the block count says where those blocks
+				 * sit, because a block is reported inside a post which one of the post
+				 * counts has already counted: the two units overlap and adding them
+				 * together counts the same snippet twice. The two clauses naming code
+				 * which vanishes on deactivation say so, and say what to do about it,
+				 * because this report is read by somebody on their way out.
+				 *
+				 * The counts are only known in the browser, so they are written in by
+				 * JavaScript and `_n()` cannot be reached. Every string is therefore
+				 * worded to read the same whether its count is one or many.
+				 */
+				/* translators: %d: number of posts converted. */
+				'revertDone'        => __( 'Finished. Posts converted: %d.', 'igsyntax-hiliter' ),
+				/* translators: %d: number of posts in which nothing was rewritten. */
+				'revertDoneLeft'    => __( 'Posts left unchanged: %d — such a post holds no block of this plugin\'s, or holds only blocks that were left alone.', 'igsyntax-hiliter' ),
+				/* translators: %d: number of blocks the tool deliberately declined to rewrite. */
+				'revertDoneBlocks'  => __( 'Blocks left alone: %d — that is a count of blocks, not posts, and each one sits in a post already counted above. Such a block holds the shortcode\'s own closing tag in its code, so writing it as a shortcode would have cut the code short. It stays a block, and stays invisible once this plugin is deactivated, so deal with it by hand before you deactivate.', 'igsyntax-hiliter' ),
+				/* translators: %d: number of posts the tool could not convert. */
+				'revertDoneFailed'  => __( 'Posts that could not be converted: %d — each still holds a block, which disappears from the post once this plugin is deactivated.', 'igsyntax-hiliter' ),
+				'revertDonePartial' => __( 'Some counts were missing from the answer, so this report is short of something. Check your posts for snippets which are still blocks before you deactivate.', 'igsyntax-hiliter' ),
+				'revertFailed'      => __( 'The conversion stopped because a request failed. Nothing already converted has been lost — run it again to carry on.', 'igsyntax-hiliter' ),
 			],
 		];
 

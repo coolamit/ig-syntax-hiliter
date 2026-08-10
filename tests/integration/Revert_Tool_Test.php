@@ -144,11 +144,12 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	protected function _run_to_completion(): array {
 
 		$totals = [
-			'processed' => 0,
-			'converted' => 0,
-			'skipped'   => 0,
-			'failed'    => 0,
-			'requests'  => 0,
+			'processed'         => 0,
+			'converted'         => 0,
+			'skipped'           => 0,
+			'failed'            => 0,
+			'blocks_left_alone' => 0,
+			'requests'          => 0,
 		];
 
 		$cursor = 0;
@@ -159,7 +160,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 			++$totals['requests'];
 
-			foreach ( [ 'processed', 'converted', 'skipped', 'failed' ] as $key ) {
+			foreach ( [ 'processed', 'converted', 'skipped', 'failed', 'blocks_left_alone' ] as $key ) {
 				$totals[ $key ] += (int) $batch[ $key ];
 			}
 
@@ -174,8 +175,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 20 — the rewrite is surgical. The block delimiter becomes a shortcode
-	 * and every other byte of the post is exactly where it was.
+	 * The rewrite is surgical. The block delimiter becomes a shortcode and every
+	 * other byte of the post is exactly where it was.
 	 *
 	 * @return void
 	 */
@@ -250,8 +251,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 20 — every block attribute finds its shortcode attribute, and one the
-	 * block never set stays unset so that the site default goes on deciding.
+	 * Every block attribute finds its shortcode attribute, and one the block never
+	 * set stays unset so that the site default goes on deciding.
 	 *
 	 * @return void
 	 */
@@ -341,7 +342,56 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $totals['converted'] );
 		$this->assertSame( 1, $totals['skipped'] );
+		$this->assertSame( 1, $totals['blocks_left_alone'], 'The post was left alone because a block of ours was, and only the block count says so.' );
 		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A post can hold both kinds of block at once, and the post level buckets cannot
+	 * say so: the post converted, so that is the bucket it lands in, and the block
+	 * left behind is invisible in every one of them. The batch has to carry the block
+	 * count as well, or the site owner is told the post is done while a snippet in it
+	 * is still a block.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_left_alone_is_reported_even_when_its_post_converted(): void {
+
+		$this->_become_administrator();
+
+		$left_alone = $this->_block(
+			[
+				'code'     => 'echo "[/sourcecode]";',
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$this->_block(
+						[
+							'code'     => self::CODE,
+							'language' => 'php',
+						]
+					) . "\n\n" . $left_alone
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'], 'The post converted, so that is the bucket it belongs in.' );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'], 'Nothing here is a post left alone or a post that failed.' );
+		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left behind is reported nowhere else.' );
+
+		$content = get_post_field( 'post_content', $post_id, 'raw' );
+
+		$this->assertSame(
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]\n\n%s", self::CODE, $left_alone ),
+			$content
+		);
 
 	}
 
@@ -351,41 +401,55 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * committed, and is far past the size at which the tempered pattern this replaced
 	 * exhausted the PCRE JIT stack and quietly converted nothing.
 	 *
-	 * The rewrite is exercised on its own rather than over a post, because a post this
-	 * size cannot be got into the database while `Content_Protector` carries a pattern
-	 * of the same shape on `content_save_pre`.
+	 * The code carries `[`, so the scan which finds where this plugin's shortcodes sit
+	 * crosses the whole of it as well, and that scan is a pattern. A pattern which gave
+	 * up here would take the conversion with it, because a rewrite that cannot tell a
+	 * block from a snippet does nothing at all.
+	 *
+	 * The whole route is exercised, post and all. A snippet this size has to reach the
+	 * database as a block, come back out, and go in again as a shortcode.
 	 *
 	 * @return void
 	 */
 	public function test_a_snippet_far_too_big_for_a_pattern_is_converted(): void {
 
+		$this->_become_administrator();
+
 		$code = '';
 
-		for ( $line = 0; $line < 3000; $line++ ) {
+		for ( $line = 0; $line < 5000; $line++ ) {
 			$code .= sprintf( "\$data[%d] = [ 'name' => \"row %d\", 'ok' => true ];\n", $line, $line );
 		}
 
 		$this->assertGreaterThan(
-			100 * KB_IN_BYTES,
+			200 * KB_IN_BYTES,
 			strlen( $code ),
 			'The fixture is not big enough to be the test it says it is.'
 		);
 
-		$result = Block_Converter::convert_content(
-			"Before.\n\n" . $this->_block(
-				[
-					'code'     => $code,
-					'language' => 'php',
-				]
-			) . "\n\nAfter."
+		$content = "Before.\n\n" . $this->_block(
+			[
+				'code'     => $code,
+				'language' => 'php',
+			]
+		) . "\n\nAfter.";
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$this->assertSame(
+			$content,
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The fixture did not reach the database whole, so what follows would prove nothing.'
 		);
 
-		$this->assertSame( 1, $result['converted'] );
-		$this->assertSame( 0, $result['skipped'] + $result['failed'] );
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] );
 
 		$this->assertSame(
 			sprintf( "Before.\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]\n\nAfter.", $code ),
-			$result['content']
+			get_post_field( 'post_content', $post_id, 'raw' )
 		);
 
 	}
@@ -421,6 +485,307 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->assertSame(
 			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $code ),
 			$result['content']
+		);
+
+	}
+
+	/**
+	 * The shortcode the tool writes carries the block's code verbatim, so a snippet
+	 * about blocks still holds a delimiter afterwards and the post still matches the
+	 * marker the tool searches on. The site owner is therefore offered the button
+	 * again, and the second run has to leave the snippet exactly where the first run
+	 * put it: rewriting a delimiter inside a shortcode nests one shortcode in another
+	 * one's code, and everything past the inner closing tag stops being the snippet.
+	 *
+	 * @return void
+	 */
+	public function test_a_second_run_leaves_the_snippet_the_first_run_wrote_alone(): void {
+
+		$this->_become_administrator();
+
+		$code = sprintf(
+			"function f() {\n\treturn { a: 1 };\n}\n// <!-- wp:%s {\"code\":\"gotcha\"} /--> is in a comment\n",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$this->_block(
+						[
+							'code'     => $code,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		$first    = $this->_run_to_completion();
+		$expected = sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $code );
+
+		$this->assertSame( 1, $first['converted'] );
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+		$second = $this->_run_to_completion();
+
+		$this->assertSame( 1, $second['processed'], 'The marker is still in the content, so the post is still handed out.' );
+		$this->assertSame( 0, $second['converted'] + $second['failed'] );
+		$this->assertSame( 1, $second['skipped'], 'Nothing in the post was rewritten, so the post was left alone.' );
+		$this->assertSame( 0, $second['blocks_left_alone'], 'What is left is a snippet, not a block, so no block was left alone.' );
+
+		$this->assertSame(
+			$expected,
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The second run rewrote the snippet the first run wrote.'
+		);
+
+		$this->assertSame(
+			1,
+			Block_Converter::count_remaining(),
+			'The count is a LIKE over the content and the marker is still in it, so the post goes on being counted.'
+		);
+
+	}
+
+	/**
+	 * The scan which tells a snippet from a block is a pattern, and PCRE reports having
+	 * given up on the content in a way that is indistinguishable from having found
+	 * nothing. Read as "there are no shortcodes here", every delimiter inside one would
+	 * be rewritten — which is the very damage this scan exists to prevent, on the
+	 * content most likely to provoke it. So a scan that gave up rewrites nothing.
+	 *
+	 * @return void
+	 */
+	public function test_a_scan_pcre_gave_up_on_rewrites_nothing(): void {
+
+		$content = sprintf(
+			"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]\n\n",
+			Block_Converter::BLOCK_NAME
+		) . $this->_block(
+			[
+				'code'     => self::CODE,
+				'language' => 'php',
+			]
+		);
+
+		$limit = (string) ini_get( 'pcre.backtrack_limit' );
+
+		ini_set( 'pcre.backtrack_limit', '1' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Making PCRE give up on purpose is the only way to reach the branch under test. The value is put back below.
+
+		$result = Block_Converter::convert_content( $content );
+
+		ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the value saved above.
+
+		$this->assertNotSame( PREG_NO_ERROR, preg_last_error(), 'PCRE did not give up, so this is not the test it says it is.' );
+		$this->assertSame( 0, $result['converted'] + $result['skipped'] + $result['failed'] );
+		$this->assertSame( $content, $result['content'], 'A scan that gave up rewrote the content anyway.' );
+
+	}
+
+	/**
+	 * A delimiter inside a snippet is the author's text and a delimiter beside it is a
+	 * block, and the tool has to tell the two apart in the same post. Leaving the block
+	 * behind would be the fix for the case above overreaching.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_beside_a_snippet_which_quotes_one_still_converts(): void {
+
+		$this->_become_administrator();
+
+		$quoted = sprintf(
+			"[php]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/php]",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$quoted . "\n\n" . $this->_block(
+						[
+							'code'     => self::CODE,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'], 'The block beside the snippet is a block and had to convert.' );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] + $totals['blocks_left_alone'] );
+
+		$this->assertSame(
+			sprintf( "%s\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $quoted, self::CODE ),
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The snippet quoting a delimiter is not byte identical to what went in.'
+		);
+
+	}
+
+	/**
+	 * `blocks_left_alone` counts blocks and the buckets count posts, so a post holding
+	 * two blocks the tool declined is one of the first and two of the second. Nothing
+	 * else in this file tells a count of blocks apart from a count of posts that had
+	 * one.
+	 *
+	 * @return void
+	 */
+	public function test_two_blocks_left_alone_in_one_post_are_one_post_and_two_blocks(): void {
+
+		$this->_become_administrator();
+
+		$content = $this->_block(
+			[
+				'code'     => 'echo "[/sourcecode] one";',
+				'language' => 'php',
+			]
+		) . "\n\n" . $this->_block(
+			[
+				'code'     => 'echo "[/sourcecode] two";',
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 0, $totals['converted'] + $totals['failed'] );
+		$this->assertSame( 1, $totals['skipped'], 'The unit here is posts, and there is one post.' );
+		$this->assertSame( 2, $totals['blocks_left_alone'], 'The unit here is blocks, and there are two.' );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A post can hold a delimiter nothing can read and a block the tool declined at
+	 * once. The post is reported as a failure, which is the worse of the two, and the
+	 * block count still has to carry the block that was left.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_left_alone_is_reported_beside_a_delimiter_that_cannot_be_read(): void {
+
+		$this->_become_administrator();
+
+		$content = sprintf( '<!-- wp:%s {"code": "echo 1;",} /-->', Block_Converter::BLOCK_NAME ) . "\n\n" . $this->_block(
+			[
+				'code'     => 'echo "[/sourcecode]";',
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['failed'], 'A delimiter nothing can read is what the post is reported as.' );
+		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
+		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left alone is reported whichever bucket the post lands in.' );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A post which converted and had a block declined, whose write then failed, is
+	 * reported as a failure — and the block that was left is still a block that was
+	 * left, because the post kept every byte it had.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_left_alone_is_reported_when_the_write_fails(): void {
+
+		$this->_become_administrator();
+
+		$content = $this->_block(
+			[
+				'code'     => self::CODE,
+				'language' => 'php',
+			]
+		) . "\n\n" . $this->_block(
+			[
+				'code'     => 'echo "[/sourcecode]";',
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		add_filter( 'wp_insert_post_empty_content', '__return_true' );
+
+		$totals = $this->_run_to_completion();
+
+		remove_filter( 'wp_insert_post_empty_content', '__return_true' );
+
+		$this->assertSame( 1, $totals['failed'], 'The rewrite could not be written, so that is the bucket the post lands in.' );
+		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
+		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left alone is reported whichever bucket the post lands in.' );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ), 'The write failed, so the post is exactly as it was.' );
+
+	}
+
+	/**
+	 * Every post examined lands in exactly one bucket, so the three of them add up to
+	 * what was processed. A progress meter is driven off that, and a post which fell
+	 * through every branch or was counted twice would show up as a bar that never
+	 * arrives or one that overshoots.
+	 *
+	 * @return void
+	 */
+	public function test_the_post_buckets_add_up_to_what_was_processed(): void {
+
+		$this->_become_administrator();
+
+		$this->_batch_size = 20;
+
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$this->_block(
+						[
+							'code'     => self::CODE,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$this->_block(
+						[
+							'code'     => 'echo "[/sourcecode]";',
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					sprintf( '<!-- wp:%s {"code": "echo 1;",} /-->', Block_Converter::BLOCK_NAME )
+				),
+			]
+		);
+
+		$batch = $this->_process( 0 );
+
+		$this->assertSame( 3, $batch['processed'] );
+		$this->assertSame( 1, $batch['converted'], 'The batch is only a mixed one if every bucket got a post.' );
+		$this->assertSame( 1, $batch['skipped'], 'The batch is only a mixed one if every bucket got a post.' );
+		$this->assertSame( 1, $batch['failed'], 'The batch is only a mixed one if every bucket got a post.' );
+
+		$this->assertSame(
+			$batch['processed'],
+			$batch['converted'] + $batch['skipped'] + $batch['failed'],
+			'A post examined has to land in exactly one bucket.'
 		);
 
 	}
@@ -472,6 +837,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 0, $totals['converted'] + $totals['failed'] );
 		$this->assertSame( 1, $totals['skipped'] );
+		$this->assertSame( 0, $totals['blocks_left_alone'], 'Nothing here is a block of this plugin\'s, so nothing was left alone.' );
 		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
 
 	}
@@ -502,8 +868,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 20 — the batching is cursor based, so it never slides over a post as
-	 * the rows it is walking stop matching.
+	 * The batching is cursor based, so it never slides over a post as the rows it
+	 * is walking stop matching.
 	 *
 	 * @return void
 	 */
@@ -610,8 +976,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 20 — the scope is public post types and every status but the two which
-	 * mean the content is gone. Drafts and scheduled posts are in; the trash is not.
+	 * The scope is public post types and every status but the two which mean the
+	 * content is gone. Drafts and scheduled posts are in; the trash is not.
 	 *
 	 * @return void
 	 */
@@ -676,8 +1042,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 4 — the route which rewrites content is behind the same check as the
-	 * one which saves a setting, and a refusal changes nothing.
+	 * The route which rewrites content is behind the same check as the one which
+	 * saves a setting, and a refusal changes nothing.
 	 *
 	 * @return void
 	 */
@@ -707,8 +1073,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 18 — the tool writes the generic tag and only ever the generic tag,
-	 * whatever the language was.
+	 * The tool writes the generic tag and only ever the generic tag, whatever the
+	 * language was.
 	 *
 	 * @return void
 	 */

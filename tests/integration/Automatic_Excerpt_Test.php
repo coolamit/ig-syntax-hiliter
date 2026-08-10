@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-1 — an excerpt WordPress generates for itself carries no snippet code.
+ * An excerpt WordPress generates for itself carries no snippet code.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -13,9 +13,10 @@ use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
 /**
- * `Legacy_Content_Test` covers the excerpt itself. These cover what generating one
- * must not do to the rest of the request: leave state behind which blanks a code
- * box rendered after it, or around it.
+ * `Legacy_Content_Test` covers the plain case. These cover what generating an
+ * excerpt must not do to the rest of the request — leave state behind which blanks
+ * a code box rendered after it, or around it — and the code which core's own
+ * shortcode strip cannot be trusted with.
  */
 class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
@@ -45,19 +46,33 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * @return string
 	 */
 	protected static function _content(): string {
-		return sprintf( "Intro paragraph.\n\n[php]\n\$secret = '%s';\n[/php]\n\nOutro paragraph.", static::MARKER );
+		return static::_content_around( sprintf( "\$secret = '%s';", static::MARKER ) );
+	}
+
+	/**
+	 * Method to build post content of prose around one snippet carrying given code.
+	 *
+	 * @param string $code  Code the snippet carries.
+	 * @param string $intro Prose ahead of the snippet.
+	 *
+	 * @return string
+	 */
+	protected static function _content_around( string $code, string $intro = 'Intro paragraph.' ): string {
+		return sprintf( "%s\n\n[php]\n%s\n[/php]\n\nOutro paragraph.", $intro, $code );
 	}
 
 	/**
 	 * Method to create a post with no manual excerpt.
 	 *
+	 * @param string|null $content Content to store, or NULL for the default fixture.
+	 *
 	 * @return int Post id.
 	 */
-	protected function _create_post(): int {
+	protected function _create_post( ?string $content = null ): int {
 
 		return self::factory()->post->create(
 			[
-				'post_content' => wp_slash( static::_content() ),
+				'post_content' => wp_slash( $content ?? static::_content() ),
 				'post_excerpt' => '',
 			]
 		);
@@ -77,7 +92,96 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — an archive of excerpts leaves the full post view which follows it alone.
+	 * Method to assert that an excerpt carries the prose and nothing of the snippet.
+	 *
+	 * @param string $excerpt Excerpt to check.
+	 * @param string $because What is being checked.
+	 *
+	 * @return void
+	 */
+	protected function _assert_prose_only( string $excerpt, string $because ): void {
+
+		$this->assertStringNotContainsString( static::MARKER, $excerpt, $because . ': the code is in the excerpt.' );
+		$this->assertDoesNotMatchRegularExpression( '#\[/?php#', $excerpt, $because . ': a piece of the shortcode is in the excerpt.' );
+		$this->assertStringContainsString( 'Outro paragraph.', $excerpt, $because . ': prose past the snippet was lost.' );
+
+	}
+
+	/**
+	 * Code which carries a `<` that opens no element.
+	 *
+	 * `<?php` is the first token of a great many of this plugin's snippets, and the
+	 * rest of these are ordinary source too: a heredoc opener, a comparison, an
+	 * unclosed HTML comment, a generic type argument.
+	 *
+	 * @return array
+	 */
+	public static function unclosed_angle_bracket_provider(): array {
+
+		return [
+			'an opening PHP tag'        => [ "<?php\necho '%s';" ],
+			'an opening PHP tag inline' => [ "<?php echo '%s';" ],
+			'a heredoc opener'          => [ "\$sql = <<<SQL\nSELECT '%s'\nSQL;" ],
+			'a less than comparison'    => [ "if ( \$a < \$b ) {\n\techo '%s';\n}" ],
+			'a generic type argument'   => [ "var x = new List<Thing;\n// %s" ],
+			'an unclosed HTML comment'  => [ "<!-- todo\necho '%s';" ],
+		];
+
+	}
+
+	/**
+	 * A snippet whose code carries an unclosed `<` neither reaches the excerpt nor
+	 * takes the prose after it away.
+	 *
+	 * The body an automatic excerpt is built from goes through core's
+	 * `strip_shortcodes()`, which escapes every `[` and `]` inside anything
+	 * `wp_html_split()` reads as an element — and a `<` with no `>` after it makes an
+	 * element of everything left, this snippet's own closing tag included. Core then
+	 * strips an opening tag it thinks is self closing and leaves the code behind, so
+	 * this plugin has to take the snippet off the body itself.
+	 *
+	 * @dataProvider unclosed_angle_bracket_provider
+	 *
+	 * @param string $code Code the snippet carries, with one `%s` for the marker.
+	 *
+	 * @return void
+	 */
+	public function test_a_snippet_carrying_an_unclosed_angle_bracket_leaves_a_clean_excerpt( string $code ): void {
+
+		$post_id = $this->_create_post( static::_content_around( sprintf( $code, static::MARKER ) ) );
+
+		$this->_assert_prose_only( get_the_excerpt( $post_id ), 'automatic excerpt' );
+
+	}
+
+	/**
+	 * Prose which carries an unclosed `<` ahead of a snippet does not drag the snippet
+	 * into the excerpt with it.
+	 *
+	 * The same escaping, reaching the other way: an element which begins in the prose
+	 * swallows the snippet's opening tag, so core strips nothing at all and the whole
+	 * body arrives at `wp_trim_words()` with the code in it.
+	 *
+	 * @return void
+	 */
+	public function test_prose_carrying_an_unclosed_angle_bracket_leaves_a_clean_excerpt(): void {
+
+		$post_id = $this->_create_post(
+			static::_content_around(
+				sprintf( "echo '%s';", static::MARKER ),
+				'Intro paragraph, in which 1 < 2 is noted.'
+			)
+		);
+
+		$excerpt = get_the_excerpt( $post_id );
+
+		$this->_assert_prose_only( $excerpt, 'automatic excerpt' );
+		$this->assertStringContainsString( 'is noted.', $excerpt, 'Prose ahead of the snippet was lost.' );
+
+	}
+
+	/**
+	 * An archive of excerpts leaves the full post view which follows it alone.
 	 *
 	 * Both halves of one request: no code in the excerpts, and all of it still in the
 	 * single post view rendered after them.
@@ -121,7 +225,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 — an excerpt taken in the middle of a full render does not disturb it.
+	 * An excerpt taken in the middle of a full render does not disturb it.
 	 *
 	 * The nested `get_the_excerpt()` runs between the protect pass at `the_content`
 	 * priority 1 and the restore pass at priority 100, which is where request scoped

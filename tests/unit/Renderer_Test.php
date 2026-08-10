@@ -111,7 +111,7 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * I1 — code is escaped exactly once, and is otherwise untouched.
+	 * Code is escaped exactly once, and is otherwise untouched.
 	 *
 	 * @return void
 	 */
@@ -260,10 +260,10 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * AC-6 / I4 — a language the registry cannot confirm falls back rather than
-	 * being written out. The class goes on the `<pre>` as well as the `<code>`,
-	 * because every bundled theme selects on `pre[class*="language-"]` and without
-	 * it a plain box is never painted.
+	 * A language the registry cannot confirm falls back rather than being written
+	 * out. The class goes on the `<pre>` as well as the `<code>`, because every
+	 * bundled theme selects on `pre[class*="language-"]` and without it a plain box
+	 * is never painted.
 	 *
 	 * @return void
 	 */
@@ -374,6 +374,67 @@ class Renderer_Test extends TestCase {
 
 		$this->assertStringContainsString( 'data-file="a&quot; onload=&quot;alert(1)"', $markup );
 		$this->assertStringNotContainsString( 'onload="alert', $markup );
+
+	}
+
+	/**
+	 * A tag in a file label reaches the reader as text, which is what makes keeping it
+	 * safe. Nothing downstream treats the attribute as markup: the stylesheet paints it
+	 * with `attr()` and the front end script assigns it with `textContent`.
+	 *
+	 * @return void
+	 */
+	public function test_a_file_label_which_looks_like_markup_is_escaped_not_stripped(): void {
+
+		$markup = $this->renderer->render_snippet(
+			Snippet::from_shortcode_atts(
+				[
+					'language' => 'php',
+					'file'     => '<script>alert(1)</script>vector<int>.cpp',
+				],
+				'x'
+			)
+		);
+
+		$this->assertStringContainsString(
+			'data-file="&lt;script&gt;alert(1)&lt;/script&gt;vector&lt;int&gt;.cpp"',
+			$markup
+		);
+
+		$this->assertStringNotContainsString( '<script>', $markup );
+
+	}
+
+	/**
+	 * A byte the site charset cannot read costs that byte, not the whole snippet.
+	 *
+	 * `htmlspecialchars()` returns the empty string for text which is invalid in the
+	 * charset it is escaping for, and `_wp_specialchars()` gives it no way to be told
+	 * to substitute instead. So one stray byte anywhere in a snippet emptied the entire
+	 * code box — and it emptied the file label the same way. The failure mode of an
+	 * escape has to be "changed nothing", never "matched everything".
+	 *
+	 * @return void
+	 */
+	public function test_a_byte_the_charset_cannot_read_does_not_empty_the_box(): void {
+
+		// Valid ISO-8859-1, invalid UTF-8: the shape a pre-4.2 latin1 column still holds.
+		$code = "\xA9 " . 'if ( $a < $b ) { echo "x"; }';
+
+		$markup = $this->renderer->render_snippet( new Snippet( $code, 'php', true, 1, [], "caf\xE9 & co.php" ) );
+
+		$this->assertSame(
+			1,
+			preg_match( '#<code[^>]*>(.*)</code></pre>$#s', $markup, $matches ),
+			'The renderer emitted no code element.'
+		);
+
+		$this->assertNotSame( '', $matches[1], 'One unreadable byte emptied the whole code box.' );
+
+		// Everything either side of the bad byte is escaped exactly as it always was.
+		$this->assertStringContainsString( '&lt; $b ) { echo &quot;x&quot;; }', $matches[1] );
+
+		$this->assertMatchesRegularExpression( '#data-file="[^"]+ &amp; co\.php"#', $markup, 'The label was lost with the byte.' );
 
 	}
 

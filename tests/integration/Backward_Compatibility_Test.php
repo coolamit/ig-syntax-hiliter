@@ -1,6 +1,6 @@
 <?php
 /**
- * Decision 21 — content that has never been near the block editor keeps working.
+ * Content that has never been near the block editor keeps working.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -174,9 +174,9 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-1 / Decision 21 — every shipped tag and alias renders from unconverted
-	 * content, carrying everything AC-1 names: a script tag, HTML entities, PHP
-	 * open and close tags and mixed HTML/JS.
+	 * Every shipped tag and alias renders from unconverted content, carrying the
+	 * whole legacy surface: a script tag, HTML entities, PHP open and close tags
+	 * and mixed HTML/JS.
 	 *
 	 * @dataProvider shipped_tag_provider
 	 *
@@ -207,7 +207,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 21 — `[sourcecode]` renders from unconverted content.
+	 * `[sourcecode]` renders from unconverted content.
 	 *
 	 * @return void
 	 */
@@ -223,8 +223,8 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 21 — comments have no block path, so the shortcode pipeline must run
-	 * on them while `hilite_comments` is on.
+	 * Comments have no block path, so the shortcode pipeline must run on them while
+	 * `hilite_comments` is on.
 	 *
 	 * @return void
 	 */
@@ -240,7 +240,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 21 — and must strip instead while it is off.
+	 * Comments are stripped instead while `hilite_comments` is off.
 	 *
 	 * @return void
 	 */
@@ -264,7 +264,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 21 — excerpts strip code rather than rendering it.
+	 * Excerpts strip code rather than rendering it.
 	 *
 	 * @return void
 	 */

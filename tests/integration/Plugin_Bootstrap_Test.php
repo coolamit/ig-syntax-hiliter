@@ -20,8 +20,8 @@ use WP_UnitTestCase;
 class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 	/**
-	 * AC-9 — the version and the environment floor say the same thing in the
-	 * constant, the plugin header, readme.txt and the Gatekeeper.
+	 * The version and the environment floor say the same thing in the constant, the
+	 * plugin header, readme.txt and the Gatekeeper.
 	 *
 	 * These drift apart easily and a mismatch fails the release build, so it is
 	 * caught here instead.
@@ -58,8 +58,8 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * CI-9 — paths and URLs are derived from the plugin's own location, so nothing
-	 * breaks if the plugin directory is not named after the repository (the repo is
+	 * Paths and URLs are derived from the plugin's own location, so nothing breaks
+	 * if the plugin directory is not named after the repository (the repo is
 	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
 	 *
 	 * @return void
@@ -69,12 +69,12 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		$plugin = Plugin::get_instance();
 
 		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/', $plugin->get_path() );
-		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/css/admin.css', $plugin->get_path( 'assets/css/admin.css' ) );
-		$this->assertFileExists( $plugin->get_path( 'assets/css/admin.css' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', $plugin->get_path( 'assets/build/css/admin.css' ) );
+		$this->assertFileExists( $plugin->get_path( 'assets/build/css/admin.css' ) );
 
 		$folder = basename( IG_SYNTAX_HILITER_ROOT );
 
-		$this->assertStringEndsWith( $folder . '/assets/css/admin.css', $plugin->get_url( 'assets/css/admin.css' ) );
+		$this->assertStringEndsWith( $folder . '/assets/build/css/admin.css', $plugin->get_url( 'assets/build/css/admin.css' ) );
 		$this->assertStringStartsWith( 'http', $plugin->get_url() );
 
 		$this->assertSame( IG_SYNTAX_HILITER_VERSION, $plugin->get_version() );
@@ -82,8 +82,8 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * NFR-1 — the loader is hooked where v5 hooked it, and running it again prints
-	 * nothing and raises no PHP diagnostic of any kind.
+	 * The loader is hooked where v5 hooked it, and running it again prints nothing
+	 * and raises no PHP diagnostic of any kind.
 	 *
 	 * @return void
 	 */
@@ -133,10 +133,10 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 			'classes/geshi.php',
 			'classes/frontend.php',
 			'templates/frontend-code-box.php',
-			'assets/js/front-end.js',
-			'assets/js/igeek-utils.js',
-			'assets/css/front-end.css',
-			'assets/scss/config.rb',
+			'assets/src/js/front-end.js',
+			'assets/src/js/igeek-utils.js',
+			'assets/src/scss/front-end.scss',
+			'assets/src/scss/config.rb',
 		];
 
 		foreach ( $gone as $path ) {
@@ -144,6 +144,23 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		}
 
 		$this->assertDirectoryDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/geshi' );
+
+		/*
+		 * The pre-6.0 asset layout is gone too. Every stylesheet and script the
+		 * plugin owns is now a source under assets/src/ compiled into
+		 * assets/build/, so these three directories must not come back: rsync
+		 * packages the release zip from disk, and a stale one in a working copy
+		 * would ship files nothing enqueues.
+		 */
+		$retired = [
+			'assets/css',
+			'assets/js',
+			'assets/scss',
+		];
+
+		foreach ( $retired as $directory ) {
+			$this->assertDirectoryDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/' . $directory );
+		}
 
 	}
 

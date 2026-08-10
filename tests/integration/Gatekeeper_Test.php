@@ -1,6 +1,6 @@
 <?php
 /**
- * AC-12 — the plugin refuses to load below either version floor.
+ * The plugin refuses to load below either version floor.
  *
  * The Gatekeeper is the one thing that has to work on an environment the test
  * suite cannot create — an old PHP, an old WordPress, or both. Its comparison

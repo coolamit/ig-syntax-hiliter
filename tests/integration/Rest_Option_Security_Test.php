@@ -103,8 +103,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 4 — a request with nobody behind it is refused with 401 and changes
-	 * nothing.
+	 * A request with nobody behind it is refused with 401 and changes nothing.
 	 *
 	 * @return void
 	 */
@@ -121,8 +120,8 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Decision 4 — a logged in user without `manage_options` is refused with 403 and
-	 * changes nothing.
+	 * A logged in user without `manage_options` is refused with 403 and changes
+	 * nothing.
 	 *
 	 * @return void
 	 */
@@ -174,6 +173,54 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 		$this->assertSame( 400, $this->_save( 'toolbar', 'perhaps' )->get_status() );
 		$this->assertSame( 400, $this->_save( 'theme', 'no-such-theme' )->get_status() );
 
+		$this->assertSame( $before, $this->_get_stored_settings() );
+
+	}
+
+	/**
+	 * A setting name which is not a string is refused, and refused cleanly.
+	 *
+	 * Nothing is written either way, so this is about what the caller is told. A PHP
+	 * warning is printed ahead of the response body on a site showing errors, which
+	 * makes the body unparseable: the screen then reports a generic failure instead
+	 * of saying what was wrong with the request.
+	 *
+	 * @return void
+	 */
+	public function test_a_setting_name_which_is_not_a_string_is_refused_without_a_php_diagnostic(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$before      = $this->_get_stored_settings();
+		$diagnostics = [];
+
+		set_error_handler(  // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Catching PHP diagnostics is what this test is for.
+			static function ( $errno, $errstr, $errfile, $errline ) use ( &$diagnostics ) {
+				$diagnostics[] = sprintf( '%d: %s in %s on line %d', $errno, $errstr, $errfile, $errline );
+
+				return true;
+			}
+		);
+
+		try {
+
+			$request = new WP_REST_Request( 'POST', self::ROUTE );
+
+			$request->set_body_params(
+				[
+					'name'  => [ 'toolbar' ],
+					'value' => 'no',
+				]
+			);
+
+			$response = rest_do_request( $request );
+
+		} finally {
+			restore_error_handler();
+		}
+
+		$this->assertSame( [], $diagnostics, 'Refusing a setting name which is not a string raised a PHP diagnostic.' );
+		$this->assertSame( 400, $response->get_status() );
 		$this->assertSame( $before, $this->_get_stored_settings() );
 
 	}

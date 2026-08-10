@@ -36,9 +36,8 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * The language is kept exactly as the author typed it and never resolved here
-	 * (FR-2.7), the legacy `lang` spelling is read, and `language` wins when both
-	 * are given.
+	 * The language is kept exactly as the author typed it and never resolved here,
+	 * the legacy `lang` spelling is read, and `language` wins when both are given.
 	 *
 	 * @return void
 	 */
@@ -121,6 +120,51 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
+	 * A first line number at the bottom of the integer range is a number, not a fatal.
+	 *
+	 * `abs( PHP_INT_MIN )` is the one value where taking a magnitude changes the type:
+	 * it does not fit in an integer, so PHP returns a float, and the constructor's
+	 * `int` parameter refuses it. That is an uncaught `TypeError` thrown out of
+	 * `the_content`, on every render of the post, for twenty bytes an author typed.
+	 * Both spellings of the number saturate, the same way one written past the top of
+	 * the range already did.
+	 *
+	 * @return void
+	 */
+	public function test_first_line_at_the_bottom_of_the_integer_range(): void {
+
+		$saturated = Snippet::from_shortcode_atts( [ 'firstline' => '9223372036854775808' ], 'x' )->first_line;
+
+		$this->assertSame( PHP_INT_MAX, $saturated );
+
+		$this->assertSame( $saturated, Snippet::from_shortcode_atts( [ 'firstline' => '-9223372036854775808' ], 'x' )->first_line );
+		$this->assertSame( $saturated, Snippet::from_shortcode_atts( [ 'num' => '-9223372036854775808' ], 'x' )->first_line );
+		$this->assertSame( $saturated, Snippet::from_shortcode_atts( [ 'firstline' => '-99999999999999999999' ], 'x' )->first_line );
+
+		$this->assertSame(
+			$saturated,
+			Snippet::from_block_attributes(
+				[
+					'code'      => 'x',
+					'firstLine' => PHP_INT_MIN,
+				]
+			)->first_line
+		);
+
+		// A block attribute arrives as JSON, so the number can reach the parser as a float.
+		$this->assertSame(
+			$saturated,
+			Snippet::from_block_attributes(
+				[
+					'code'      => 'x',
+					'firstLine' => -9.3e18,
+				]
+			)->first_line
+		);
+
+	}
+
+	/**
 	 * The `"2,4-6"` range grammar is parsed into a sorted, unique list of lines,
 	 * and nonsense yields nothing rather than an error.
 	 *
@@ -151,6 +195,53 @@ class Snippet_Test extends TestCase {
 		$lines = Snippet::from_shortcode_atts( [ 'highlight' => '1-999999999' ], 'x' )->highlight_lines;
 
 		$this->assertCount( Snippet::MAX_RANGE_LENGTH, $lines );
+
+	}
+
+	/**
+	 * Nor can any number of ranges together.
+	 *
+	 * Capping one range bounds nothing on its own: ranges are comma separated and
+	 * unbounded in number, so ten bytes of attribute buys another ten thousand lines.
+	 * Five hundred of them fit in under 5KB and cost 580MB in the VM — on every front
+	 * end render — for an answer which is ten thousand lines long whatever is asked
+	 * for. What is expanded is what is kept.
+	 *
+	 * @return void
+	 */
+	public function test_the_whole_highlight_attribute_is_capped(): void {
+
+		$ranges = [];
+
+		for ( $index = 1; $index <= 500; $index++ ) {
+			$ranges[] = sprintf( '%d-%d', $index, $index + Snippet::MAX_RANGE_LENGTH );
+		}
+
+		$lines = Snippet::from_shortcode_atts( [ 'highlight' => implode( ',', $ranges ) ], 'x' )->highlight_lines;
+
+		$this->assertCount( Snippet::MAX_HIGHLIGHT_LINES, $lines );
+
+	}
+
+	/**
+	 * A range at the very top of the integer range ends.
+	 *
+	 * Counting up to an end of `PHP_INT_MAX` overflows the loop variable into a float
+	 * on the last increment, and that float compares equal to the end it is tested
+	 * against and does not advance again. Thirty nine bytes of attribute exhausted the
+	 * memory limit outright.
+	 *
+	 * @return void
+	 */
+	public function test_a_range_at_the_top_of_the_integer_range_ends(): void {
+
+		$this->assertSame(
+			[ PHP_INT_MAX ],
+			Snippet::from_shortcode_atts(
+				[ 'highlight' => sprintf( '%d-%d', PHP_INT_MAX, PHP_INT_MAX ) ],
+				'x'
+			)->highlight_lines
+		);
 
 	}
 
@@ -225,20 +316,37 @@ class Snippet_Test extends TestCase {
 	}
 
 	/**
-	 * The file label is cleaned up but otherwise left alone.
+	 * The file label has its whitespace collapsed and is otherwise left alone.
+	 *
+	 * An angle bracket in a file name is a type parameter, and a label is not markup on
+	 * any path it reaches — `Renderer_Test` holds the escaping which is what actually
+	 * makes it safe. Stripping tags took the type out of every generic file name and
+	 * everything after an unbalanced `<`, while leaving the text of a script tag
+	 * sitting there looking like it had been dealt with.
 	 *
 	 * @return void
 	 */
 	public function test_file_label_is_cleaned_up(): void {
 
 		$this->assertSame( 'wp-config.php', Snippet::from_shortcode_atts( [ 'file' => '  wp-config.php  ' ], 'x' )->file );
-		$this->assertSame( 'alert(1)', Snippet::from_shortcode_atts( [ 'file' => '<script>alert(1)</script>' ], 'x' )->file );
 		$this->assertSame( 'a b', Snippet::from_shortcode_atts( [ 'file' => "a\n\tb" ], 'x' )->file );
+
+		$kept = [
+			'vector<int>.cpp',
+			'Foo<T>.cs',
+			'List<String>.java',
+			'a<b c.php',
+			'<script>alert(1)</script>x.php',
+		];
+
+		foreach ( $kept as $label ) {
+			$this->assertSame( $label, Snippet::from_shortcode_atts( [ 'file' => $label ], 'x' )->file );
+		}
 
 	}
 
 	/**
-	 * I5 — shortcode content is trimmed, and not otherwise touched.
+	 * Shortcode content is trimmed, and not otherwise touched.
 	 *
 	 * @return void
 	 */
