@@ -209,13 +209,14 @@ jobs:
         # package-lock.json is committed, so `npm ci` (never `npm install`).
         run: npm ci
 
-      - name: Build block editor assets
-        # build/ is git-ignored and must be produced here. It ships in the zip
-        # because .distignore does not exclude it and the 10up action copies
-        # from disk rather than from git — see the header of .distignore.
+      - name: Build block editor and plugin assets
+        # build/ and assets/build/ are both git-ignored and must be produced
+        # here. They ship in the zip because .distignore does not exclude them
+        # and the 10up action copies from disk rather than from git — see the
+        # header of .distignore.
         run: npm run build
 
-      - name: Assert the block build produced something
+      - name: Assert the build produced something
         run: |
           set -euo pipefail
 
@@ -224,8 +225,21 @@ jobs:
             exit 1
           fi
 
+          # The plugin's own css and js are generated too, and nothing else in
+          # this job would notice their absence until a user loaded a page with
+          # no highlighting chrome and a settings screen with no styles.
+          for required in assets/build/css/admin.css assets/build/css/frontend-chrome.css assets/build/js/admin.js assets/build/js/ig-prism-setup.js; do
+            if [ ! -s "${required}" ]; then
+              echo "::error::'npm run build' produced no ${required}. The zip would ship without the plugin's own styles or scripts."
+              exit 1
+            fi
+          done
+
           echo "build/ contains:"
           find build -type f | sort | sed 's/^/  /'
+
+          echo "assets/build/ contains:"
+          find assets/build -type f | sort | sed 's/^/  /'
 
       #
       # ---- Package --------------------------------------------------------
@@ -345,6 +359,10 @@ jobs:
           ${PLUGIN_SLUG}/${PLUGIN_FILE}
           ${PLUGIN_SLUG}/readme.txt
           ${PLUGIN_SLUG}/assets/lib/prism/components.json
+          ${PLUGIN_SLUG}/assets/build/css/admin.css
+          ${PLUGIN_SLUG}/assets/build/css/frontend-chrome.css
+          ${PLUGIN_SLUG}/assets/build/js/admin.js
+          ${PLUGIN_SLUG}/assets/build/js/ig-prism-setup.js
           REQUIRED
 
           # Matched by pattern rather than by exact name where the filenames
@@ -376,7 +394,7 @@ jobs:
           ^${PLUGIN_SLUG}/vendor/
           ^${PLUGIN_SLUG}/tests/
           ^${PLUGIN_SLUG}/src/
-          ^${PLUGIN_SLUG}/assets/scss/
+          ^${PLUGIN_SLUG}/assets/src/
           ^${PLUGIN_SLUG}/\.git
           ^${PLUGIN_SLUG}/(composer|package|package-lock)\.json\$
           ^${PLUGIN_SLUG}/(phpcs|phpunit)\.xml(\.dist)?\$

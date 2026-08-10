@@ -167,6 +167,117 @@
 	}
 
 	/**
+	 * Fills a translated string's count into it.
+	 *
+	 * Every %d and %1$d in the string is replaced, and a string carrying neither
+	 * gets the count put on the end, so a mistranslated string costs a clumsy
+	 * sentence rather than a placeholder on screen or a count nobody is shown.
+	 *
+	 * @param {string} template String the count goes into.
+	 * @param {number} count    Number to put in it.
+	 *
+	 * @return {string} The string, with the count in it.
+	 */
+	function withCount( template, count ) {
+		var text = String( template || '' );
+		var filled = text.replace( /%(?:\d+\$)?d/g, String( count ) );
+
+		if ( filled !== text ) {
+			return filled;
+		}
+
+		return '' === text ? String( count ) : text + ' ' + String( count );
+	}
+
+	/**
+	 * Adds one clause to the report.
+	 *
+	 * Built as a node rather than as markup, so that no translated string can
+	 * carry any.
+	 *
+	 * @param {HTMLElement} status    Element the report is written to.
+	 * @param {string}      text      Clause to add.
+	 * @param {boolean}     isWarning Whether the clause names code which will be lost.
+	 */
+	function appendClause( status, text, isWarning ) {
+		var clause = document.createElement( 'span' );
+
+		if ( isWarning ) {
+			clause.className = 'igsh-uninstall__warning';
+		}
+
+		clause.textContent = ' ' + String( text || '' );
+
+		status.appendChild( clause );
+	}
+
+	/**
+	 * Writes the closing report of a conversion run.
+	 *
+	 * @param {HTMLElement} status Element the report is written to.
+	 * @param {Object}      totals Running totals from every batch.
+	 */
+	function reportRevert( status, totals ) {
+		status.textContent = withCount( strings.revertDone, totals.converted );
+
+		if ( totals.skipped ) {
+			appendClause( status, withCount( strings.revertDoneLeft, totals.skipped ), false );
+		}
+
+		if ( totals.blocksLeftAlone ) {
+			appendClause( status, withCount( strings.revertDoneBlocks, totals.blocksLeftAlone ), true );
+		}
+
+		if ( totals.failed ) {
+			appendClause( status, withCount( strings.revertDoneFailed, totals.failed ), true );
+		}
+
+		if ( totals.partial ) {
+			appendClause( status, strings.revertDonePartial, false );
+		}
+	}
+
+	/**
+	 * Reads one count out of a batch's answer.
+	 *
+	 * @param {*} value Value the answer carried.
+	 *
+	 * @return {number|null} The count, or NULL when the answer carried no number.
+	 */
+	function readCount( value ) {
+		var count = Number( value );
+
+		if ( null === value || '' === value || ! isFinite( count ) ) {
+			return null;
+		}
+
+		return count;
+	}
+
+	/**
+	 * Adds one of a batch's counts to the running totals.
+	 *
+	 * A count the answer did not carry leaves the total where it was and marks the
+	 * totals short, so the report can say that it is missing something instead of
+	 * quietly leaving a clause out.
+	 *
+	 * @param {Object} totals Running totals to add to.
+	 * @param {string} name   Total to add to.
+	 * @param {*}      value  Value the answer carried.
+	 */
+	function addCount( totals, name, value ) {
+		var count = readCount( value );
+
+		if ( null === count ) {
+			totals.partial = true;
+
+			return;
+		}
+
+		totals[ name ] += count;
+	}
+
+	/**
 	 * Runs the block to shortcode conversion, one batch at a time.
 	 *
 	 * @param {HTMLElement} button   Button which started it.
@@ -179,7 +290,14 @@
 			return;
 		}
 
-		var totals = { processed: 0, converted: 0, skipped: 0, failed: 0 };
+		var totals = {
+			processed: 0,
+			converted: 0,
+			skipped: 0,
+			failed: 0,
+			blocksLeftAlone: 0,
+			partial: false,
+		};
 
 		button.disabled = true;
 		status.textContent = strings.revertRunning;
@@ -216,19 +334,21 @@
 		 */
 		function nextBatch( cursor ) {
 			return request( 'POST', 'revert', { cursor: cursor } ).then( function ( batch ) {
-				totals.processed += batch.processed;
-				totals.converted += batch.converted;
-				totals.skipped += batch.skipped;
-				totals.failed += batch.failed;
+				var processed = readCount( batch.processed );
+
+				addCount( totals, 'processed', batch.processed );
+				addCount( totals, 'converted', batch.converted );
+				addCount( totals, 'skipped', batch.skipped );
+				addCount( totals, 'failed', batch.failed );
+				addCount( totals, 'blocksLeftAlone', batch.blocks_left_alone );
 
 				meter.value = Math.min( totals.processed, meter.max );
 
 				status.textContent = strings.revertRunning;
 
-				if ( batch.done || 0 === batch.processed ) {
-					status.textContent = ( strings.revertDone || '' )
-						.replace( '%1$d', totals.converted )
-						.replace( '%2$d', totals.skipped + totals.failed );
+				// An answer which does not say how much it did is the end of the run: there is nothing to carry on from.
+				if ( batch.done || ! processed ) {
+					reportRevert( status, totals );
 
 					meter.value = meter.max;
 

@@ -8,37 +8,18 @@
 		FILES TO CHECK
 		#############################################################################
 
-		Only rewritten v6 files are checked. The rule set is not weakened to
-		accommodate the v5 code; this list grows instead, as files are replaced.
-		Still outstanding: classes/cache.php — it carries code orphaned by the v6
-		rewrite and is not clean yet.
-
-		When it lands, these entries collapse to `<file>classes</file>`.
+		Between them these paths hold every PHP file the repo tracks, so a new
+		file is covered without this list being touched and has to be clean from
+		the start. The rule set is never weakened to let a file in; generated and
+		vendored PHP, such as build/block/index.asset.php, is excluded further
+		down.
 	-->
+	<file>classes</file>
 	<file>tests</file>
 	<file>templates</file>
 	<file>ig-syntax-hiliter.php</file>
 	<file>autoloader.php</file>
 	<file>uninstall.php</file>
-	<file>classes/ig-syntax-hiliter-gatekeeper.php</file>
-	<file>classes/plugin.php</file>
-	<file>classes/base.php</file>
-	<file>classes/migrate.php</file>
-	<file>classes/snippet.php</file>
-	<file>classes/language-registry.php</file>
-	<file>classes/legacy-map.php</file>
-	<file>classes/renderer.php</file>
-	<file>classes/asset-manager.php</file>
-	<file>classes/content-protector.php</file>
-	<file>classes/shortcode-handler.php</file>
-	<file>classes/gist-embed.php</file>
-	<file>classes/block.php</file>
-	<file>classes/block-converter.php</file>
-	<file>classes/admin.php</file>
-	<file>classes/option.php</file>
-	<file>classes/helper.php</file>
-	<file>classes/validate.php</file>
-	<file>classes/traits/singleton.php</file>
 
 	<!--
 		#############################################################################
@@ -59,9 +40,10 @@
 	-->
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<!-- Generated output: build/ (wp-scripts) and assets/build/ (sass, terser).
+	     The pattern is unanchored, so the one line covers both. -->
 	<exclude-pattern>*/build/*</exclude-pattern>
 	<exclude-pattern>*/assets/lib/*</exclude-pattern><!-- Vendored Prism.js. -->
-	<exclude-pattern>*/assets/js/*.min.js</exclude-pattern>
 	<exclude-pattern>*/.scratchpad/*</exclude-pattern>
 
 	<!--

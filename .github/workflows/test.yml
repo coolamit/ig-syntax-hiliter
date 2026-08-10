@@ -195,10 +195,8 @@ jobs:
 
       - name: PHPCS (WordPress Coding Standards)
         working-directory: ${{ env.PLUGIN_PATH }}
-        # `composer run lint` -> phpcs, configured by phpcs.xml.dist. That file
-        # deliberately checks only the paths holding rewritten v6 code and its
-        # <file> list grows as v5 files are replaced; this step needs no change
-        # when it does.
+        # `composer run lint` -> phpcs, configured by phpcs.xml.dist. The paths
+        # to check live in that file, so nothing is passed here.
         run: composer run lint
 
       - name: TypeScript type check
@@ -209,18 +207,18 @@ jobs:
         #
         # The sibling `lint:js` and `lint:style` scripts are deliberately NOT
         # run here: both are scoped at the whole tree and so lint the vendored
-        # Prism bundles and the compiled assets/css/admin.css, which produces
+        # Prism bundles and everything under assets/build/, which produces
         # thousands of failures that say nothing about this plugin's sources.
-        # Wire them in once they are scoped to src/ and assets/scss/.
+        # Wire them in once they are scoped to src/ and assets/src/.
         run: npm run lint:types
 
-      - name: Build block editor and admin assets
+      - name: Build block editor and plugin assets
         working-directory: ${{ env.PLUGIN_PATH }}
-        # `npm run build` is `wp-scripts build` followed by the sass compile of
-        # assets/scss/admin.scss. build/ is git-ignored, so it must be produced
-        # here — the integration tier loads the plugin, which reads build/. The
-        # sass half rewrites assets/css/admin.css, which is committed; if that
-        # leaves the tree dirty, the committed file was stale.
+        # `npm run build` is `wp-scripts build` (src/ -> build/) followed by the
+        # sass and terser compiles (assets/src/ -> assets/build/). Both output
+        # trees are git-ignored, so both must be produced here: the integration
+        # tier loads the plugin, which reads build/, and asserts the compiled
+        # admin stylesheet exists at its enqueued path under assets/build/.
         run: npm run build
 
       #

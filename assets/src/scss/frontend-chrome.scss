@@ -1,0 +1,120 @@
+// iG:Syntax Hiliter — the bits the Prism themes do not cover.
+//
+// Compiled to assets/build/css/frontend-chrome.css by the `sass` CLI, via the
+// `build:css` script in package.json. Never edit the compiled file.
+//
+// This is plain CSS held in a .scss file. SCSS is a superset of CSS, so nothing
+// here needs Sass syntax to compile; the extension exists so that every
+// stylesheet the plugin ships comes out of one pipeline.
+
+/*
+ * The file name label.
+ *
+ * `file="…"` is a v5 attribute and has to keep working whatever the toolbar setting
+ * is, and the toolbar is where the only other label lives — with `toolbar=no` the
+ * plugin loads no toolbar, so nothing on the page reads `data-file` at all. So the
+ * box paints the label itself, out of the attribute.
+ *
+ * It is taken out of the flow deliberately. The line numbers and line highlight
+ * plugins both measure the box to place their overlays, and the highlight overlay is
+ * positioned against the `pre` when line numbers are off, so anything added to the
+ * flow above the code slides the highlighted lines off the lines they mark.
+ *
+ * The Coy theme paints its page fold shadow on this same pseudo element, so every
+ * property it sets is written back here rather than inherited.
+ */
+pre[id^="ig-sh-"][data-file]::before {
+	content: attr(data-file);
+	position: absolute;
+	z-index: 2;
+	top: 0;
+	right: 0;
+	bottom: auto;
+	left: auto;
+	width: auto;
+	max-width: 60%;
+	height: auto;
+	max-height: none;
+	padding: 0.1em 0.6em;
+	overflow: hidden;
+	font-family: inherit;
+	font-size: 0.8em;
+	font-style: italic;
+	line-height: 1.6;
+	text-align: right;
+	text-overflow: ellipsis;
+	text-shadow: none;
+	white-space: nowrap;
+	background: none;
+	box-shadow: none;
+	opacity: 0.75;
+	transform: none;
+	pointer-events: none;
+}
+
+/* Where the toolbar is loaded it wraps the box and paints a label of its own. */
+.code-toolbar > pre[id^="ig-sh-"][data-file]::before {
+	content: none;
+}
+
+/* Except on a box which has opted out of the toolbar, where it does not. */
+.code-toolbar > pre[id^="ig-sh-"].igsh-no-toolbar[data-file]::before,
+.igsh-no-toolbar .code-toolbar > pre[id^="ig-sh-"][data-file]::before {
+	content: attr(data-file);
+}
+
+/* File name label added to the toolbar. */
+.code-toolbar > .toolbar .igsh-file-label {
+	display: inline-block;
+	max-width: 20em;
+	overflow: hidden;
+	font-family: inherit;
+	font-size: 0.8em;
+	font-style: italic;
+	text-overflow: ellipsis;
+	vertical-align: bottom;
+	white-space: nowrap;
+	opacity: 0.75;
+}
+
+/*
+ * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` itself or on anything
+ * wrapping it; the toolbar plugin wraps each `pre` in a `.code-toolbar` div and
+ * appends the toolbar beside it, so both shapes need covering.
+ */
+pre.igsh-no-toolbar ~ .toolbar,
+.igsh-no-toolbar .code-toolbar > .toolbar {
+	display: none;
+}
+
+/*
+ * The themes paint a `language-none` box like any other, because they select on
+ * `pre[class*="language-"]`. All that is left is to keep the text in the box
+ * colour rather than a token colour which is never applied.
+ */
+pre[class*="language-"] > code.language-none,
+code.language-none {
+	color: inherit;
+	background: none;
+	text-shadow: none;
+}
+
+/*
+ * Minimal box styling for sites which load no theme at all. The box is positioned so
+ * that the file label above has something to hang off; the line numbers and line
+ * highlight plugins each position the box themselves when they are loaded, and this
+ * is the same value they use.
+ */
+pre[id^="ig-sh-"] {
+	position: relative;
+	overflow: auto;
+	max-width: 100%;
+	tab-size: 4;
+}
+
+pre[id^="ig-sh-"] > code {
+	display: block;
+	font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+	white-space: pre;
+	word-wrap: normal;
+}

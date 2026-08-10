@@ -1,7 +1,7 @@
 {
 	"name": "igsyntax-hiliter",
 	"version": "6.0.0",
-	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in build/ and assets/.",
+	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in build/ and assets/build/, plus the vendored library in assets/lib/.",
 	"license": "GPL-2.0-or-later",
 	"private": true,
 	"author": "Amit Gupta",
@@ -17,11 +17,14 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"build": "npm run build:blocks && npm run build:admin-css",
+		"build": "npm run build:blocks && npm run build:css && npm run build:js",
 		"build:blocks": "wp-scripts build",
-		"build:admin-css": "sass --no-source-map --style=compressed --load-path=assets/scss assets/scss/admin.scss assets/css/admin.css",
+		"build:css": "sass --no-source-map --style=compressed --load-path=assets/src/scss assets/src/scss:assets/build/css",
+		"build:js": "npm run build:js:admin && npm run build:js:prism-setup",
+		"build:js:admin": "terser assets/src/js/admin.js --compress --mangle --output assets/build/js/admin.js",
+		"build:js:prism-setup": "terser assets/src/js/ig-prism-setup.js --compress --mangle --output assets/build/js/ig-prism-setup.js",
 		"start": "wp-scripts start",
-		"watch:admin-css": "npm run build:admin-css -- --watch",
+		"watch:css": "npm run build:css -- --watch",
 		"lint:js": "wp-scripts lint-js",
 		"lint:style": "wp-scripts lint-style",
 		"lint:types": "tsc --noEmit",
@@ -42,6 +45,7 @@
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"sass": "^1.102.0",
+		"terser": "^5.49.2",
 		"typescript": "^5.9.3"
 	}
 }

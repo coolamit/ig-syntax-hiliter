@@ -25,8 +25,17 @@ node_modules/
 .agents/
 CLAUDE.md
 
-# Compiled block editor assets — built from src/ by @wordpress/scripts
+# Compiled output. Nothing generated is committed.
+#
+#   src/         -> build/            (@wordpress/scripts)
+#   assets/src/  -> assets/build/     (sass, terser)
+#
+# A pattern with no leading slash matches at any depth, so `build/` already
+# covers assets/build/. The second line is spelled out anyway: it is the one
+# that says the plugin's own css and js are generated, and it must not become
+# collateral damage if `build/` is ever anchored to the root.
 build/
+assets/build/
 
 # Tooling caches
 .phpcs.cache

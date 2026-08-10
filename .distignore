@@ -1,8 +1,9 @@
 # Files and directories that are NOT part of the released plugin.
 #
 # What ships is the runtime PHP, the compiled block assets in build/, the
-# vendored Prism library in assets/lib/prism/, the runtime css and js under
-# assets/, templates/, the readmes, the changelog and the licence files.
+# compiled stylesheets and scripts in assets/build/, the vendored Prism library
+# in assets/lib/prism/, templates/, the readmes, the changelog and the licence
+# files.
 #
 # ---------------------------------------------------------------------------
 # HOW THIS FILE IS ACTUALLY READ — it is NOT a .gitignore
@@ -30,13 +31,16 @@
 #     10up/WP-CLI convention does not add one. Every rule below only ever
 #     removes things; nothing here can add something back.
 #
-#   * A pattern with no slash matches that BASENAME at any depth. `vendor/`
-#     removes a `vendor` directory wherever it appears, not just at the root.
-#     Checked: nothing under assets/, classes/, templates/ or build/ collides
-#     with any basename listed here.
+#   * A pattern with no slash matches that BASENAME at any depth (a trailing
+#     slash does not count as a slash for this purpose). `vendor/` removes a
+#     `vendor` directory wherever it appears, not just at the root — and `src/`
+#     removes assets/src/ as well as the root src/, which is intended and is
+#     spelled out again lower down. Checked: apart from that, nothing under
+#     assets/, classes/, templates/, build/ or assets/build/ collides with any
+#     basename listed here.
 #
 #   * A pattern containing a slash is matched against the tail of the path, so
-#     `assets/scss/` means "any path ending .../assets/scss/".
+#     `assets/src/` means "any path ending .../assets/src/".
 #
 #   * A trailing slash restricts the rule to directories.
 #
@@ -79,16 +83,24 @@ node_modules/
 vendor/
 
 # Sources that are compiled before release.
-#   src/                   -> build/                 (wp-scripts / TypeScript)
-#   assets/scss/admin.scss -> assets/css/admin.css   (sass; committed, never
-#                                                     hand-edited)
-# assets/css/ is therefore SHIPPED and assets/scss/ is not.
+#   src/        -> build/          (wp-scripts / TypeScript)
+#   assets/src/ -> assets/build/   (sass for the scss, terser for the js)
 #
-# assets/css/ is NOT wholly generated: frontend-chrome.css is hand written and
-# has no SCSS source, so clearing assets/css/ before a rebuild destroys it. Only
-# admin.css is reproducible from assets/scss/.
+# Both source trees are excluded and both output trees SHIP. Neither output tree
+# is committed — .gitignore covers them — so both exist only because the release
+# job runs `npm run build` before the packaging action rsyncs the workspace. That
+# is the same arrangement build/ has always had, and the same reason this file
+# must not be deleted (see the header).
+#
+# `src/` has no internal slash, so by the basename rule above it already removes
+# assets/src/ as well. It is listed a second time with its full path because a
+# rule that only works by accident of another rule's matching semantics is a rule
+# waiting to be broken; either line alone is sufficient.
+#
+# Nothing here excludes `build`, at the root or under assets/. Checked against
+# every pattern in this file: none of them matches the basename `build`.
 src/
-assets/scss/
+assets/src/
 
 # Build-tool and test-runner config.
 package.json
