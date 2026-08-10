@@ -195,9 +195,15 @@ class Language_Registry {
 		 * Reading three hundred languages in takes long enough to be worth not doing
 		 * twice for nothing. With no callback listening, the filter hands back the very
 		 * array it was given and this comparison is a pointer check.
+		 *
+		 * Anything but an array is ignored rather than cast. A callback which forgets to
+		 * return, or returns early, hands back NULL — and casting that would empty the
+		 * registry, leaving every language on the site unknown and every snippet
+		 * unhighlighted. Keeping what came out of the cache is the far cheaper reading of
+		 * a callback that plainly did not mean to replace anything.
 		 */
-		if ( $filtered !== $registry ) {
-			static::$_instance->_ingest( (array) $filtered );
+		if ( $filtered !== $registry && is_array( $filtered ) ) {
+			static::$_instance->_ingest( $filtered );
 		}
 
 		return static::$_instance;

@@ -243,6 +243,69 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A callback which hands back something that is not a registry is ignored, and
+	 * the registry the site already had is what the request goes on to use.
+	 *
+	 * A callback that forgets to return, or returns early down one branch, hands back
+	 * NULL. That used to be cast to an array and read in, which emptied the registry:
+	 * every language on the site became unknown, every snippet rendered without
+	 * highlighting, and no asset was loaded for one. Nothing said so — the page came
+	 * back 200 with the code in it, only plain. Ignoring the return is the far cheaper
+	 * reading of a callback which plainly did not mean to replace anything.
+	 *
+	 * @dataProvider useless_return_provider
+	 *
+	 * @param mixed  $handed_back What the callback hands back.
+	 * @param string $description What that stands for, for the failure message.
+	 *
+	 * @return void
+	 */
+	public function test_a_filter_returning_something_useless_is_ignored( $handed_back, string $description ): void {
+
+		$this->_remember_cache_key();
+
+		$expected = Language_Registry::get_instance()->get_languages();
+
+		$this->assertNotEmpty( $expected, 'The unfiltered registry has languages in it to begin with.' );
+
+		$this->_reset_registry();
+
+		$callback = static function () use ( $handed_back ) {
+
+			return $handed_back;
+
+		};
+
+		add_filter( Language_Registry::FILTER_LANGUAGES, $callback );
+
+		$this->_remember_cache_key();
+
+		$registry = Language_Registry::get_instance();
+
+		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
+
+		$this->assertSame( $expected, $registry->get_languages(), sprintf( 'A callback returning %s leaves the registry alone.', $description ) );
+		$this->assertTrue( $registry->has( 'php' ), sprintf( 'A callback returning %s does not take the site\'s languages away.', $description ) );
+
+	}
+
+	/**
+	 * Returns which are not a registry, and the mistake each one stands for.
+	 *
+	 * @return array
+	 */
+	public function useless_return_provider(): array {
+
+		return [
+			'no return statement' => [ null, 'NULL' ],
+			'a string'            => [ 'php', 'a string' ],
+			'a count'             => [ 0, 'a number' ],
+			'a flag'              => [ false, 'false' ],
+		];
+
+	}
+
+	/**
 	 * A language file dropped into the uploads directory is visible on the next
 	 * request, not on the next plugin release.
 	 *
