@@ -51,6 +51,13 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	protected int $_batch_size = 2;
 
 	/**
+	 * PCRE settings as they stood before a test lowered them.
+	 *
+	 * @var array
+	 */
+	protected array $_pcre_settings = [];
+
+	/**
 	 * Registers the pipeline and the routes.
 	 *
 	 * @return void
@@ -81,12 +88,71 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Puts the PCRE settings back for whatever runs next, whether or not the test
+	 * which lowered them got as far as putting them back itself.
+	 *
+	 * @return void
+	 */
+	public function tear_down(): void {
+
+		$this->_restore_pcre();
+
+		parent::tear_down();
+
+	}
+
+	/**
 	 * Reports the batch size the current test wants.
 	 *
 	 * @return int
 	 */
 	public function get_batch_size(): int {
 		return $this->_batch_size;
+	}
+
+	/**
+	 * Method to lower the PCRE settings until an ordinary pattern gives up.
+	 *
+	 * The JIT goes as well as the limit. With it on, PCRE gives up only on a pattern it
+	 * has real work to do, so what "PCRE has given up" means would depend on the subject
+	 * each test happened to hand it.
+	 *
+	 * @return void
+	 */
+	protected function _make_pcre_give_up(): void {
+
+		foreach ( [ 'pcre.jit', 'pcre.backtrack_limit' ] as $setting ) {
+			$this->_pcre_settings[ $setting ] = (string) ini_get( $setting );
+		}
+
+		ini_set( 'pcre.jit', '0' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Making PCRE give up on purpose is the only way to reach the branch under test. The values are put back below.
+		ini_set( 'pcre.backtrack_limit', '0' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- As above.
+
+	}
+
+	/**
+	 * Method to put back whatever self::_make_pcre_give_up() changed.
+	 *
+	 * @return void
+	 */
+	protected function _restore_pcre(): void {
+
+		foreach ( $this->_pcre_settings as $setting => $value ) {
+			ini_set( $setting, $value );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the values saved before they were lowered.
+		}
+
+		$this->_pcre_settings = [];
+
+	}
+
+	/**
+	 * Method to check that PCRE really is giving up, so that a test which says it is
+	 * measuring the failure branch is measuring it.
+	 *
+	 * @return bool
+	 */
+	protected function _pcre_is_giving_up(): bool {
+		return ( null === preg_replace( '/\s+/', ' ', 'a  b' ) );
 	}
 
 	/**
@@ -315,6 +381,69 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 'php', $atts['language'] );
 		$this->assertSame( 'weird phpname.php', $atts['file'] );
+
+	}
+
+	/**
+	 * The language used to be cleaned up by a pattern, and a pattern which gives up
+	 * hands back NULL. Cast to a string that is an empty one, so a PCRE failure wrote
+	 * `language=""` into every snippet the run rewrote and left the reader with
+	 * unhighlighted code and nothing to explain it.
+	 *
+	 * The language here is one PCRE has to do real work on, because that is the only
+	 * kind it ever gave up on: a language already made of nothing but safe characters
+	 * matches nowhere, and a pattern which matches nowhere is never asked to backtrack.
+	 * So a cleaned language coming back out of a run PCRE cannot complete is both halves
+	 * of it — the name was kept, and what would have broken the shortcode was still
+	 * taken off.
+	 *
+	 * @return void
+	 */
+	public function test_a_language_is_cleaned_up_even_when_pcre_has_given_up(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = (string) Block_Converter::block_to_shortcode(
+			[
+				'code'     => self::CODE,
+				'language' => 'PHP" ]',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertStringContainsString( 'language="php"', $shortcode, 'The language came back blanked, or still carrying what breaks a shortcode.' );
+
+	}
+
+	/**
+	 * The same failure on the file label, where the pattern is only tidying whitespace
+	 * and everything which makes the label safe has already happened. So the label
+	 * comes back untidy rather than not at all.
+	 *
+	 * @return void
+	 */
+	public function test_a_file_label_survives_a_pattern_pcre_gave_up_on(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = (string) Block_Converter::block_to_shortcode(
+			[
+				'code'     => self::CODE,
+				'language' => 'php',
+				'file'     => 'my  notes.php',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertStringContainsString( 'file="my  notes.php"', $shortcode, 'The label came back tidied, blanked or not at all.' );
 
 	}
 

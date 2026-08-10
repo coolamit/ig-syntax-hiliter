@@ -89,6 +89,16 @@ class Block_Converter {
 	const DELIMITER_WHITESPACE = " \t\n\r\f\v";
 
 	/**
+	 * The characters a language name may carry into a shortcode attribute.
+	 *
+	 * A plain list rather than a pattern, because membership in it is tested without
+	 * PCRE — see `self::_sanitize_language()` for why.
+	 *
+	 * @var string
+	 */
+	const LANGUAGE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_+#.-';
+
+	/**
 	 * Largest batch the plugin will accept, whatever the filter asks for.
 	 *
 	 * @var int
@@ -844,12 +854,37 @@ class Block_Converter {
 	/**
 	 * Method to clean up a language name so that it is safe in a shortcode.
 	 *
+	 * This was a `preg_replace()` cast to a string, which meant a language dropped
+	 * without a word whenever PCRE gave up: NULL cast to a string is an empty one, so
+	 * every snippet the run rewrote came back out unhighlighted. Nothing survives that
+	 * cast worth keeping either — the only values which reach the pattern's failure
+	 * branch are the ones with something in them to strip, so "keep what came in" here
+	 * would mean writing the very characters that end a shortcode attribute into one.
+	 *
+	 * So the filter is done without PCRE instead, and there is no failure branch left to
+	 * decide anything about: a language is cleaned the same way whatever state the
+	 * engine is in. `LANGUAGE_CHARS` is a list of bytes and the pattern it replaces was
+	 * byte-wise as well, so the two agree on multibyte input.
+	 *
 	 * @param string $language Language as the block carried it.
 	 *
 	 * @return string
 	 */
 	protected static function _sanitize_language( string $language ): string {
-		return (string) preg_replace( '/[^a-z0-9_+#.-]/', '', strtolower( trim( $language ) ) );
+
+		$language = strtolower( trim( $language ) );
+		$safe     = '';
+		$length   = strlen( $language );
+
+		for ( $index = 0; $index < $length; $index++ ) {
+
+			if ( str_contains( static::LANGUAGE_CHARS, $language[ $index ] ) ) {
+				$safe .= $language[ $index ];
+			}
+		}
+
+		return $safe;
+
 	}    //end _sanitize_language()
 
 	/**
@@ -859,16 +894,22 @@ class Block_Converter {
 	 * tag, so they are removed. Losing a bracket out of a file label is a visible,
 	 * harmless loss; a label which broke out of the shortcode would not be.
 	 *
+	 * Everything which makes the label safe to write has happened by the time the
+	 * pattern runs, and the pattern only tidies whitespace. So a pattern which gives up
+	 * — NULL, and `(string) NULL` is an empty string — keeps the label as it stood
+	 * before the tidying, untidy and whole, rather than blanking a label the author
+	 * wrote.
+	 *
 	 * @param string $label Label as the block carried it.
 	 *
 	 * @return string
 	 */
 	protected static function _sanitize_label( string $label ): string {
 
-		$label = str_replace( [ '[', ']', '"' ], '', wp_strip_all_tags( $label ) );
-		$label = preg_replace( '/\s+/', ' ', $label );
+		$label     = str_replace( [ '[', ']', '"' ], '', wp_strip_all_tags( $label ) );
+		$collapsed = preg_replace( '/\s+/', ' ', $label );
 
-		return trim( (string) $label );
+		return trim( ( is_string( $collapsed ) ) ? $collapsed : $label );
 
 	}    //end _sanitize_label()
 

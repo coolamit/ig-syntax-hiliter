@@ -18,6 +18,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
+use iG\Syntax_Hiliter\Plugin;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
@@ -177,6 +178,37 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 */
 	protected static function _normalize( string $markup ): string {
 		return trim( (string) preg_replace( '/ id="ig-sh-\d+"/', ' id="ig-sh-N"', $markup ) );
+	}
+
+	/**
+	 * The block is named twice — `Block::NAME`, and the `name` field of `block.json`
+	 * which WordPress actually registers it under — and nothing ties the two together.
+	 *
+	 * The save path shields this plugin's own block delimiters from KSES by matching
+	 * them on the constant, and that shield is the only thing keeping stored code away
+	 * from a filter which strips script tags and encodes angle brackets inside it for
+	 * every author without `unfiltered_html`. A name which drifted would stop matching
+	 * silently: content lost, HTTP 200, nothing said anywhere. So the constant is
+	 * checked against what ended up in the registry rather than against the JSON file.
+	 *
+	 * The build is checked for first because it is git ignored and
+	 * `Block::register_block()` returns quietly without it, which would otherwise look
+	 * exactly like drift.
+	 *
+	 * @return void
+	 */
+	public function test_the_registered_block_is_the_one_the_pipeline_matches_on(): void {
+
+		$this->assertFileExists(
+			Plugin::get_instance()->get_path( Block::BUILD_DIR ) . '/block.json',
+			'The block is not built, so nothing was registered and there is no name to compare.'
+		);
+
+		$this->assertTrue(
+			WP_Block_Type_Registry::get_instance()->is_registered( Block::NAME ),
+			'Nothing is registered under Block::NAME, so the constant and block.json name different blocks.'
+		);
+
 	}
 
 	/**
