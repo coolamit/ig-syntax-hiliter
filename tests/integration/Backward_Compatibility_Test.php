@@ -285,18 +285,114 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An escaped shortcode round-trips through storage and comes out as text.
+	 * An escaped shortcode reaches the database with both pairs of brackets on it.
+	 *
+	 * The save path must never take the outer pair off. It would take one bracket per
+	 * edit, and the edit after that would store what the author wrote as an example as
+	 * a real snippet.
 	 *
 	 * @return void
 	 */
-	public function test_an_escaped_shortcode_survives_storage_and_renders_as_text(): void {
+	public function test_an_escaped_shortcode_is_stored_byte_for_byte(): void {
 
 		$content = '[[php]echo 1;[/php]]';
-		$stored  = $this->_store( $content );
-		$output  = $this->_filter( 'the_content', $stored );
 
-		$this->assertStringContainsString( $content, $output );
+		$this->assertSame( $content, $this->_store( $content ) );
+
+	}
+
+	/**
+	 * An escaped shortcode comes out as the text it stands for.
+	 *
+	 * The outer pair of brackets comes off on the way to a reader, which is what
+	 * WordPress itself does with an escaped shortcode — `do_shortcode_tag()` and
+	 * `strip_shortcode_tag()` both hand back `substr( $m[0], 1, -1 )` — and what the
+	 * `strip_shortcodes()` call this plugin claims its tags in already does on the same
+	 * site. Nothing is highlighted, and no code box is built.
+	 *
+	 * @return void
+	 */
+	public function test_an_escaped_shortcode_renders_as_text(): void {
+
+		$output = $this->_filter( 'the_content', $this->_store( '[[php]echo 1;[/php]]' ) );
+
+		$this->assertStringContainsString( '[php]echo 1;[/php]', $output );
+		$this->assertStringNotContainsString( '[[php]', $output );
+		$this->assertStringNotContainsString( '[/php]]', $output );
 		$this->assertStringNotContainsString( '<pre', $output );
+
+	}
+
+	/**
+	 * Editing and saving a post over and over neither eats a bracket nor turns the
+	 * author's example into a snippet.
+	 *
+	 * Rendering between the saves is the point: what the reader is shown is not what
+	 * goes back to the database, and the two have to stay apart however many rounds
+	 * they are put through.
+	 *
+	 * @return void
+	 */
+	public function test_an_escaped_shortcode_survives_repeated_edits(): void {
+
+		$content = '[[php]echo 1;[/php]]';
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash( $content ),
+			]
+		);
+
+		for ( $round = 1; $round <= 3; ++$round ) {
+
+			$stored = (string) get_post_field( 'post_content', $post_id, 'raw' );
+
+			$this->assertSame( $content, $stored, sprintf( 'Round %d changed what is stored.', $round ) );
+
+			$output = $this->_filter( 'the_content', $stored );
+
+			$this->assertStringContainsString( '[php]echo 1;[/php]', $output, sprintf( 'Round %d lost the text.', $round ) );
+			$this->assertStringNotContainsString( '[[php]', $output, sprintf( 'Round %d showed the reader the escape.', $round ) );
+			$this->assertStringNotContainsString( '<pre', $output, sprintf( 'Round %d rendered a code box.', $round ) );
+
+			wp_update_post(
+				[
+					'ID'           => $post_id,
+					'post_content' => wp_slash( $stored ),
+				]
+			);
+
+		}
+
+	}
+
+	/**
+	 * An escaped shortcode in a post with no excerpt of its own leaves the excerpt
+	 * WordPress builds for it carrying neither a code box nor the code.
+	 *
+	 * The body an automatic excerpt is built from is stripped at `the_content` priority
+	 * 0 and protected at priority 1, on the same string. An escape unwrapped by the
+	 * first of those is a real shortcode to the second, which would render a code box
+	 * into a summary for `wp_trim_words()` to take the markup back off and print the
+	 * author's source as prose. Stripping the escape along with the snippets is what
+	 * leaves the second pass nothing to find.
+	 *
+	 * @return void
+	 */
+	public function test_an_escaped_shortcode_leaves_a_clean_automatic_excerpt(): void {
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash( "Intro paragraph.\n\n[[php]\$secret = 'escaped-leak-marker';[/php]]\n\nOutro paragraph." ),
+				'post_excerpt' => '',
+			]
+		);
+
+		$excerpt = get_the_excerpt( $post_id );
+
+		$this->assertStringNotContainsString( '<pre', $excerpt, 'A code box was rendered into the excerpt.' );
+		$this->assertStringNotContainsString( 'escaped-leak-marker', $excerpt, 'The code reached the excerpt as prose.' );
+		$this->assertDoesNotMatchRegularExpression( '#\[/?php#', $excerpt, 'A piece of the shortcode reached the excerpt.' );
+		$this->assertStringContainsString( 'Outro paragraph.', $excerpt, 'Prose past the escape was lost.' );
 
 	}
 

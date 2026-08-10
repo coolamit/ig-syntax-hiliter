@@ -123,7 +123,7 @@ class Content_Protector {
 		return $this->_replace_shortcodes(
 			$content,
 			function ( array $matches ): string {
-				return $this->_protect_match( $matches );
+				return $this->_protect_match( $matches, true );
 			}
 		);
 
@@ -159,7 +159,7 @@ class Content_Protector {
 		$content = $this->_replace_shortcodes(
 			$content,
 			function ( array $matches ): string {
-				return $this->_protect_match( $matches );
+				return $this->_protect_match( $matches, false );
 			}
 		);
 
@@ -173,6 +173,21 @@ class Content_Protector {
 	 * Used where a code box makes no sense, such as an excerpt. Nothing is stashed
 	 * and nothing is restored, so this is only ever used on content being displayed.
 	 *
+	 * An escaped shortcode goes with the rest, neither unwrapped nor left as it was
+	 * written. Unwrapping is not open to a pass which has no restore stage behind it:
+	 * the body an automatic excerpt is built from is stripped at `the_content`
+	 * priority 0 and protected at priority 1, so a `[php]…[/php]` this pass left in
+	 * the content is a snippet to the next one, and a summary would be handed a
+	 * rendered code box for `wp_trim_words()` to take the markup back off and print
+	 * the code as prose. Leaving it as written carries the same code into the summary
+	 * anyway, where a `<` which opens no element takes everything after it away with
+	 * `strip_tags()`. What is between the brackets is source code either way, and a
+	 * summary is no place for it.
+	 *
+	 * That is also what makes the hazard above impossible rather than merely avoided:
+	 * once this pass has run, the body carries no form of this plugin's shortcodes at
+	 * all, so there is nothing left for the protect pass behind it to match.
+	 *
 	 * @param string $content Content to strip.
 	 *
 	 * @return string
@@ -181,14 +196,8 @@ class Content_Protector {
 
 		return $this->_replace_shortcodes(
 			$content,
-			static function ( array $matches ): string {
-
-				if ( '[' === $matches[1] && ']' === ( $matches[6] ?? '' ) ) {
-					return $matches[0];
-				}
-
+			static function (): string {
 				return '';
-
 			}
 		);
 
@@ -224,10 +233,24 @@ class Content_Protector {
 		/*
 		 * `wpautop` gives an isolated placeholder a paragraph of its own. Unwrapping
 		 * it here is what keeps a block level code box out of a `<p>`.
+		 *
+		 * A placeholder which was never isolated stands in for text rather than for a
+		 * code box, so the paragraph around it is one the author wrote and it is left
+		 * where it is.
 		 */
 		$content = static::_replace(
 			sprintf( '#<p>\s*%s\s*</p>#', static::_get_placeholder_pattern() ),
-			$restore,
+			function ( array $matches ) use ( $restore ): string {
+
+				$entry = $this->_stash[ $matches[1] ] ?? null;
+
+				if ( is_null( $entry ) || true !== $entry['isolated'] ) {
+					return $matches[0];
+				}
+
+				return $restore( $matches );
+
+			},
 			$content
 		);
 
@@ -673,15 +696,46 @@ class Content_Protector {
 	/**
 	 * Method to handle one matched shortcode.
 	 *
+	 * An escaped shortcode, `[[php]…[/php]]`, is not a snippet. It is an author showing
+	 * this plugin's tags as text, and how it is dealt with depends on where the content
+	 * is going.
+	 *
+	 * On the way to a reader the outer pair of brackets comes off, which is exactly what
+	 * `do_shortcode_tag()` and `strip_shortcode_tag()` each do with one. The text that
+	 * leaves is stashed rather than written straight back in, because the content goes
+	 * on being filtered for another ninety-nine priorities after this — a bare
+	 * `[php]…[/php]` sitting in it is a shortcode which any later pass, this plugin's
+	 * own included, would match and render.
+	 *
+	 * On the way to the database it is handed back exactly as it was written. Taking a
+	 * bracket off there would take one off per edit, and the edit after that would store
+	 * the author's example as a real snippet.
+	 *
 	 * @param array $matches Match from the shortcode pattern.
+	 * @param bool  $unwrap  Whether an escaped shortcode is on its way to a reader.
 	 *
 	 * @return string
 	 */
-	protected function _protect_match( array $matches ): string {
+	protected function _protect_match( array $matches, bool $unwrap ): string {
 
-		// An escaped shortcode, `[[php]…[/php]]`, is not a snippet. It is left exactly as written.
 		if ( '[' === $matches[1] && ']' === ( $matches[6] ?? '' ) ) {
-			return $matches[0];
+
+			if ( ! $unwrap ) {
+				return $matches[0];
+			}
+
+			return $this->_stash_entry(
+				$matches[0],
+				[
+					'raw'  => $matches[0],
+					'tag'  => '',
+					'atts' => '',
+					'code' => '',
+					'html' => substr( $matches[0], 1, -1 ),
+				],
+				false
+			);
+
 		}
 
 		return $this->_stash_entry(
@@ -700,20 +754,28 @@ class Content_Protector {
 	/**
 	 * Method to stash one entry and get the placeholder standing in for it.
 	 *
+	 * Whether the placeholder was given a paragraph of its own is recorded on the entry,
+	 * because the restore pass has to know which paragraph around a placeholder is one
+	 * `wpautop` built and which is one the author wrote.
+	 *
 	 * @param string $identity Value the key is derived from.
 	 * @param array  $entry    Entry to stash.
+	 * @param bool   $isolate  Whether this entry may have a paragraph of its own.
 	 *
 	 * @return string
 	 */
-	protected function _stash_entry( string $identity, array $entry ): string {
+	protected function _stash_entry( string $identity, array $entry, bool $isolate = true ): string {
 
-		$key = md5( $this->_get_salt() . $identity );
+		$key     = md5( $this->_get_salt() . $identity );
+		$isolate = ( $isolate && $this->_is_isolating() );
+
+		$entry['isolated'] = $isolate;
 
 		$this->_stash[ $key ] = $entry;
 
 		$placeholder = static::get_placeholder( $key );
 
-		if ( $this->_is_isolating() ) {
+		if ( $isolate ) {
 			$placeholder = sprintf( "\n\n%s\n\n", $placeholder );
 		}
 
