@@ -25,10 +25,10 @@
 		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",
 		"start": "wp-scripts start",
 		"watch:css": "npm run build:css -- --watch",
-		"lint:js": "wp-scripts lint-js",
-		"lint:style": "wp-scripts lint-style",
+		"lint:js": "wp-scripts lint-js src assets/src",
+		"lint:style": "wp-scripts lint-style 'src/**/*.scss' 'assets/src/scss/**/*.scss'",
 		"lint:types": "tsc --noEmit && tsc -p tsconfig.assets.json --noEmit",
-		"format": "wp-scripts format"
+		"format": "wp-scripts format src assets/src"
 	},
 	"devDependencies": {
 		"@types/react": "^18.3.12",

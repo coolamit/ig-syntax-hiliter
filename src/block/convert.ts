@@ -33,9 +33,16 @@
 
 import { createBlock, parse } from '@wordpress/blocks';
 import { dispatch, select, subscribe } from '@wordpress/data';
-import { attrs as parseShortcodeAttributes, regexp } from '@wordpress/shortcode';
+import {
+	attrs as parseShortcodeAttributes,
+	regexp,
+} from '@wordpress/shortcode';
 
-import { BLOCK_NAME, getLegacyTags, mapShortcodeAttributes } from './attributes';
+import {
+	BLOCK_NAME,
+	getLegacyTags,
+	mapShortcodeAttributes,
+} from './attributes';
 
 const BLOCK_EDITOR_STORE = 'core/block-editor';
 const EDITOR_STORE = 'core/editor';
@@ -93,7 +100,10 @@ interface CreatedBlock {
 interface BlockEditorSelectors {
 	getBlocks: () => EditorBlock[];
 	getBlockRootClientId?: ( clientId: string ) => string | null;
-	canInsertBlockType?: ( name: string, rootClientId?: string | null ) => boolean;
+	canInsertBlockType?: (
+		name: string,
+		rootClientId?: string | null
+	) => boolean;
 }
 
 interface BlockEditorActions {
@@ -222,7 +232,6 @@ function getStoredContent(): string | null {
 	}
 
 	const postType = editor.getCurrentPostType?.();
-	const postId = editor.getCurrentPostId();
 
 	if ( typeof postType !== 'string' || postType === '' ) {
 		return null;
@@ -231,6 +240,8 @@ function getStoredContent(): string | null {
 	if ( EXCLUDED_POST_TYPES.includes( postType ) ) {
 		return null;
 	}
+
+	const postId = editor.getCurrentPostId();
 
 	if ( postId === undefined || postId === null || postId === '' ) {
 		return null;
@@ -363,8 +374,7 @@ function splitFreeformContent(
 			);
 			replacement.push( snippet );
 
-			cursor =
-				match.index + match[ 0 ].length - trailingBracket.length;
+			cursor = match.index + match[ 0 ].length - trailingBracket.length;
 			converted = true;
 		}
 
@@ -604,7 +614,10 @@ function convertFreeformBlocks(): void {
 
 	const storeBlocks = selectors.getBlocks();
 
-	if ( ! Array.isArray( storeBlocks ) || ! hasClassicBracket( storeBlocks ) ) {
+	if (
+		! Array.isArray( storeBlocks ) ||
+		! hasClassicBracket( storeBlocks )
+	) {
 		return;
 	}
 

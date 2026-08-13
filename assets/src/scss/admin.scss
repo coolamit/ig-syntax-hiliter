@@ -1,10 +1,12 @@
-// Styles for the iG:Syntax Hiliter settings page.
-//
-// Compiled to assets/build/css/admin.css by the `sass` CLI, via the `build:css`
-// script in package.json. Never edit the compiled file.
-//
-// Colours are taken from the wp-admin palette rather than invented, so the page
-// looks like the rest of wp-admin and follows it if the palette moves.
+/*
+ * Styles for the iG:Syntax Hiliter settings page.
+ *
+ * Compiled to assets/build/css/admin.css by the `sass` CLI, via the
+ * `build:css` script in package.json. Never edit the compiled file.
+ *
+ * Colours are taken from the wp-admin palette rather than invented, so the
+ * page looks like the rest of wp-admin and follows it if the palette moves.
+ */
 
 $igsh-accent: #2271b1;
 $igsh-accent-hover: #135e96;
@@ -40,10 +42,10 @@ $igsh-radius: 3px;
 	}
 }
 
-//
-// Toggle switch. The checkbox stays a real checkbox — it is only moved out of
-// sight, so it keeps its focus behaviour, its label and its keyboard handling.
-//
+/*
+ * Toggle switch. The checkbox stays a real checkbox — it is only moved out of
+ * sight, so it keeps its focus behaviour, its label and its keyboard handling.
+ */
 .igsh-toggle {
 	display: inline-block;
 	position: relative;
@@ -109,11 +111,11 @@ $igsh-radius: 3px;
 	}
 }
 
-//
-// The section which converts blocks back to shortcodes. Deliberately quieter
-// than a warning notice — it is not an error, but it is not something to click
-// by accident either.
-//
+/*
+ * The section which converts blocks back to shortcodes. Deliberately quieter
+ * than a warning notice — it is not an error, but it is not something to click
+ * by accident either.
+ */
 .igsh-revert {
 	max-width: 46rem;
 	padding: 16px 20px;
@@ -149,9 +151,7 @@ $igsh-radius: 3px;
 	}
 }
 
-//
-// Feedback. One live region, bottom right, out of the way of the controls.
-//
+/* Feedback. One live region, bottom right, out of the way of the controls. */
 .igsh-toast {
 	position: fixed;
 	right: 24px;

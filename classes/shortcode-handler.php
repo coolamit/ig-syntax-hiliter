@@ -114,7 +114,7 @@ class Shortcode_Handler {
 
 		$this->_hooked = true;
 
-		$hilite_comments = ( 'yes' === static::get_plugin_option( 'hilite_comments', 'yes' ) );
+		$hilite_comments = static::is_plugin_option_on( 'hilite_comments', 'yes' );
 
 		$display_filters = [ 'the_content' ];
 		$strip_filters   = static::EXCERPT_FILTERS;
@@ -412,6 +412,25 @@ class Shortcode_Handler {
 		return strtolower( trim( $value ) );
 
 	}    //end get_plugin_option()
+
+	/**
+	 * Method to read one yes/no plugin option as a boolean.
+	 *
+	 * The one place a setting becomes a `TRUE` or a `FALSE`, so that every switch in
+	 * the plugin turns on the same set of stored values. It matters for what is
+	 * already in the database rather than for what gets written now: a row hand
+	 * edited, or written by a version of this plugin from before its values were
+	 * checked on the way in, holds whatever it holds, and reading it through one
+	 * converter is what makes that harmless without anything having to rewrite it.
+	 *
+	 * @param string $name     Option name.
+	 * @param string $fallback Value to use when the option is missing or unusable, `yes` or `no`.
+	 *
+	 * @return bool
+	 */
+	public static function is_plugin_option_on( string $name, string $fallback ): bool {
+		return ( 'yes' === Validate::get_instance()->to_yesno( static::get_plugin_option( $name, $fallback ), $fallback ) );
+	}    //end is_plugin_option_on()
 
 }    //end of class
 

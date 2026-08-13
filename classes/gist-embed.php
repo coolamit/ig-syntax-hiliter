@@ -84,7 +84,7 @@ class Gist_Embed {
 
 		$embed_filters = [ 'the_content' ];
 
-		if ( 'yes' === Shortcode_Handler::get_plugin_option( 'gist_in_comments', 'no' ) ) {
+		if ( Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ) ) {
 			$embed_filters[] = 'comment_text';
 		} else {
 			$this->_link_filters[] = 'comment_text';

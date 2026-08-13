@@ -1,27 +1,31 @@
-// iG:Syntax Hiliter — the bits the Prism themes do not cover.
-//
-// Compiled to assets/build/css/frontend-chrome.css by the `sass` CLI, via the
-// `build:css` script in package.json. Never edit the compiled file.
-//
-// This is plain CSS held in a .scss file. SCSS is a superset of CSS, so nothing
-// here needs Sass syntax to compile; the extension exists so that every
-// stylesheet the plugin ships comes out of one pipeline.
+/*
+ * iG:Syntax Hiliter — the bits the Prism themes do not cover.
+ *
+ * Compiled to assets/build/css/frontend-chrome.css by the `sass` CLI, via
+ * the `build:css` script in package.json. Never edit the compiled file.
+ *
+ * This is plain CSS held in a .scss file. SCSS is a superset of CSS, so
+ * nothing here needs Sass syntax to compile; the extension exists so that
+ * every stylesheet the plugin ships comes out of one pipeline.
+ */
 
 /*
  * The file name label.
  *
- * `file="…"` is a v5 attribute and has to keep working whatever the toolbar setting
- * is, and the toolbar is where the only other label lives — with `toolbar=no` the
- * plugin loads no toolbar, so nothing on the page reads `data-file` at all. So the
- * box paints the label itself, out of the attribute.
+ * `file="…"` is a v5 attribute and has to keep working whatever the toolbar
+ * setting is, and the toolbar is where the only other label lives — with
+ * `toolbar=no` the plugin loads no toolbar, so nothing on the page reads
+ * `data-file` at all. So the box paints the label itself, out of the
+ * attribute.
  *
- * It is taken out of the flow deliberately. The line numbers and line highlight
- * plugins both measure the box to place their overlays, and the highlight overlay is
- * positioned against the `pre` when line numbers are off, so anything added to the
- * flow above the code slides the highlighted lines off the lines they mark.
+ * It is taken out of the flow deliberately. The line numbers and line
+ * highlight plugins both measure the box to place their overlays, and the
+ * highlight overlay is positioned against the `pre` when line numbers are
+ * off, so anything added to the flow above the code slides the highlighted
+ * lines off the lines they mark.
  *
- * The Coy theme paints its page fold shadow on this same pseudo element, so every
- * property it sets is written back here rather than inherited.
+ * The Coy theme paints its page fold shadow on this same pseudo element, so
+ * every property it sets is written back here rather than inherited.
  */
 pre[id^="ig-sh-"][data-file]::before {
 	content: attr(data-file);
@@ -52,7 +56,7 @@ pre[id^="ig-sh-"][data-file]::before {
 	pointer-events: none;
 }
 
-/* Where the toolbar is loaded it wraps the box and paints a label of its own. */
+/* Where the toolbar is loaded it wraps the box and paints its own label. */
 .code-toolbar > pre[id^="ig-sh-"][data-file]::before {
 	content: none;
 }
@@ -92,18 +96,18 @@ pre.igsh-no-toolbar ~ .toolbar,
  * `pre[class*="language-"]`. All that is left is to keep the text in the box
  * colour rather than a token colour which is never applied.
  */
-pre[class*="language-"] > code.language-none,
-code.language-none {
+code.language-none,
+pre[class*="language-"] > code.language-none {
 	color: inherit;
 	background: none;
 	text-shadow: none;
 }
 
 /*
- * Minimal box styling for sites which load no theme at all. The box is positioned so
- * that the file label above has something to hang off; the line numbers and line
- * highlight plugins each position the box themselves when they are loaded, and this
- * is the same value they use.
+ * Minimal box styling for sites which load no theme at all. The box is
+ * positioned so that the file label above has something to hang off; the line
+ * numbers and line highlight plugins each position the box themselves when
+ * they are loaded, and this is the same value they use.
  */
 pre[id^="ig-sh-"] {
 	position: relative;

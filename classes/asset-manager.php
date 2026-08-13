@@ -534,7 +534,7 @@ class Asset_Manager {
 	 * @return bool
 	 */
 	protected static function _is_option_on( string $name, string $fallback ): bool {
-		return ( 'yes' === Shortcode_Handler::get_plugin_option( $name, $fallback ) );
+		return Shortcode_Handler::is_plugin_option_on( $name, $fallback );
 	}    //end _is_option_on()
 
 	/**

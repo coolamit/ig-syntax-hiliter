@@ -12,8 +12,15 @@
 import { createBlock } from '@wordpress/blocks';
 import { RichTextData } from '@wordpress/rich-text';
 
-import { BLOCK_NAME, getLegacyTags, mapShortcodeAttributes } from './attributes';
-import type { CodeBlockAttributes, ShortcodeNamedAttributes } from './attributes';
+import {
+	BLOCK_NAME,
+	getLegacyTags,
+	mapShortcodeAttributes,
+} from './attributes';
+import type {
+	CodeBlockAttributes,
+	ShortcodeNamedAttributes,
+} from './attributes';
 
 interface ShortcodeMatch {
 	shortcode: {

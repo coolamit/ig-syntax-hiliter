@@ -31,23 +31,24 @@ class Option {
 	/**
 	 * An array which contains default plugin options.
 	 *
+	 * Filled from `Validate`, which is where the settings are declared along with the
+	 * values each of them accepts. This class does not keep a second copy of that
+	 * list: two declarations of the same fact are two things to keep in step, and the
+	 * one which drifts is always the one nothing reads.
+	 *
 	 * @var array
 	 */
-	protected $_default_options = [
-		'theme'                => Asset_Manager::DEFAULT_THEME,    //base name of the bundled theme stylesheet, or 'none' for no stylesheet
-		'toolbar'              => 'yes',    //show toolbar above hilited code by default
-		'copy_code'            => 'yes',    //show the copy to clipboard button by default
-		'show_line_numbers'    => 'yes',    //show line numbers in code by default
-		'normalize_whitespace' => 'no',    //don't strip common indentation from code by default
-		'hilite_comments'      => 'yes',    //hilite code posted in comments by default
-		'gist_in_comments'     => 'no',    //don't embed Github Gist in comments by default
-	];
+	protected array $_default_options = [];
 
 	/**
 	 * Class constructor
 	 */
 	protected function __construct() {
+
+		$this->_default_options = Validate::get_instance()->get_option_defaults();
+
 		$this->_load_all_options();
+
 	}
 
 	/**
@@ -115,8 +116,14 @@ class Option {
 	}
 
 	/**
-	 * Method to save an option. It takes care of sanitizing the value before
-	 * saving it and saves an option only if the option name already exists.
+	 * Method to save an option. `Validate` decides what the value may be and this
+	 * saves an option only if the option name already exists.
+	 *
+	 * Whatever arrives is read as this setting through `Validate`, which hands back a
+	 * value the setting accepts or that setting's default. Nothing unrecognised is
+	 * ever written, so a request edited on its way here cannot put an arbitrary value
+	 * into the settings — which is what the old `sanitize_title()` call let through,
+	 * since a made up value is usually a perfectly good slug.
 	 *
 	 * The stored array is read again immediately before it is written, and the one
 	 * setting named here is applied to what was read. The snapshot this object took
@@ -141,23 +148,7 @@ class Option {
 			return false;
 		}
 
-		$can_be_empty = false;
-
-		if ( is_array( $value ) ) {
-
-			$value = array_map( 'sanitize_title', $value );
-			$value = array_map( 'trim', $value );
-			$value = array_map( 'strtolower', $value );
-
-			$can_be_empty = true;
-
-		} else {
-			$value = strtolower( trim( sanitize_title( $value ) ) );
-		}
-
-		if ( empty( $value ) && true !== $can_be_empty ) {
-			return false;
-		}
+		$value = Validate::get_instance()->get_sanitized_option_value( $name, $value );
 
 		$this->_load_all_options();    //whatever is stored now, not what was stored when this object was built
 

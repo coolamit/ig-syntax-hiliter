@@ -598,8 +598,18 @@ class Block_Converter {
 				return null;    //the comment is never closed
 			}
 
-			if ( '/' !== $content[ $close - 1 ] ) {
-				continue;    //a closing delimiter, not a self closing one
+			/*
+			 * The bound is tested here rather than left to the fact that `$close` starts
+			 * at `$start` and the search above runs from `$close + 1`. That holds, but it
+			 * holds thirty lines away from the read which needs it, and a rewrite of the
+			 * scan above would take the defence away without touching this line.
+			 *
+			 * The `$content[ $end - 1 ]` read below needs nothing of its own: `$end` is
+			 * only ever decremented while `$end > $start`, and where it is not decremented
+			 * at all the `( $close - 1 ) === $end` test short circuits ahead of it.
+			 */
+			if ( 1 > $close || '/' !== $content[ $close - 1 ] ) {
+				continue;    //nothing before the `-->`, or a closing delimiter rather than a self closing one
 			}
 
 			$end = $close - 1;    //the `/`

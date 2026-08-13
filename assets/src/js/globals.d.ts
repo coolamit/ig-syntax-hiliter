@@ -69,10 +69,10 @@ interface IgshPrismToolbarEnv {
  * The toolbar plugin, as far as this plugin uses it.
  */
 interface IgshPrismToolbar {
-	registerButton(
+	registerButton: (
 		key: string,
 		callback: ( env: IgshPrismToolbarEnv ) => Element | undefined
-	): void;
+	) => void;
 }
 
 /**

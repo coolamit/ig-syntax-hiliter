@@ -208,13 +208,20 @@ jobs:
         # are compiled by tsc itself with noEmitOnError, so the build step below
         # would catch one too — this runs first so that a type error is reported as
         # a type error rather than as a build failure.
-        #
-        # The sibling `lint:js` and `lint:style` scripts are deliberately NOT
-        # run here: both are scoped at the whole tree and so lint the vendored
-        # Prism bundles and everything under assets/build/, which produces
-        # thousands of failures that say nothing about this plugin's sources.
-        # Wire them in once they are scoped to src/ and assets/src/.
         run: npm run lint:types
+
+      - name: ESLint and stylelint
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Both are scoped in package.json to src/ and assets/src/, which is the
+        # whole of what this plugin writes. Nothing vendored or generated is
+        # linted: not assets/lib/prism/ (~300 upstream component files, plus the
+        # themes and plugin bundles), not assets/build/, not build/. Reformatting
+        # any of those would be a diff against an upstream release for no gain,
+        # and unscoped these two report thousands of failures that say nothing
+        # about this plugin. Do not drop the paths from those scripts.
+        run: |
+          npm run lint:js
+          npm run lint:style
 
       - name: Build block editor and plugin assets
         working-directory: ${{ env.PLUGIN_PATH }}

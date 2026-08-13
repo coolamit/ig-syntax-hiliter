@@ -96,10 +96,7 @@ function normalizeAttributeNames(
 	return normalized;
 }
 
-function readAttribute(
-	atts: ShortcodeNamedAttributes,
-	name: string
-): string {
+function readAttribute( atts: ShortcodeNamedAttributes, name: string ): string {
 	const value = atts[ name ];
 
 	return typeof value === 'string' ? value.trim() : '';
@@ -107,6 +104,8 @@ function readAttribute(
 
 /**
  * `intval()` followed by `abs()`, with PHP's leading-digits parsing.
+ *
+ * @param value Attribute value as the author wrote it.
  */
 function toPositiveInteger( value: string ): number {
 	const parsed = parseInt( value, 10 );
@@ -117,6 +116,8 @@ function toPositiveInteger( value: string ): number {
 /**
  * A `yes`/`no` attribute value, or `undefined` when the author expressed no
  * opinion.
+ *
+ * @param value Attribute value as the author wrote it.
  */
 function yesNoToBoolean( value: string ): boolean | undefined {
 	const normalized = value.toLowerCase().trim();

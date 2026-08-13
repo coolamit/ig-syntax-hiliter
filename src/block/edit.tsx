@@ -17,6 +17,7 @@ import {
 	SelectControl,
 	TextControl,
 	ToggleControl,
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- @wordpress/components exports no stable number control; TextControl type="number" gives a worse first line field.
 	__experimentalNumberControl as NumberControl,
 } from '@wordpress/components';
 
@@ -91,10 +92,13 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 						__nextHasNoMarginBottom
 						__next40pxDefaultSize
 						label={ __( 'Highlighted lines', 'igsyntax-hiliter' ) }
-						help={ __(
-							'Line numbers and ranges, eg. 2,4-6.',
-							'igsyntax-hiliter'
-						) }
+						help={
+							// eslint-disable-next-line @wordpress/i18n-hyphenated-range -- the hyphen is the syntax the author types into this field, not a range in prose. An en dash here would document something the parser does not accept.
+							__(
+								'Line numbers and ranges, eg. 2,4-6.',
+								'igsyntax-hiliter'
+							)
+						}
 						value={ highlightLines }
 						onChange={ ( value: string ) =>
 							setAttributes( { highlightLines: value } )

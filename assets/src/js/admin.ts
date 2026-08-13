@@ -3,8 +3,6 @@
  *
  * No jQuery, no libraries: a fetch to the plugin's REST routes, a small live
  * region for feedback, and the browser's own tooltips and confirmation dialog.
- *
- * @package iG_Syntax_Hiliter
  */
 
 ( function () {
@@ -130,7 +128,11 @@
 	 * @param isError Whether the message reports a failure.
 	 * @param sticky  Whether the message stays until it is replaced.
 	 */
-	function notify( message: string, isError?: boolean, sticky?: boolean ): void {
+	function notify(
+		message: string,
+		isError?: boolean,
+		sticky?: boolean
+	): void {
 		if ( ! toast ) {
 			toast = document.createElement( 'div' );
 			toast.className = 'igsh-toast';
@@ -244,13 +246,18 @@
 		return pending
 			.then( function ( response ) {
 				return response.json().then(
-					function ( payload: ( T & { message?: string; code?: string } ) | null ) {
+					function (
+						payload:
+							| ( T & { message?: string; code?: string } )
+							| null
+					) {
 						if ( response.ok ) {
 							return payload as T;
 						}
 
 						const error: RequestError = new Error(
-							( payload && payload.message ) || response.statusText
+							( payload && payload.message ) ||
+								response.statusText
 						);
 
 						error.status = response.status;
@@ -259,7 +266,9 @@
 						throw error;
 					},
 					function () {
-						const error: RequestError = new Error( response.statusText );
+						const error: RequestError = new Error(
+							response.statusText
+						);
 
 						error.status = response.status;
 
@@ -430,7 +439,10 @@
 
 				writeControl( control, control.dataset.igshPrevious );
 
-				notify( ( payload && payload.message ) || strings.saved, false );
+				notify(
+					( payload && payload.message ) || strings.saved,
+					false
+				);
 			} )
 			.catch( function ( error: RequestError ) {
 				let message = strings.saveFailed + ' ' + error.message;
@@ -617,6 +629,7 @@
 		meter: HTMLProgressElement,
 		status: HTMLElement
 	): void {
+		// eslint-disable-next-line no-alert -- this rewrites post_content across the whole site and cannot be undone from here. Stopping the click is the point of the control, and a custom dialog would be one more thing to get wrong on a page that loads no libraries.
 		if ( ! window.confirm( strings.revertConfirm ) ) {
 			return;
 		}
@@ -673,7 +686,11 @@
 					addCount( totals, 'converted', batch.converted );
 					addCount( totals, 'skipped', batch.skipped );
 					addCount( totals, 'failed', batch.failed );
-					addCount( totals, 'blocksLeftAlone', batch.blocks_left_alone );
+					addCount(
+						totals,
+						'blocksLeftAlone',
+						batch.blocks_left_alone
+					);
 
 					meter.value = Math.min( totals.processed, meter.max );
 
@@ -729,6 +746,5 @@
 		init();
 	}
 } )();
-
 
 //EOF

@@ -34,42 +34,44 @@
 		return null !== element.closest( '.igsh-no-toolbar' );
 	}
 
-	if ( plugins.toolbar && 'function' === typeof plugins.toolbar.registerButton ) {
-		plugins.toolbar.registerButton(
-			'igsh-file-label',
-			function ( env ): Element | undefined {
-				/*
-				 * `parentElement` rather than `parentNode`: the check below only ever
-				 * accepts a `<pre>`, which is an element, so the two agree on every
-				 * input that gets past it — and this one says so in its type.
-				 */
-				const pre = env.element ? env.element.parentElement : null;
+	if (
+		plugins.toolbar &&
+		'function' === typeof plugins.toolbar.registerButton
+	) {
+		plugins.toolbar.registerButton( 'igsh-file-label', function ( env ):
+			| Element
+			| undefined {
+			/*
+			 * `parentElement` rather than `parentNode`: the check below only ever
+			 * accepts a `<pre>`, which is an element, so the two agree on every
+			 * input that gets past it — and this one says so in its type.
+			 */
+			const pre = env.element ? env.element.parentElement : null;
 
-				if ( ! pre || 'pre' !== pre.nodeName.toLowerCase() ) {
-					return;
-				}
-
-				if ( isToolbarOptedOut( pre ) ) {
-					return;
-				}
-
-				const label = pre.getAttribute( 'data-file' );
-
-				if ( ! label ) {
-					return;
-				}
-
-				const item = document.createElement( 'span' );
-
-				item.className = 'igsh-file-label';
-				item.textContent = label;
-				item.setAttribute(
-					'title',
-					( settings.fileLabel ? settings.fileLabel + ': ' : '' ) + label
-				);
-
-				return item;
+			if ( ! pre || 'pre' !== pre.nodeName.toLowerCase() ) {
+				return;
 			}
-		);
+
+			if ( isToolbarOptedOut( pre ) ) {
+				return;
+			}
+
+			const label = pre.getAttribute( 'data-file' );
+
+			if ( ! label ) {
+				return;
+			}
+
+			const item = document.createElement( 'span' );
+
+			item.className = 'igsh-file-label';
+			item.textContent = label;
+			item.setAttribute(
+				'title',
+				( settings.fileLabel ? settings.fileLabel + ': ' : '' ) + label
+			);
+
+			return item;
+		} );
 	}
 } )();

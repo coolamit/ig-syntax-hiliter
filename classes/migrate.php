@@ -275,7 +275,7 @@ class Migrate {
 
 			$this->_option->save(
 				$new_name,
-				$this->_flag_to_yesno( $old_options[ $old_name ], $this->_option->get_default( $new_name ) )
+				Validate::get_instance()->to_yesno( $old_options[ $old_name ], $this->_option->get_default( $new_name ) )
 			);
 
 		}
@@ -305,17 +305,19 @@ class Migrate {
 			$old_options = [];
 		}
 
+		$validate = Validate::get_instance();
+
 		if ( isset( $old_options['fe-styles'] ) ) {
 
 			$this->_option->save(
 				'theme',
-				( 'no' === $this->_to_yesno( $old_options['fe-styles'], 'yes' ) ) ? Asset_Manager::THEME_NONE : Asset_Manager::DEFAULT_THEME
+				( 'no' === $validate->to_yesno( $old_options['fe-styles'], 'yes' ) ) ? Asset_Manager::THEME_NONE : Asset_Manager::DEFAULT_THEME
 			);
 
 		}
 
 		if ( isset( $old_options['plain_text'] ) ) {
-			$this->_option->save( 'copy_code', $this->_to_yesno( $old_options['plain_text'], 'yes' ) );
+			$this->_option->save( 'copy_code', $validate->to_yesno( $old_options['plain_text'], 'yes' ) );
 		}
 
 		/*
@@ -327,47 +329,6 @@ class Migrate {
 		unset( $old_options );
 
 	}    //end _settings_from_5x()
-
-	/**
-	 * Method to read a stored value as a yes/no setting.
-	 *
-	 * @param mixed  $value    Value as it was stored.
-	 * @param string $fallback Value to use when the stored one is neither yes nor no.
-	 *
-	 * @return string
-	 */
-	protected function _to_yesno( $value, string $fallback ): string {
-
-		$value = ( is_scalar( $value ) ) ? strtolower( trim( (string) $value ) ) : '';
-
-		return ( Validate::get_instance()->is_yesno( $value ) ) ? $value : $fallback;
-
-	}    //end _to_yesno()
-
-	/**
-	 * Method to read a stored flag as a yes/no setting.
-	 *
-	 * This is for the values older versions stored as booleans. `TRUE`, `1`, `'1'`,
-	 * `'on'` and `'yes'` all mean the same thing to the person who set them, and so
-	 * do their opposites; anything which is neither is not a flag at all and takes
-	 * the fallback.
-	 *
-	 * @param mixed  $value    Value as it was stored.
-	 * @param string $fallback Value to use when the stored one cannot be read as a flag.
-	 *
-	 * @return string
-	 */
-	protected function _flag_to_yesno( $value, string $fallback ): string {
-
-		$flag = ( is_scalar( $value ) ) ? filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) : null;
-
-		if ( is_null( $flag ) ) {
-			return $fallback;
-		}
-
-		return ( true === $flag ) ? 'yes' : 'no';
-
-	}    //end _flag_to_yesno()
 
 	/**
 	 * Method to remove what the old version left behind.

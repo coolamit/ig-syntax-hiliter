@@ -278,7 +278,7 @@ class Renderer {
 	 *
 	 * `data-file` carries a label the author typed, and the label is painted out of
 	 * this attribute — by `assets/src/scss/frontend-chrome.scss` with `attr()`, and
-	 * by the toolbar button in `assets/src/js/ig-prism-setup.js` with `textContent`
+	 * by the toolbar button in `assets/src/js/ig-prism-setup.ts` with `textContent`
 	 * — so it is escaped the same way the code is: an entity in a file name is text,
 	 * not an entity. Every other value here is built by this class out of digits and a
 	 * language id, which the escaping leaves alone either way.
