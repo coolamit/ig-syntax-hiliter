@@ -6,7 +6,7 @@
  * this block exists to prevent.
  */
 
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	InspectorControls,
 	PlainText,
@@ -42,6 +42,28 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 			label: choice.title,
 		} ) ),
 	];
+
+	/*
+	 * A language this site cannot currently load still gets an option of its own,
+	 * because a select whose value matches no option shows the first one instead —
+	 * and merely opening this panel would then write that back and destroy a
+	 * language which was highlighting perfectly well. It covers a drop-in language
+	 * file that has been removed, a snippet saved by an older version of the plugin,
+	 * and a block written by hand or by WP-CLI.
+	 */
+	if (
+		language !== '' &&
+		! languageOptions.some( ( option ) => option.value === language )
+	) {
+		languageOptions.unshift( {
+			value: language,
+			label: sprintf(
+				/* translators: %s: language name as the author wrote it. */
+				__( '%s (not available on this site)', 'igsyntax-hiliter' ),
+				language
+			),
+		} );
+	}
 
 	const blockProps = useBlockProps();
 

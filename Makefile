@@ -13,7 +13,7 @@
 #   make ssh-cmd -- ls -alt
 #   make lint-files -- classes/renderer.php
 
-.PHONY: shell ssh-cmd install install-php install-js update versions lint fix lint-files fix-files test test-unit test-integration build watch
+.PHONY: shell ssh-cmd install install-php install-js update versions lint fix lint-files fix-files test test-unit test-integration test-js build watch
 
 # Path from this plugin directory up to the VVV root on the host OS.
 VVV_ROOT_REL := ../../../../../..
@@ -101,6 +101,11 @@ test-unit:
 # Usage: make test-integration
 test-integration:
 	@$(call SSH_EXEC,composer run test:integration)
+
+# Run the JavaScript tier — the block editor's own code, in jsdom, no WordPress.
+# Usage: make test-js
+test-js:
+	@$(call SSH_EXEC,npm run test:unit:js)
 
 # Build the block editor assets for production.
 # Usage: make build

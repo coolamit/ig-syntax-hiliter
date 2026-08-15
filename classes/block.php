@@ -215,12 +215,67 @@ class Block {
 
 		return [
 			'languages'          => Language_Registry::get_instance()->get_choices(),
+			'languageAliases'    => $this->_get_language_aliases(),
+			'noLanguage'         => Language_Registry::NO_LANGUAGE,
 			'legacyTags'         => Legacy_Map::get_tags(),
 			'genericTag'         => Legacy_Map::GENERIC_TAG,
 			'defaultLineNumbers' => Shortcode_Handler::show_line_numbers(),
 		];
 
 	}    //end _get_editor_data()
+
+	/**
+	 * Method to build the map the editor resolves a language name with.
+	 *
+	 * The language dropdown is built from canonical ids alone, so a snippet converted
+	 * from `[html]` would sit there holding a name no option carries — the control
+	 * would show the first option instead, and writing that back would destroy a
+	 * language which was highlighting perfectly well. Resolving before the name ever
+	 * reaches a block attribute is what closes that, and this is the table it resolves
+	 * against.
+	 *
+	 * @return array Alias or legacy tag to canonical language id.
+	 */
+	protected function _get_language_aliases(): array {
+
+		$registry = Language_Registry::get_instance();
+
+		/*
+		 * The plugin's own legacy tags go on top of the highlighter's aliases, so that a
+		 * tag this plugin has always owned keeps the meaning this plugin gave it. `text`
+		 * is the case that matters: here it has meant "show it, do not highlight it"
+		 * since 2004, whatever the library may one day decide it means.
+		 */
+		$aliases = array_merge( $registry->get_aliases(), Legacy_Map::get_language_map() );
+		$map     = [];
+
+		foreach ( $aliases as $alias => $id ) {
+
+			$alias = strtolower( trim( (string) $alias ) );
+			$id    = strtolower( trim( (string) $id ) );
+
+			if ( '' === $alias ) {
+				continue;
+			}
+
+			/*
+			 * An entry pointing at a language this site cannot load is dropped rather than
+			 * offered. Taking it would put an id into a block attribute which nothing on
+			 * the site can highlight, and would throw away the author's own word — which a
+			 * drop-in language file may yet make good. The sentinel is kept: it names no
+			 * language, which is exactly why `has()` says no to it.
+			 */
+			if ( Language_Registry::NO_LANGUAGE !== $id && ! $registry->has( $id ) ) {
+				continue;
+			}
+
+			$map[ $alias ] = $id;
+
+		}
+
+		return $map;
+
+	}    //end _get_language_aliases()
 
 }    //end of class
 

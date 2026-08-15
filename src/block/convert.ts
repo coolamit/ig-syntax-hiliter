@@ -25,6 +25,17 @@
  * `__unstableSkipAutop`, which is the same string `parse()` was handed and the
  * only place the author's bytes still exist unaltered.
  *
+ * The snippets are lifted out of that string BEFORE it is parsed, which is the
+ * same protect-then-restore order `Content_Protector` follows on the server and
+ * is here for the same reason: a snippet whose code quotes a block delimiter is
+ * taken apart by the block grammar long before any of this runs. Our own
+ * `<!-- wp:… /-->` splits the Classic block around it; another plugin's paired
+ * delimiters do that and turn the quoted code into a live block; an unclosed
+ * opener swallows the whole rest of the post; and a stray closer stops the parse
+ * dead, so every real block after it loses its block-ness. The last two damage
+ * content which has nothing to do with this plugin. Masking each snippet with a
+ * placeholder first means the grammar never sees a delimiter inside one.
+ *
  * That makes the conversion conditional on things it does not control, and
  * every one of them fails towards leaving the post alone: not converting is the
  * status quo the plugin shipped for twenty years, converting from mangled bytes
@@ -80,6 +91,21 @@ const EXCLUDED_POST_TYPES = [
  */
 const PROBE_CONTENT = 'igsh\nprobe';
 
+/**
+ * How a masked snippet is named while the grammar runs over the post.
+ *
+ * Deliberately NOT an HTML comment, for the reason the server's placeholder is
+ * not one: a comment carrying `-->` closes any comment it lands inside, which is
+ * exactly what a block delimiter is. It carries no `[` either, so it cannot look
+ * like a shortcode to a second pass.
+ */
+const PLACEHOLDER_PREFIX = '{igshx';
+
+/**
+ * How many times a placeholder is regenerated before the conversion gives up.
+ */
+const PLACEHOLDER_ATTEMPTS = 8;
+
 interface EditorBlock {
 	clientId: string;
 	name: string;
@@ -107,7 +133,7 @@ interface BlockEditorSelectors {
 }
 
 interface BlockEditorActions {
-	replaceBlocks: ( clientIds: string, blocks: unknown[] ) => void;
+	replaceBlocks: ( clientIds: string | string[], blocks: unknown[] ) => void;
 	__unstableMarkNextChangeAsNotPersistent: () => void;
 }
 
@@ -131,13 +157,64 @@ interface CoreSelectors {
 }
 
 /**
- * One Classic block in the store, paired with the pre-`autop` bytes it was
- * parsed from.
+ * One Classic block in the store, paired with the bytes it was parsed from.
  */
 interface FreeformPair {
 	clientId: string;
 	content: string;
 }
+
+/**
+ * A stretch of the stored post which the block grammar must not see.
+ */
+interface SnippetSlot {
+	/**
+	 * The author's own bytes, exactly as the post holds them.
+	 */
+	original: string;
+
+	/**
+	 * The block this snippet becomes, or NULL when it stays where it is.
+	 */
+	block: CreatedBlock | null;
+}
+
+/**
+ * The stored post with every one of this plugin's snippets masked out.
+ */
+interface MaskedContent {
+	text: string;
+	slots: SnippetSlot[];
+
+	/**
+	 * What every placeholder in `text` begins with, followed by a slot number
+	 * and a closing brace.
+	 */
+	opener: string;
+
+	/**
+	 * Whether any slot became a block. A post which only holds escaped or empty
+	 * snippets has nothing to convert, but may still need repairing.
+	 */
+	converted: boolean;
+}
+
+/**
+ * What the store is to be told, once everything has been proved.
+ */
+interface ConversionPlan {
+	/**
+	 * Whether the whole root block list is being replaced, which is what a post
+	 * the grammar took apart needs.
+	 */
+	root: boolean;
+	replacements: Array< { clientIds: string[]; blocks: CreatedBlock[] } >;
+}
+
+/**
+ * Half open `[ start, end )` ranges of the stored post, in document order.
+ */
+type Range = [ number, number ];
 
 function escapeForRegExp( value: string ): string {
 	return value.replace( /[\\^$.*+?()[\]{}|]/g, '\\$&' );
@@ -332,27 +409,190 @@ function pushClassicBlock( blocks: CreatedBlock[], content: string ): void {
 }
 
 /**
- * Splits Classic content into alternating Classic and snippet blocks.
+ * Where every HTML comment in the post begins and ends.
  *
- * The bracket the pattern captures either side of a shortcode is content, not
- * shortcode: `do_shortcode()` and `@wordpress/shortcode`'s own `replace()` both
- * re-emit it. So `[note: [php]…[/php]] more` keeps its closing bracket, which
- * is only half of an escape and belongs to the prose.
+ * Found by scanning rather than by matching the block grammar. A tempered
+ * pattern over a delimiter's attribute JSON backtracks catastrophically past a
+ * few tens of kilobytes, which is exactly the size a snippet reaches, and this
+ * only has to know where a comment is — not what it says.
  *
- * @param content Pre-`autop` content of one `core/freeform` block.
- * @param pattern Pattern matching this plugin's shortcodes.
+ * A comment which is never closed runs to the end of the post, which is what
+ * the browser does with it too.
  *
- * @return The replacement blocks, or NULL when there is nothing to convert.
+ * @param content Post content.
  */
-function splitFreeformContent(
+function getCommentRanges( content: string ): Range[] {
+	const ranges: Range[] = [];
+	let search = 0;
+
+	for (;;) {
+		const open = content.indexOf( '<!--', search );
+
+		if ( open === -1 ) {
+			break;
+		}
+
+		const close = content.indexOf( '-->', open + 4 );
+		const end = close === -1 ? content.length : close + 3;
+
+		ranges.push( [ open, end ] );
+		search = end;
+	}
+
+	return ranges;
+}
+
+/**
+ * Where every Classic block's content sits in the stored post.
+ *
+ * These are the only stretches a snippet may be lifted out of. Everything else
+ * is either a block delimiter — where a match is the block's own data and not
+ * content, and where a match running past the end of it would take the
+ * delimiter with it — or another block's inner HTML, where a shortcode is left
+ * alone today and stays left alone.
+ *
+ * The ranges are read off a parse rather than worked out from the grammar: a
+ * Classic block's content is always one unbroken stretch of the string it was
+ * parsed from, so it can be found in it. Anything that cannot be found means
+ * this is not the parse of this string, and the whole conversion is abandoned.
+ *
+ * @param content Post content.
+ * @param blocks  The same content, parsed without `autop()`.
+ *
+ * @return The ranges in document order, or NULL when the two do not line up.
+ */
+function getFreeformRanges(
 	content: string,
-	pattern: RegExp
-): CreatedBlock[] | null {
+	blocks: ParsedBlock[]
+): Range[] | null {
+	const ranges: Range[] = [];
+	let cursor = 0;
+
+	const walk = ( list: ParsedBlock[] ): boolean => {
+		for ( const block of list ) {
+			if ( block.name === FREEFORM_BLOCK ) {
+				const text = block.attributes?.content;
+
+				if ( typeof text !== 'string' ) {
+					return false;
+				}
+
+				if ( text === '' ) {
+					continue;
+				}
+
+				const at = content.indexOf( text, cursor );
+
+				if ( at === -1 ) {
+					return false;
+				}
+
+				ranges.push( [ at, at + text.length ] );
+				cursor = at + text.length;
+
+				continue;
+			}
+
+			if ( ! walk( block.innerBlocks ?? [] ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	};
+
+	return walk( blocks ) ? ranges : null;
+}
+
+/**
+ * Whether an offset falls inside any of the given ranges.
+ *
+ * @param ranges Ranges in document order.
+ * @param offset Offset into the post.
+ */
+function isInsideRange( ranges: Range[], offset: number ): boolean {
+	return ranges.some( ( [ start, end ] ) => offset >= start && offset < end );
+}
+
+/**
+ * Where the range holding an offset ends, if one does.
+ *
+ * @param ranges Ranges in document order.
+ * @param offset Offset into the post.
+ */
+function getRangeEnd( ranges: Range[], offset: number ): number | null {
+	for ( const [ start, end ] of ranges ) {
+		if ( offset >= start && offset < end ) {
+			return end;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Builds a placeholder opener which does not already occur in the post.
+ *
+ * @param content Post content.
+ *
+ * @return The opener, or an empty string when one could not be found.
+ */
+function buildPlaceholderOpener( content: string ): string {
+	for ( let attempt = 0; attempt < PLACEHOLDER_ATTEMPTS; attempt++ ) {
+		const token = Math.random().toString( 36 ).slice( 2, 12 );
+		const opener = `${ PLACEHOLDER_PREFIX }${ token }-`;
+
+		if ( token !== '' && ! content.includes( opener ) ) {
+			return opener;
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Lifts every one of this plugin's snippets out of the post.
+ *
+ * The matches are walked one at a time with an explicit resume position rather
+ * than handed to a replace callback, because where matching resumes has to be
+ * decided here: a match which is declined cannot be un-consumed, and a match
+ * beginning inside a block delimiter can run a long way past the end of it —
+ * so a declined match would otherwise take every real snippet it spans with it.
+ *
+ * A match beginning inside a Classic block is masked whole even where it runs
+ * across a delimiter, because that is a snippet whose code is block markup and
+ * the snippet is the construct the author wrote. That is the whole point of
+ * doing this before the grammar runs.
+ *
+ * Escaped and empty snippets are masked as well, and come back as the bytes
+ * they were. They convert to nothing, but their code shreds the post just the
+ * same, and masking is what stops it.
+ *
+ * @param content  Post content.
+ * @param pattern  Pattern matching this plugin's shortcodes.
+ * @param freeform Ranges a snippet may be lifted out of.
+ *
+ * @return The masked post, or NULL when there is nothing of this plugin's in it.
+ */
+function maskSnippets(
+	content: string,
+	pattern: RegExp,
+	freeform: Range[]
+): MaskedContent | null {
+	const opener = buildPlaceholderOpener( content );
+
+	if ( opener === '' ) {
+		return null;
+	}
+
+	const comments = getCommentRanges( content );
+	const slots: SnippetSlot[] = [];
+	let text = '';
+	let copied = 0;
+	let converted = false;
+
 	pattern.lastIndex = 0;
 
-	const replacement: CreatedBlock[] = [];
-	let cursor = 0;
-	let converted = false;
 	let match = pattern.exec( content );
 
 	while ( match !== null ) {
@@ -362,49 +602,186 @@ function splitFreeformContent(
 			continue;
 		}
 
-		const snippet = createSnippetBlock( match );
+		/*
+		 * The bracket the pattern captures either side of a shortcode is content,
+		 * not shortcode: `do_shortcode()` and `@wordpress/shortcode`'s own
+		 * `replace()` both re-emit it. So `[note: [php]…[/php]] more` keeps its
+		 * closing bracket, which is only half of an escape and belongs to the prose.
+		 */
+		const start = match.index + ( match[ 1 ] ?? '' ).length;
+		const end =
+			match.index + match[ 0 ].length - ( match[ 7 ] ?? '' ).length;
 
-		if ( snippet !== null ) {
-			const leadingBracket = match[ 1 ] ?? '';
-			const trailingBracket = match[ 7 ] ?? '';
+		const comment = getRangeEnd( comments, start );
 
-			pushClassicBlock(
-				replacement,
-				content.slice( cursor, match.index + leadingBracket.length )
-			);
-			replacement.push( snippet );
-
-			cursor = match.index + match[ 0 ].length - trailingBracket.length;
-			converted = true;
+		if ( comment !== null ) {
+			// A block's own data, or an author's comment. Resume past the whole of it.
+			pattern.lastIndex = comment;
+			match = pattern.exec( content );
+			continue;
 		}
 
+		if ( ! isInsideRange( freeform, start ) ) {
+			// Another block's content. Left where it is, and not consumed.
+			pattern.lastIndex = match.index + 1;
+			match = pattern.exec( content );
+			continue;
+		}
+
+		const block = createSnippetBlock( match );
+
+		text += `${ content.slice( copied, start ) }${ opener }${
+			slots.length
+		}}`;
+		slots.push( { original: content.slice( start, end ), block } );
+		converted = converted || block !== null;
+
+		copied = end;
+		pattern.lastIndex = end;
 		match = pattern.exec( content );
 	}
 
-	if ( ! converted ) {
+	if ( slots.length === 0 ) {
 		return null;
 	}
 
-	pushClassicBlock( replacement, content.slice( cursor ) );
-
-	return replacement;
+	return {
+		text: text + content.slice( copied ),
+		slots,
+		opener,
+		converted,
+	};
 }
 
 /**
- * Pairs every Classic block in the store with the pre-`autop` bytes it came
- * from.
+ * Turns one masked Classic block back into blocks.
  *
- * The two trees are the same post parsed twice, so they agree block for block —
- * `autop()` rewrites freeform content and nothing else, and content that is
- * empty before it is empty after it, so no block appears in one and not the
- * other. That is asserted rather than trusted: a single disagreement anywhere
- * in the tree means the block list on screen is not this post, and the whole
- * conversion is abandoned. Shape alone is a weak claim though — most legacy
- * posts are one Classic block and one of anything matches one of anything — so
- * `blockTreesAgree()` proves the rest.
+ * Every snippet's bytes come from the slot it was masked into, never from the
+ * parse: the parse is only ever asked where the snippet was, not what it said.
+ *
+ * @param masked Content of one masked `core/freeform` block.
+ * @param mask   The masked post.
+ * @param used   Slots already put back, so that none is put back twice.
+ *
+ * @return The blocks, and whether any of them is a snippet.
+ */
+function splitMaskedContent(
+	masked: string,
+	mask: MaskedContent,
+	used: Set< number >
+): { blocks: CreatedBlock[]; converted: boolean } {
+	const blocks: CreatedBlock[] = [];
+	let pending = '';
+	let cursor = 0;
+	let converted = false;
+
+	for (;;) {
+		const at = masked.indexOf( mask.opener, cursor );
+
+		if ( at === -1 ) {
+			break;
+		}
+
+		const from = at + mask.opener.length;
+		const close = masked.indexOf( '}', from );
+		const index = close === -1 ? -1 : Number( masked.slice( from, close ) );
+		const slot =
+			Number.isInteger( index ) && ! used.has( index )
+				? mask.slots[ index ]
+				: undefined;
+
+		if ( ! slot ) {
+			// Not a placeholder of this run's. Carried over as the text it is.
+			pending += masked.slice( cursor, from );
+			cursor = from;
+			continue;
+		}
+
+		used.add( index );
+		pending += masked.slice( cursor, at );
+
+		if ( slot.block === null ) {
+			pending += slot.original;
+		} else {
+			pushClassicBlock( blocks, pending );
+			pending = '';
+			blocks.push( slot.block );
+			converted = true;
+		}
+
+		cursor = close + 1;
+	}
+
+	pushClassicBlock( blocks, pending + masked.slice( cursor ) );
+
+	return { blocks, converted };
+}
+
+/**
+ * Rebuilds a whole block tree out of the masked parse.
+ *
+ * This is what a post the grammar took apart needs: the block list on screen is
+ * not a list of this post's blocks at all, so there is no block in it to replace
+ * in place. Every Classic block is split at its placeholders and everything else
+ * is carried over as it parsed — which is what it would have parsed to all
+ * along, had the grammar not been shown a delimiter inside somebody's code.
+ *
+ * @param list The masked post, parsed without `autop()`.
+ * @param mask The masked post.
+ * @param used Slots already put back.
+ *
+ * @return The blocks, or NULL when a Classic block held something other than a string.
+ */
+function rebuildBlocks(
+	list: ParsedBlock[],
+	mask: MaskedContent,
+	used: Set< number >
+): ParsedBlock[] | null {
+	const rebuilt: ParsedBlock[] = [];
+
+	for ( const block of list ) {
+		if ( block.name === FREEFORM_BLOCK ) {
+			const text = block.attributes?.content;
+
+			if ( typeof text !== 'string' ) {
+				return null;
+			}
+
+			rebuilt.push( ...splitMaskedContent( text, mask, used ).blocks );
+
+			continue;
+		}
+
+		if ( block.innerBlocks && block.innerBlocks.length > 0 ) {
+			const inner = rebuildBlocks( block.innerBlocks, mask, used );
+
+			if ( inner === null ) {
+				return null;
+			}
+
+			block.innerBlocks = inner;
+		}
+
+		rebuilt.push( block );
+	}
+
+	return rebuilt;
+}
+
+/**
+ * Pairs every Classic block in the store with the masked bytes it came from.
+ *
+ * The two trees are the same post parsed twice, so where the grammar was shown
+ * nothing it should not have been they agree block for block — `autop()`
+ * rewrites freeform content and nothing else, and content that is empty before
+ * it is empty after it, so no block appears in one and not the other. That is
+ * asserted rather than trusted, and a disagreement is meaningful: with the store
+ * already proved to be the parse of the stored content, the only thing left that
+ * can have changed the shape is the masking, and that means the grammar had been
+ * reading somebody's source code as markup.
  *
  * @param storeBlocks Blocks as the editor holds them.
- * @param cleanBlocks The same post parsed without `autop()`.
+ * @param cleanBlocks The masked post, parsed without `autop()`.
  * @param pairs       Accumulator.
  *
  * @return FALSE when the two trees disagree.
@@ -460,8 +837,12 @@ function pairFreeformBlocks(
  *
  * `autop()` inserts markup, it never removes a bracket, so a Classic block with
  * no `[` in it had none before `autop()` either. Answering NO here is what keeps
- * the two extra parses of the post off the load path of every post that has
- * nothing to convert.
+ * the extra parses of the post off the load path of every post that has nothing
+ * to convert.
+ *
+ * A post the grammar took apart still answers YES: whatever the delimiter inside
+ * the code did to the rest of the post, the snippet's own opening tag is in a
+ * Classic block in every one of the four cases.
  *
  * @param blocks Blocks to walk.
  */
@@ -488,13 +869,13 @@ function hasClassicBracket( blocks: EditorBlock[] ): boolean {
 /**
  * Whether the editor's block list really is the parse of the stored content.
  *
- * Everything downstream rests on that: the pre-`autop` bytes are lined up
- * against the blocks on screen by position, and if the two came from different
- * strings the conversion would replace one post's Classic block with another
- * post's code. Parsing the stored content a second time — this time the way the
- * editor parsed it, `autop()` and all — and requiring every Classic block to
- * come back byte identical is what settles it. Anything that has touched the
- * block list, from a restored autosave to a hooked block, shows up here.
+ * Everything downstream rests on that: what is on screen is replaced with what
+ * the stored string says should be there, and if the two came from different
+ * strings the conversion would replace one post's blocks with another post's
+ * code. Parsing the stored content a second time — this time the way the editor
+ * parsed it, `autop()` and all — and requiring every Classic block to come back
+ * byte identical is what settles it. Anything that has touched the block list,
+ * from a restored autosave to a hooked block, shows up here.
  *
  * @param storeBlocks Blocks as the editor holds them.
  * @param reparsed    The stored content, parsed the same way the editor did.
@@ -540,13 +921,188 @@ function blockTreesAgree(
 }
 
 /**
- * Whether `replaceBlocks()` will go through with this replacement.
+ * Works out what the store should be told, and proves it before saying so.
+ *
+ * Free of the data stores on purpose: everything here is decided from the stored
+ * string and the block list, which is what lets it be tested against the real
+ * block grammar rather than against a description of it.
+ *
+ * @param content     The stored post content.
+ * @param storeBlocks Blocks as the editor holds them.
+ * @param tags        Shortcode tags the plugin claims.
+ *
+ * @return The plan, or NULL when the post is to be left alone.
+ */
+export function planConversion(
+	content: string,
+	storeBlocks: EditorBlock[],
+	tags: string[]
+): ConversionPlan | null {
+	if ( tags.length === 0 || ! content.includes( '[' ) ) {
+		return null;
+	}
+
+	if ( ! skipAutopWorks() ) {
+		return null;
+	}
+
+	const cleanBlocks = parseWithoutAutop( content );
+
+	if ( cleanBlocks === null ) {
+		return null;
+	}
+
+	const freeform = getFreeformRanges( content, cleanBlocks );
+
+	if ( freeform === null || freeform.length === 0 ) {
+		return null;
+	}
+
+	const mask = maskSnippets( content, buildTagPattern( tags ), freeform );
+
+	if ( mask === null ) {
+		return null;
+	}
+
+	const maskedBlocks = parseWithoutAutop( mask.text );
+
+	if ( maskedBlocks === null ) {
+		return null;
+	}
+
+	const pairs: FreeformPair[] = [];
+	const intact = pairFreeformBlocks( storeBlocks, maskedBlocks, pairs );
+
+	// Nothing to convert and nothing broken.
+	if ( intact && ! mask.converted ) {
+		return null;
+	}
+
+	const reparsed = parseLikeTheEditor( content );
+
+	if ( reparsed === null || ! blockTreesAgree( storeBlocks, reparsed ) ) {
+		return null;
+	}
+
+	const used = new Set< number >();
+	const plan = intact
+		? planInPlace( pairs, mask, used )
+		: planWholeTree( maskedBlocks, mask, used );
+
+	/*
+	 * Every masked snippet has to have been put back, or the post would be
+	 * dispatched still carrying a placeholder where the author's code was. Nothing
+	 * above should be able to leave one behind — a snippet is only ever lifted out
+	 * of a Classic block, and a Classic block is the one thing here that is split
+	 * — but this is the file where being wrong rewrites somebody's post, so it is
+	 * checked rather than reasoned about.
+	 */
+	if ( plan === null || used.size !== mask.slots.length ) {
+		return null;
+	}
+
+	return plan.replacements.length === 0 ? null : plan;
+}
+
+/**
+ * The plan for a post the grammar read correctly: split each Classic block.
+ *
+ * Keeping the other blocks where they are is worth the extra path. They keep
+ * their client ids, and with them their selection, their focus and anything else
+ * the editor is holding against them.
+ *
+ * @param pairs Classic blocks in the store, with their masked bytes.
+ * @param mask  The masked post.
+ * @param used  Accumulator of slots put back.
+ */
+function planInPlace(
+	pairs: FreeformPair[],
+	mask: MaskedContent,
+	used: Set< number >
+): ConversionPlan {
+	const replacements: ConversionPlan[ 'replacements' ] = [];
+
+	for ( const pair of pairs ) {
+		if ( ! pair.content.includes( mask.opener ) ) {
+			continue;
+		}
+
+		const split = splitMaskedContent( pair.content, mask, used );
+
+		if ( split.converted ) {
+			replacements.push( {
+				clientIds: [ pair.clientId ],
+				blocks: split.blocks,
+			} );
+		}
+	}
+
+	return { root: false, replacements };
+}
+
+/**
+ * The plan for a post the grammar took apart: replace the whole root list.
+ *
+ * The client ids go, which is the price of the block list on screen not having
+ * been this post's block list in the first place. The change is marked non
+ * persistent either way, so nothing about the post is dirtied by it.
+ *
+ * @param maskedBlocks The masked post, parsed without `autop()`.
+ * @param mask         The masked post.
+ * @param used         Accumulator of slots put back.
+ */
+function planWholeTree(
+	maskedBlocks: ParsedBlock[],
+	mask: MaskedContent,
+	used: Set< number >
+): ConversionPlan | null {
+	const rebuilt = rebuildBlocks( maskedBlocks, mask, used );
+
+	if ( rebuilt === null || rebuilt.length === 0 ) {
+		return null;
+	}
+
+	return {
+		root: true,
+		replacements: [
+			{
+				clientIds: [],
+				blocks: rebuilt as CreatedBlock[],
+			},
+		],
+	};
+}
+
+/**
+ * Whether `replaceBlocks()` will go through with a replacement.
  *
  * It returns without dispatching anything when a block cannot be inserted where
  * it would land — a locked template, a restricted container — and the
  * "not persistent" mark is set before the call. A mark that is never spent sits
  * there and swallows the user's next real edit out of the undo stack, so the
  * same check is made first and the mark is not spent at all.
+ *
+ * @param selectors    Block editor selectors.
+ * @param rootClientId Container the blocks would land in, NULL for the root.
+ * @param blocks       Replacement blocks.
+ */
+function canInsertAll(
+	selectors: BlockEditorSelectors,
+	rootClientId: string | null,
+	blocks: CreatedBlock[]
+): boolean {
+	if ( typeof selectors.canInsertBlockType !== 'function' ) {
+		return true;
+	}
+
+	return blocks.every(
+		( block ) =>
+			selectors.canInsertBlockType?.( block.name, rootClientId ) !== false
+	);
+}
+
+/**
+ * Whether one Classic block may be replaced where it stands.
  *
  * @param selectors Block editor selectors.
  * @param clientId  Block being replaced.
@@ -564,20 +1120,20 @@ function canReplaceBlock(
 		return true;
 	}
 
-	const rootClientId = selectors.getBlockRootClientId( clientId );
-
-	return blocks.every(
-		( block ) =>
-			selectors.canInsertBlockType?.( block.name, rootClientId ) !== false
+	return canInsertAll(
+		selectors,
+		selectors.getBlockRootClientId( clientId ),
+		blocks
 	);
 }
 
 /**
- * Converts every legacy snippet held in a Classic block.
+ * Converts every legacy snippet the post holds outside a block.
  *
- * Idempotent by construction: once a Classic block has been split, none of the
- * pieces left behind hold one of this plugin's tags, so a second run finds
- * nothing.
+ * Idempotent by construction: once the post has been converted, the snippets
+ * live in block attributes — inside a delimiter, where a match is never lifted
+ * out of — and none of the Classic blocks left behind holds one of this
+ * plugin's tags, so a second run finds nothing to do.
  */
 function convertFreeformBlocks(): void {
 	const selectors = select( BLOCK_EDITOR_STORE ) as unknown as
@@ -606,12 +1162,6 @@ function convertFreeformBlocks(): void {
 		return;
 	}
 
-	const tags = getLegacyTags();
-
-	if ( tags.length === 0 ) {
-		return;
-	}
-
 	const storeBlocks = selectors.getBlocks();
 
 	if (
@@ -623,58 +1173,51 @@ function convertFreeformBlocks(): void {
 
 	const content = getStoredContent();
 
-	if ( content === null || ! content.includes( '[' ) ) {
+	if ( content === null ) {
 		return;
 	}
 
-	if ( ! skipAutopWorks() ) {
+	const plan = planConversion( content, storeBlocks, getLegacyTags() );
+
+	if ( plan === null ) {
 		return;
 	}
 
-	const cleanBlocks = parseWithoutAutop( content );
+	if ( plan.root ) {
+		const replacement = plan.replacements[ 0 ];
+		const clientIds = storeBlocks.map( ( block ) => block.clientId );
 
-	if ( cleanBlocks === null ) {
-		return;
-	}
-
-	const pairs: FreeformPair[] = [];
-
-	if ( ! pairFreeformBlocks( storeBlocks, cleanBlocks, pairs ) ) {
-		return;
-	}
-
-	const candidates = pairs.filter( ( pair ) => pair.content.includes( '[' ) );
-
-	if ( candidates.length === 0 ) {
-		return;
-	}
-
-	const reparsed = parseLikeTheEditor( content );
-
-	if ( reparsed === null || ! blockTreesAgree( storeBlocks, reparsed ) ) {
-		return;
-	}
-
-	const pattern = buildTagPattern( tags );
-
-	for ( const pair of candidates ) {
-		const replacement = splitFreeformContent( pair.content, pattern );
-
-		if ( replacement === null ) {
-			continue;
-		}
-
-		if ( ! canReplaceBlock( selectors, pair.clientId, replacement ) ) {
-			continue;
+		if (
+			! replacement ||
+			clientIds.length === 0 ||
+			! canInsertAll( selectors, null, replacement.blocks )
+		) {
+			return;
 		}
 
 		/*
-		 * A non-persistent block change reaches the post entity through
-		 * `onInput`, which edits only transient keys. The post is therefore not
-		 * marked dirty: opening a post and closing it again changes nothing.
+		 * A non-persistent block change reaches the post entity through `onInput`,
+		 * which edits only transient keys. The post is therefore not marked dirty:
+		 * opening a post and closing it again changes nothing.
 		 */
 		actions.__unstableMarkNextChangeAsNotPersistent();
-		actions.replaceBlocks( pair.clientId, replacement );
+		actions.replaceBlocks( clientIds, replacement.blocks );
+
+		return;
+	}
+
+	for ( const replacement of plan.replacements ) {
+		const clientId = replacement.clientIds[ 0 ];
+
+		if (
+			clientId === undefined ||
+			! canReplaceBlock( selectors, clientId, replacement.blocks )
+		) {
+			continue;
+		}
+
+		actions.__unstableMarkNextChangeAsNotPersistent();
+		actions.replaceBlocks( clientId, replacement.blocks );
 	}
 }
 

@@ -34,6 +34,8 @@ export interface LanguageChoice {
  */
 export interface EditorData {
 	languages: LanguageChoice[];
+	languageAliases: Record< string, string >;
+	noLanguage: string;
 	legacyTags: string[];
 	genericTag: string;
 	defaultLineNumbers: boolean;
@@ -48,6 +50,37 @@ declare global {
 const DEFAULT_GENERIC_TAG = 'sourcecode';
 
 /**
+ * Mirrors `Language_Registry::NO_LANGUAGE`, and is only ever the fallback: PHP
+ * sends the constant over so that the two cannot drift.
+ */
+const DEFAULT_NO_LANGUAGE = 'none';
+
+/**
+ * Keeps the string entries of whatever PHP sent, and nothing else.
+ *
+ * @param value Value localised for the editor.
+ */
+function toStringMap( value: unknown ): Record< string, string > {
+	if (
+		typeof value !== 'object' ||
+		value === null ||
+		Array.isArray( value )
+	) {
+		return {};
+	}
+
+	const map: Record< string, string > = {};
+
+	for ( const [ key, entry ] of Object.entries( value ) ) {
+		if ( typeof entry === 'string' ) {
+			map[ key ] = entry;
+		}
+	}
+
+	return map;
+}
+
+/**
  * Reads the data PHP localised for the editor.
  *
  * The tag list is never hardcoded here. When PHP has said nothing, the list is
@@ -59,6 +92,11 @@ export function getEditorData(): EditorData {
 
 	return {
 		languages: Array.isArray( data.languages ) ? data.languages : [],
+		languageAliases: toStringMap( data.languageAliases ),
+		noLanguage:
+			typeof data.noLanguage === 'string' && data.noLanguage !== ''
+				? data.noLanguage
+				: DEFAULT_NO_LANGUAGE,
 		legacyTags: Array.isArray( data.legacyTags ) ? data.legacyTags : [],
 		genericTag:
 			typeof data.genericTag === 'string' && data.genericTag !== ''
@@ -66,6 +104,42 @@ export function getEditorData(): EditorData {
 				: DEFAULT_GENERIC_TAG,
 		defaultLineNumbers: data.defaultLineNumbers !== false,
 	};
+}
+
+/**
+ * Turns a language name as an author wrote it into the id the block stores.
+ *
+ * The server resolves a language late, when it renders. That is right for
+ * rendering and wrong for storing: the inspector's dropdown is built from
+ * canonical ids alone, so a block holding `html` matches no option, the control
+ * shows the first one instead, and touching it writes that back and destroys a
+ * language which was highlighting perfectly well.
+ *
+ * An unrecognised name is handed straight back rather than replaced with a
+ * default. Resolution stayed late for twenty years, so a snippet written as
+ * `rust` on a site with no `prism-rust.js` starts highlighting the day a drop-in
+ * appears — and a name overwritten here could never do that again.
+ *
+ * @param value Language name, alias or legacy tag as the author wrote it.
+ */
+export function resolveLanguage( value: string ): string {
+	const normalized = value.toLowerCase().trim();
+
+	if ( normalized === '' ) {
+		return '';
+	}
+
+	const { languages, languageAliases, noLanguage } = getEditorData();
+	const resolved = languageAliases[ normalized ] ?? normalized;
+
+	// The sentinel names no language: `[code]` and `[text]` mean "show it, do not highlight it".
+	if ( resolved === noLanguage ) {
+		return '';
+	}
+
+	return languages.some( ( choice ) => choice.id === resolved )
+		? resolved
+		: normalized;
 }
 
 /**
@@ -138,10 +212,14 @@ function yesNoToBoolean( value: string ): boolean | undefined {
  *
  * Mirrors `Snippet::from_shortcode_atts()` and `Shortcode_Handler::build_snippet()`:
  * a named language tag names its own language, `[sourcecode]` carries it in an
- * attribute with `lang` as a fallback spelling, `firstline` falls back to `num`,
+ * attribute with `lang` as a fallback spelling, the first line number is the
+ * larger of `firstline` and `num` rather than one falling back to the other,
  * `highlight` keeps its `"2,4-6"` string form, and `gutter` is the per snippet
  * line numbers switch. `plaintext`, `toolbar` and `strict_mode` are parsed and
  * dropped — they never reach a block attribute or the markup.
+ *
+ * The language is resolved here, on the way in, rather than left for the server
+ * to resolve on the way out. See `resolveLanguage()`.
  *
  * @param tag  Shortcode tag that was matched.
  * @param atts Named shortcode attributes.
@@ -167,7 +245,7 @@ export function mapShortcodeAttributes(
 
 	const attributes: CodeBlockAttributes = {
 		code: code.trim(),
-		language,
+		language: resolveLanguage( language ),
 		firstLine: Math.max(
 			1,
 			toPositiveInteger( readAttribute( normalized, 'num' ) ),

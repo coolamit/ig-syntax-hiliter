@@ -528,6 +528,20 @@ class Language_Registry {
 	}    //end get_languages()
 
 	/**
+	 * Method to get every alias in the registry.
+	 *
+	 * `resolve()` answers one name at a time, which is all the server ever needs. The
+	 * editor needs the whole table: its language dropdown is built from canonical ids
+	 * alone, so it has to be able to turn an alias into the id the dropdown holds
+	 * before it ever puts a language into a block attribute.
+	 *
+	 * @return array Alias to canonical language id.
+	 */
+	public function get_aliases(): array {
+		return $this->_aliases;
+	}    //end get_aliases()
+
+	/**
 	 * Method to get the languages as a list fit for a dropdown.
 	 *
 	 * @return array List of arrays with `id` and `title` keys, sorted by title.

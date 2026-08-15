@@ -31,6 +31,8 @@ This happens automatically, on load, without asking, and it is written to the po
 
 The reason is that WordPress hands a classic post to the block editor as a single Classic (TinyMCE) block containing the whole post, code and all — and TinyMCE mangles code. It reads `<?php echo "<div>x</div>"; ?>` as HTML: the `<div>` becomes a real element and the `<?php … ?>` is dropped entirely. Because the whole post is one block, editing an unrelated paragraph is enough to re-save every snippet in the post in that damaged form. The conversion moves your code into block attributes, where TinyMCE cannot reach it, before that can happen. It is surgical — only the snippets are replaced, and every other byte of the post is left exactly as it was.
 
+Snippets are lifted out of the post *before* the block editor's parser reads it, which is what makes a post about blocks safe to open. Block markup quoted inside a snippet — `<!-- wp:paragraph -->`, or this plugin's own delimiters — used to be read as real markup: an unclosed opening delimiter swallowed everything after it into that block, and a stray closing one stopped the parse dead, so every genuine block after it came back as Classic content. Neither happens now, whoever's block the quoted markup belongs to.
+
 #### **Snippets that have been converted to blocks are not visible if the plugin is deactivated**
 
 This is a genuine trade-off, and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing, and the snippet silently disappears from the post.
@@ -55,7 +57,7 @@ A tag this plugin never shipped is left completely alone — not registered, not
 
 #### **Some old tags now highlight as a different language**
 
-Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. The mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts.
+Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. In a shortcode the mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts. A snippet converted to a block is the exception and stores the mapped name, because that is the name the block's language dropdown offers. A name Prism does not know is stored exactly as you typed it either way, so a language you add later as a component file starts working on posts you wrote years ago.
 
 Most of it is uncontroversial: `html`, `html4strict`, `html5` and `xml` all become `markup`; `mysql` and `postgresql` become `sql`; `oracle11` becomes `plsql`; `jquery` becomes `javascript`; `rails` becomes `ruby`; `pcre` becomes `regex`; `actionscript3` and `as` become `actionscript`; `java5` becomes `java`; `js` becomes `javascript`; `apache` becomes `apacheconf`; `vb` and `vbnet` both become `visual-basic`; and `code` and `text` become `none`, which is a styled but deliberately unhighlighted box.
 

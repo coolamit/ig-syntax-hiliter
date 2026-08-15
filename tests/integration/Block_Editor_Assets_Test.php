@@ -10,6 +10,8 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Block;
+use iG\Syntax_Hiliter\Language_Registry;
+use iG\Syntax_Hiliter\Legacy_Map;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
@@ -82,6 +84,99 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 */
 	public function test_the_editor_is_handed_the_tag_list_and_the_languages(): void {
 
+		$data = $this->_get_localised_editor_data();
+
+		$this->assertNotEmpty( $data['languages'] ?? [], 'The language dropdown has something to draw.' );
+		$this->assertContains( 'php', $data['legacyTags'] ?? [], 'The editor claims the tags PHP claims.' );
+		$this->assertSame( 'sourcecode', $data['genericTag'] ?? '', 'The generic tag is named.' );
+
+	}
+
+	/**
+	 * The editor can turn a legacy tag or an alias into a canonical language id.
+	 *
+	 * The dropdown is drawn from canonical ids alone, so an alias which never
+	 * reaches the editor is a snippet converted to a block holding a name no option
+	 * carries — where the control shows the first option instead and writing that
+	 * back destroys a language which was highlighting perfectly well.
+	 *
+	 * @return void
+	 */
+	public function test_the_editor_is_handed_the_language_aliases(): void {
+
+		$data    = $this->_get_localised_editor_data();
+		$aliases = $data['languageAliases'] ?? [];
+
+		$this->assertIsArray( $aliases, 'The alias table reaches the editor.' );
+		$this->assertSame( Language_Registry::NO_LANGUAGE, $data['noLanguage'] ?? '', 'The sentinel is named rather than left for the editor to guess.' );
+
+		// The library's own aliases, which is what `[sourcecode language="js"]` needs.
+		$this->assertSame( 'javascript', $aliases['js'] ?? '', 'A library alias resolves.' );
+
+		// This plugin's own tags, which the library has never heard of.
+		$this->assertSame( 'markup', $aliases['html'] ?? '', 'A legacy tag resolves.' );
+		$this->assertSame( 'markup', $aliases['html4strict'] ?? '', 'A GeSHi era tag resolves.' );
+		$this->assertSame( 'apacheconf', $aliases['apache'] ?? '', 'A legacy tag whose id is spelled differently resolves.' );
+		$this->assertSame( 'sql', $aliases['mysql'] ?? '', 'A dialect resolves to the language which highlights it.' );
+
+		// `[code]` and `[text]` have meant "show it, do not highlight it" since 2004.
+		$this->assertSame( Language_Registry::NO_LANGUAGE, $aliases['code'] ?? '', 'The generic legacy tag resolves to the sentinel.' );
+		$this->assertSame( Language_Registry::NO_LANGUAGE, $aliases['text'] ?? '', 'The plain text tag resolves to the sentinel.' );
+
+		$registry = Language_Registry::get_instance();
+
+		foreach ( Legacy_Map::get_language_map() as $tag => $id ) {
+
+			if ( Language_Registry::NO_LANGUAGE === $id ) {
+				continue;
+			}
+
+			$this->assertTrue(
+				$registry->has( $id ),
+				sprintf( 'The legacy map sends `%1$s` to `%2$s`, which the bundled library still has a file for.', $tag, $id )
+			);
+
+			$this->assertSame( $id, $aliases[ $tag ] ?? '', sprintf( 'The editor resolves `%s` the way the server does.', $tag ) );
+
+		}
+
+	}
+
+	/**
+	 * Every alias offered names a language the site can actually load.
+	 *
+	 * An entry pointing nowhere would put an id into a block attribute which nothing
+	 * on the site can highlight, and would throw away the author's own word in the
+	 * process — which a drop-in language file may yet have made good.
+	 *
+	 * @return void
+	 */
+	public function test_no_alias_points_at_a_language_the_site_cannot_load(): void {
+
+		$aliases  = $this->_get_localised_editor_data()['languageAliases'] ?? [];
+		$registry = Language_Registry::get_instance();
+
+		$this->assertNotEmpty( $aliases, 'There is something to check.' );
+
+		foreach ( $aliases as $alias => $id ) {
+
+			if ( Language_Registry::NO_LANGUAGE === $id ) {
+				continue;
+			}
+
+			$this->assertTrue( $registry->has( $id ), sprintf( 'The alias `%1$s` points at `%2$s`, which the registry holds.', $alias, $id ) );
+
+		}
+
+	}
+
+	/**
+	 * The editor data object, as it reaches the browser.
+	 *
+	 * @return array
+	 */
+	protected function _get_localised_editor_data(): array {
+
 		$handle = $this->_get_editor_handle();
 
 		/*
@@ -108,9 +203,8 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		$data = json_decode( $matches[1], true );
 
 		$this->assertIsArray( $data, 'What was printed is readable JSON.' );
-		$this->assertNotEmpty( $data['languages'] ?? [], 'The language dropdown has something to draw.' );
-		$this->assertContains( 'php', $data['legacyTags'] ?? [], 'The editor claims the tags PHP claims.' );
-		$this->assertSame( 'sourcecode', $data['genericTag'] ?? '', 'The generic tag is named.' );
+
+		return $data;
 
 	}
 

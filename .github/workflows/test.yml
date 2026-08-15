@@ -223,6 +223,17 @@ jobs:
           npm run lint:js
           npm run lint:style
 
+      - name: JavaScript unit tests
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # The block editor's own code — the automatic conversion of legacy snippets
+        # above all — is client side from end to end, so neither PHPUnit tier can
+        # see any of it, and its failure mode is a post losing bytes. jest comes
+        # with @wordpress/scripts; its config is the `jest` key in package.json
+        # rather than a file, so nothing new sits at the repo root needing both a
+        # .gitignore and a .distignore line.
+        # This runs before the build because it tests the source, not the bundle.
+        run: npm run test:unit:js
+
       - name: Build block editor and plugin assets
         working-directory: ${{ env.PLUGIN_PATH }}
         # `npm run build` is `wp-scripts build` (src/ -> build/) followed by the

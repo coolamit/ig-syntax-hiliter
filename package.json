@@ -24,6 +24,7 @@
 		"build:js:compile": "tsc -p tsconfig.assets.json",
 		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",
 		"start": "wp-scripts start",
+		"test:unit:js": "wp-scripts test-unit-js",
 		"watch:css": "npm run build:css -- --watch",
 		"lint:js": "wp-scripts lint-js src assets/src",
 		"lint:style": "wp-scripts lint-style 'src/**/*.scss' 'assets/src/scss/**/*.scss'",
@@ -31,6 +32,7 @@
 		"format": "wp-scripts format src assets/src"
 	},
 	"devDependencies": {
+		"@types/jest": "^30.0.0",
 		"@types/react": "^18.3.12",
 		"@types/react-dom": "^18.3.1",
 		"@wordpress/block-editor": "^16.1.0",
@@ -47,5 +49,15 @@
 		"sass": "^1.102.0",
 		"terser": "^5.49.2",
 		"typescript": "^5.9.3"
+	},
+	"jest": {
+		"preset": "@wordpress/jest-preset-default",
+		"transform": {
+			"\\.[jt]sx?$": "@wordpress/scripts/config/babel-transform"
+		},
+		"transformIgnorePatterns": [
+			"/node_modules/(?!(?:.*/)?(uuid|marked)/)",
+			"\\.pnp\\.[^\\\\/]+$"
+		]
 	}
 }
