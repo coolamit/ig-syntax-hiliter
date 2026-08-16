@@ -1,4 +1,4 @@
-## **iG:Syntax Hiliter v6.0**
+## **iG:Syntax Hiliter v6.0-beta-1**
 ---------------------------------
 
 **iG:Syntax Hiliter** is a WordPress plugin to easily present source code on your site with syntax highlighting and formatting  (as seen in code editors, IDEs).
@@ -17,9 +17,9 @@ You can write code snippets using the block editor, or using this plugin's short
 
 ### **[Changelog](CHANGELOG.md)**
 
-### **Important changes in 6.0**
+### **Important changes in 6.0-beta-1**
 
-Version 6.0 replaces the GeSHi library, which has not been maintained in over a decade, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
+Version 6.0-beta-1 replaces the GeSHi library, which has not been maintained in over a decade, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
 
 #### **Posts you never open in the block editor are not touched**
 
@@ -71,11 +71,11 @@ Your code itself is untouched in every case; only the colouring differs.
 
 #### **Languages added by dropping in GeSHi files are no longer supported**
 
-Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory, and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0 and both mechanisms go with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
+Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory, and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0-beta-1 and both mechanisms go with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
 
 Close to 300 languages ship with the plugin, so there is a good chance one of them is the language you were adding — use it with `[sourcecode language="…"]`. If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
 
-The changelog entries for v3.0 and v4.1 still describe those drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0 does. Neither mechanism works in 6.0.
+The changelog entries for v3.0 and v4.1 still describe those drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0-beta-1 does. Neither mechanism works in 6.0-beta-1.
 
 #### **Highlighting is done by the browser now**
 
@@ -96,7 +96,7 @@ It never was. Snippets are supported in the block editor and in the classic edit
 #### **Upgrading from v4.0 or later**
 Just click `update now` link below the plugin listing on the plugins page in your `wp-admin`. The plugin will handle any settings migration if needed. Easy peasy!!
 
-Do read [Important changes in 6.0](#important-changes-in-60) first. Your existing posts keep working, but there are a few things worth knowing before you open an old post in the block editor.
+Do read [Important changes in 6.0-beta-1](#important-changes-in-60) first. Your existing posts keep working, but there are a few things worth knowing before you open an old post in the block editor.
 
 #### **Upgrading from v3.x**
 Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` file & `ig_syntax_hilite` directory from plugins folder and follow the installation process below.
@@ -158,7 +158,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **firstline :** Use this to start line numbering from a number greater than 1.
 
-**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8. Line numbers are the ones **as displayed** — so if you also use `firstline`, count from that number rather than from the top of the code. *(This changed in 6.0; GeSHi counted physical lines instead.)* The whole attribute is capped at 10,000 lines in total — not 10,000 per range — and once that many have been collected the rest of the attribute is ignored. So `highlight="1-999999999"` marks the first 10,000 lines and stops there, and so does `highlight="1-8000,20000-30000"`, which reaches the cap 2,000 lines into its second range.
+**highlight :** Use this to tell plugin which lines are to be marked as different for emphasis. It accepts a comma separated list of line numbers and line number ranges like 5-8 which is equal to 5,6,7,8. Line numbers are the ones **as displayed** — so if you also use `firstline`, count from that number rather than from the top of the code. *(This changed in 6.0-beta-1; GeSHi counted physical lines instead.)* The whole attribute is capped at 10,000 lines in total — not 10,000 per range — and once that many have been collected the rest of the attribute is ignored. So `highlight="1-999999999"` marks the first 10,000 lines and stops there, and so does `highlight="1-8000,20000-30000"`, which reaches the cap 2,000 lines into its second range.
 
 ```
 [sourcecode language="php" highlight="2,4-6,9"]
@@ -174,13 +174,13 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 [/sourcecode]
 ```
 
-**file :** Use this to show a file name/path. It is printed just above the code box, at the left, and is always visible — whatever the **Show Toolbar?** setting says. In v5 the label lived in the toolbar, so turning the toolbar off hid it too; in 6.0 it still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
+**file :** Use this to show a file name/path. It is printed just above the code box, at the left, and is always visible — whatever the **Show Toolbar?** setting says. In v5 the label lived in the toolbar, so turning the toolbar off hid it too; in 6.0-beta-1 it still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
 
-The whole path goes into the page exactly as you typed it. If it is too long for the space, the browser trims what it *shows* with an ellipsis, but the full path is still there in the page source. Two v5 behaviours are gone: v5 cut the label to 30 characters on the server before it ever reached the page, and v5 ran the label through `wp_strip_all_tags()`, which quietly ate the type parameter out of names like `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` — and everything after an unbalanced `<`. 6.0 collapses runs of whitespace and otherwise leaves the label alone; it is never treated as markup anywhere it is used, so there was nothing for the stripping to protect.
+The whole path goes into the page exactly as you typed it. If it is too long for the space, the browser trims what it *shows* with an ellipsis, but the full path is still there in the page source. Two v5 behaviours are gone: v5 cut the label to 30 characters on the server before it ever reached the page, and v5 ran the label through `wp_strip_all_tags()`, which quietly ate the type parameter out of names like `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` — and everything after an unbalanced `<`. 6.0-beta-1 collapses runs of whitespace and otherwise leaves the label alone; it is never treated as markup anywhere it is used, so there was nothing for the stripping to protect.
 
 **gutter :** Use this to tell plugin whether to show line numbers in the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show line numbers for that particular code box.
 
-**plaintext, toolbar, strict_mode :** These are accepted and ignored. All three were GeSHi-era ideas with no Prism equivalent, and they were dropped in 6.0 rather than faked. They are still parsed so that old posts don't break, and they never reach the markup — but setting them does nothing. Don't use them in new posts.
+**plaintext, toolbar, strict_mode :** These are accepted and ignored. All three were GeSHi-era ideas with no Prism equivalent, and they were dropped in 6.0-beta-1 rather than faked. They are still parsed so that old posts don't break, and they never reach the markup — but setting them does nothing. Don't use them in new posts.
 
 
 ### **Configuration**
@@ -203,9 +203,9 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0* above for why you would want it.
+**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0-beta-1* above for why you would want it.
 
-*(Gone in 6.0: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
+*(Gone in 6.0-beta-1: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
 
 
 ### **Extending the plugin**
@@ -214,7 +214,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 - `ig_syntax_hiliter/languages` — filters the finished language registry, so you can add, remove or rename languages programmatically.
 - `ig_syntax_hiliter/prism_components_url` — filters the URL Prism's autoloader fetches language files from, if you want to serve them from somewhere other than the plugin.
-- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin claims. (Claims, not registers — the plugin deliberately never calls `add_shortcode()` for these tags, it matches them itself.) Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0*), or to stop it claiming one you want for something else.
+- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin claims. (Claims, not registers — the plugin deliberately never calls `add_shortcode()` for these tags, it matches them itself.) Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0-beta-1*), or to stop it claiming one you want for something else.
 - `ig_syntax_hiliter/revert_batch_size` — filters how many posts the revert tool in the **Before you deactivate** section works through per request. Defaults to 20, and is clamped to between 1 and 200. Lower it on a host that times out, raise it to get through a large site in fewer requests.
 
 
@@ -226,7 +226,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Q:** *I opened an old post in the block editor and my code blocks turned into iG:Syntax Hiliter blocks. Why?*
 
-**A:** Because leaving them alone was worse. See *Important changes in 6.0* above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code, and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it, and it leaves the rest of your post byte-for-byte as it was.
+**A:** Because leaving them alone was worse. See *Important changes in 6.0-beta-1* above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code, and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it, and it leaves the rest of your post byte-for-byte as it was.
 
 **Q:** *What happens to my code if I deactivate the plugin?*
 
