@@ -107,19 +107,34 @@ class Renderer {
 			$attributes['data-line'] = static::compact_line_ranges( $snippet->highlight_lines );
 		}
 
-		if ( '' !== $snippet->file ) {
-			$attributes['data-file'] = $snippet->file;
-		}
-
 		// Opt out of the output buffering page optimizers, which run beyond any filter this plugin can hook.
 		$attributes['data-no-optimize'] = '1';
 		$attributes['data-cfasync']     = 'false';
 
-		return sprintf(
+		$markup = sprintf(
 			'<pre %1$s><code class="language-%2$s">%3$s</code></pre>',
 			static::_build_attributes( $attributes ),
 			esc_attr( $language ),
 			static::escape_verbatim( $snippet->code )
+		);
+
+		if ( '' === $snippet->file ) {
+			return $markup;
+		}
+
+		/*
+		 * The file label sits above the box rather than inside it, and only a snippet
+		 * which has one is wrapped at all — every other snippet's markup is what it
+		 * always was. It used to be a toolbar item, which meant it was invisible until
+		 * the reader hovered and sat in the corner the copy button wanted. Inside the
+		 * box there is nowhere for it to go either: the line numbers plugin reserves
+		 * the left gutter and the line highlight plugin puts its own badge in the top
+		 * left. Both measure the `pre` alone, so a sibling in front of it moves neither.
+		 */
+		return sprintf(
+			'<div class="igsh-code-box"><span class="igsh-code-box__file">%1$s</span>%2$s</div>',
+			static::escape_verbatim( $snippet->file ),
+			$markup
 		);
 
 	}    //end render_snippet()
@@ -276,12 +291,10 @@ class Renderer {
 	/**
 	 * Method to build an HTML attribute string.
 	 *
-	 * `data-file` carries a label the author typed, and the label is painted out of
-	 * this attribute — by `assets/src/scss/frontend-chrome.scss` with `attr()`, and
-	 * by the toolbar button in `assets/src/js/ig-prism-setup.ts` with `textContent`
-	 * — so it is escaped the same way the code is: an entity in a file name is text,
-	 * not an entity. Every other value here is built by this class out of digits and a
-	 * language id, which the escaping leaves alone either way.
+	 * Every value here is built by this class out of digits and a language id, so
+	 * the escaping has nothing to do; it is applied all the same, because the rule
+	 * is that nothing leaves this class unescaped and an exception for values which
+	 * happen to be safe today is an exception somebody adds an attribute under.
 	 *
 	 * @param array $attributes Attribute name to value.
 	 *

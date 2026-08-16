@@ -147,7 +147,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 *
 	 * An entry pointing nowhere would put an id into a block attribute which nothing
 	 * on the site can highlight, and would throw away the author's own word in the
-	 * process — which a drop-in language file may yet have made good.
+	 * process — which the `ig_syntax_hiliter/languages` filter may yet have made good.
 	 *
 	 * @return void
 	 */

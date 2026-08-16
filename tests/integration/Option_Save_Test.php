@@ -31,13 +31,13 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @var array
 	 */
 	const V6_DEFAULTS = [
-		'theme'                => 'prism',
-		'toolbar'              => 'yes',
-		'copy_code'            => 'yes',
-		'show_line_numbers'    => 'yes',
-		'normalize_whitespace' => 'no',
-		'hilite_comments'      => 'yes',
-		'gist_in_comments'     => 'no',
+		'theme'             => Asset_Manager::DEFAULT_THEME,
+		'toolbar'           => 'yes',
+		'copy_code'         => 'yes',
+		'show_line_numbers' => 'yes',
+		'hilite_comments'   => 'yes',
+		'gist_in_comments'  => 'no',
+		'gist_limit_height' => 'yes',
 	];
 
 	/**
@@ -194,8 +194,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 			array_merge(
 				static::V6_DEFAULTS,
 				[
-					'hilite_comments'      => null,
-					'normalize_whitespace' => null,
+					'hilite_comments'  => null,
+					'gist_in_comments' => null,
 				]
 			)
 		);
@@ -203,7 +203,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 		$option = $this->_new_reader();
 
 		$this->assertSame( 'yes', $option->get( 'hilite_comments' ) );
-		$this->assertSame( 'no', $option->get( 'normalize_whitespace' ) );
+		$this->assertSame( 'no', $option->get( 'gist_in_comments' ) );
 
 	}
 

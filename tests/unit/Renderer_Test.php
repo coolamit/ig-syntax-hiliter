@@ -42,24 +42,20 @@ class Renderer_Test extends TestCase {
 				[
 					'languages' => [
 						'php'        => [
-							'title'  => 'PHP',
-							'file'   => 'prism-php.min.js',
-							'dropin' => false,
+							'title' => 'PHP',
+							'file'  => 'prism-php.min.js',
 						],
 						'javascript' => [
-							'title'  => 'JavaScript',
-							'file'   => 'prism-javascript.min.js',
-							'dropin' => false,
+							'title' => 'JavaScript',
+							'file'  => 'prism-javascript.min.js',
 						],
 						'markup'     => [
-							'title'  => 'Markup',
-							'file'   => 'prism-markup.min.js',
-							'dropin' => false,
+							'title' => 'Markup',
+							'file'  => 'prism-markup.min.js',
 						],
 						'ruby'       => [
-							'title'  => 'Ruby',
-							'file'   => 'prism-ruby.min.js',
-							'dropin' => false,
+							'title' => 'Ruby',
+							'file'  => 'prism-ruby.min.js',
 						],
 					],
 					'aliases'   => [
@@ -84,9 +80,30 @@ class Renderer_Test extends TestCase {
 		);
 
 		$this->assertSame(
-			'<pre id="ig-sh-1" class="language-php line-numbers" data-start="5" data-line="2,4-6" data-file="index.php" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>',
+			'<div class="igsh-code-box"><span class="igsh-code-box__file">index.php</span>'
+			. '<pre id="ig-sh-1" class="language-php line-numbers" data-start="5" data-line="2,4-6" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>'
+			. '</div>',
 			$markup
 		);
+
+	}
+
+	/**
+	 * A snippet with no file label is the bare code box it has always been.
+	 *
+	 * The wrapper exists to carry the label, so a snippet without one must not gain
+	 * an element: every theme, and every site's own CSS, selects on what was there
+	 * before.
+	 *
+	 * @return void
+	 */
+	public function test_a_snippet_without_a_file_label_is_not_wrapped(): void {
+
+		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php' ) );
+
+		$this->assertStringStartsWith( '<pre ', $markup );
+		$this->assertStringEndsWith( '</pre>', $markup );
+		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
 
 	}
 
@@ -102,7 +119,7 @@ class Renderer_Test extends TestCase {
 		$this->assertStringNotContainsString( 'line-numbers', $markup );
 		$this->assertStringNotContainsString( 'data-start', $markup );
 		$this->assertStringNotContainsString( 'data-line=', $markup );
-		$this->assertStringNotContainsString( 'data-file', $markup );
+		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
 
 		// The optimizer opt outs are not optional.
 		$this->assertStringContainsString( 'data-no-optimize="1"', $markup );
@@ -238,8 +255,7 @@ class Renderer_Test extends TestCase {
 
 	/**
 	 * A file label is a label, not markup, so an entity in it is shown rather than
-	 * decoded. The themes paint it out of the attribute, which the browser decodes
-	 * once on the way.
+	 * decoded — the same rule the code itself is held to.
 	 *
 	 * @return void
 	 */
@@ -255,7 +271,10 @@ class Renderer_Test extends TestCase {
 			)
 		);
 
-		$this->assertStringContainsString( 'data-file="a&amp;amp;b &amp;lt;c&amp;gt;.php"', $markup );
+		$this->assertStringContainsString(
+			'<span class="igsh-code-box__file">a&amp;amp;b &amp;lt;c&amp;gt;.php</span>',
+			$markup
+		);
 
 	}
 
@@ -372,15 +391,19 @@ class Renderer_Test extends TestCase {
 			)
 		);
 
-		$this->assertStringContainsString( 'data-file="a&quot; onload=&quot;alert(1)"', $markup );
+		$this->assertStringContainsString(
+			'<span class="igsh-code-box__file">a&quot; onload=&quot;alert(1)</span>',
+			$markup
+		);
+
 		$this->assertStringNotContainsString( 'onload="alert', $markup );
 
 	}
 
 	/**
 	 * A tag in a file label reaches the reader as text, which is what makes keeping it
-	 * safe. Nothing downstream treats the attribute as markup: the stylesheet paints it
-	 * with `attr()` and the front end script assigns it with `textContent`.
+	 * safe. It is escaped into the label element the same way the code is escaped into
+	 * the code element, so nothing downstream reads it as markup.
 	 *
 	 * @return void
 	 */
@@ -397,7 +420,7 @@ class Renderer_Test extends TestCase {
 		);
 
 		$this->assertStringContainsString(
-			'data-file="&lt;script&gt;alert(1)&lt;/script&gt;vector&lt;int&gt;.cpp"',
+			'<span class="igsh-code-box__file">&lt;script&gt;alert(1)&lt;/script&gt;vector&lt;int&gt;.cpp</span>',
 			$markup
 		);
 
@@ -425,7 +448,7 @@ class Renderer_Test extends TestCase {
 
 		$this->assertSame(
 			1,
-			preg_match( '#<code[^>]*>(.*)</code></pre>$#s', $markup, $matches ),
+			preg_match( '#<code[^>]*>(.*)</code></pre>#s', $markup, $matches ),
 			'The renderer emitted no code element.'
 		);
 
@@ -434,7 +457,11 @@ class Renderer_Test extends TestCase {
 		// Everything either side of the bad byte is escaped exactly as it always was.
 		$this->assertStringContainsString( '&lt; $b ) { echo &quot;x&quot;; }', $matches[1] );
 
-		$this->assertMatchesRegularExpression( '#data-file="[^"]+ &amp; co\.php"#', $markup, 'The label was lost with the byte.' );
+		$this->assertMatchesRegularExpression(
+			'#<span class="igsh-code-box__file">[^<]+ &amp; co\.php</span>#',
+			$markup,
+			'The label was lost with the byte.'
+		);
 
 	}
 

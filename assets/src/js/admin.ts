@@ -11,10 +11,10 @@
 	/**
 	 * A control standing for one setting.
 	 *
-	 * A yes/no setting is a checkbox and a choice is a `<select>`; the template
-	 * draws no other kind.
+	 * A yes/no setting is a `role="switch"` button and a choice is a `<select>`;
+	 * the template draws no other kind.
 	 */
-	type OptionControl = HTMLInputElement | HTMLSelectElement;
+	type OptionControl = HTMLButtonElement | HTMLSelectElement;
 
 	/**
 	 * Anything the page switches off while it is working.
@@ -310,7 +310,7 @@
 	/**
 	 * Whether a control stands for a yes/no setting.
 	 *
-	 * The template writes `data-igsh-toggle` onto a checkbox and onto nothing
+	 * The template writes `data-igsh-toggle` onto a switch button and onto nothing
 	 * else, so the flag and the element type always agree. The `instanceof` is
 	 * what tells TypeScript that; it is not a second opinion about the markup.
 	 *
@@ -318,15 +318,19 @@
 	 *
 	 * @return True when the control is a toggle.
 	 */
-	function isToggle( control: OptionControl ): control is HTMLInputElement {
+	function isToggle( control: OptionControl ): control is HTMLButtonElement {
 		return (
 			Boolean( control.dataset.igshToggle ) &&
-			control instanceof HTMLInputElement
+			control instanceof HTMLButtonElement
 		);
 	}
 
 	/**
 	 * Reads the value a control currently stands for.
+	 *
+	 * A switch says what it stands for in `aria-checked`, and that is read here
+	 * rather than kept alongside in a second place: what the screen reader is told
+	 * and what gets saved are then the same fact.
 	 *
 	 * @param control Control to read.
 	 *
@@ -334,7 +338,9 @@
 	 */
 	function readControl( control: OptionControl ): string {
 		if ( isToggle( control ) ) {
-			return control.checked ? 'yes' : 'no';
+			return 'true' === control.getAttribute( 'aria-checked' )
+				? 'yes'
+				: 'no';
 		}
 
 		return control.value;
@@ -348,7 +354,10 @@
 	 */
 	function writeControl( control: OptionControl, value: string ): void {
 		if ( isToggle( control ) ) {
-			control.checked = 'yes' === value;
+			control.setAttribute(
+				'aria-checked',
+				'yes' === value ? 'true' : 'false'
+			);
 
 			return;
 		}
@@ -720,6 +729,25 @@
 
 		controls.forEach( function ( control ) {
 			control.dataset.igshPrevious = readControl( control );
+
+			/*
+			 * A switch is a button, so it reports a click and never a change; it is
+			 * flipped here and then saved. A `<select>` reports a change and flips
+			 * itself. Space and Enter both arrive as a click on a button, so the
+			 * keyboard needs nothing of its own.
+			 */
+			if ( isToggle( control ) ) {
+				control.addEventListener( 'click', function () {
+					writeControl(
+						control,
+						'yes' === readControl( control ) ? 'no' : 'yes'
+					);
+
+					saveSetting( control );
+				} );
+
+				return;
+			}
 
 			control.addEventListener( 'change', function () {
 				saveSetting( control );

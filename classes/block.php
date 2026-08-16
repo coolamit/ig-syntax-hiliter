@@ -28,11 +28,28 @@ class Block {
 	const NAME = 'igsyntax-hiliter/code';
 
 	/**
+	 * Name of the Gist block.
+	 *
+	 * @var string
+	 */
+	const GIST_NAME = 'igsyntax-hiliter/gist';
+
+	/**
 	 * Directory holding the built block, relative to the plugin directory.
 	 *
 	 * @var string
 	 */
 	const BUILD_DIR = 'build/block';
+
+	/**
+	 * Directory holding the built Gist block, relative to the plugin directory.
+	 *
+	 * The build mirrors the source tree under `build/`, so this follows
+	 * `src/block/gist/` rather than sitting beside the block above.
+	 *
+	 * @var string
+	 */
+	const GIST_BUILD_DIR = 'build/block/gist';
 
 	/**
 	 * Name of the JavaScript object carrying the editor's data.
@@ -87,18 +104,29 @@ class Block {
 	 */
 	public function register_block(): void {
 
-		$directory = Plugin::get_instance()->get_path( static::BUILD_DIR );
+		$plugin = Plugin::get_instance();
 
-		if ( ! is_readable( $directory . '/block.json' ) ) {
-			return;
+		$blocks = [
+			static::BUILD_DIR      => [ $this, 'render' ],
+			static::GIST_BUILD_DIR => [ $this, 'render_gist' ],
+		];
+
+		foreach ( $blocks as $build_dir => $callback ) {
+
+			$directory = $plugin->get_path( $build_dir );
+
+			if ( ! is_readable( $directory . '/block.json' ) ) {
+				continue;
+			}
+
+			register_block_type(
+				$directory,
+				[
+					'render_callback' => $callback,
+				]
+			);
+
 		}
-
-		register_block_type(
-			$directory,
-			[
-				'render_callback' => [ $this, 'render' ],
-			]
-		);
 
 	}    //end register_block()
 
@@ -143,6 +171,36 @@ class Block {
 		return $markup;
 
 	}    //end render()
+
+	/**
+	 * Method to render one Gist block.
+	 *
+	 * Handed straight to `Gist_Embed`, which is the one place a Gist becomes an
+	 * embed. That is what keeps the block and the twenty year old `[github]`
+	 * shortcode behaving alike: the same id sanitising, the same link instead of a
+	 * script where a script cannot go, and the same setting deciding whether an
+	 * embed is allowed in a comment.
+	 *
+	 * A Gist carries no code of its own, only a reference to one, so none of the
+	 * protect then restore machinery around the code block applies here.
+	 *
+	 * @param mixed $attributes Block attributes.
+	 *
+	 * @return string HTML markup for the embed.
+	 */
+	public function render_gist( $attributes = [] ): string {
+
+		$attributes = ( is_array( $attributes ) ) ? $attributes : [];
+		$url        = $attributes['url'] ?? '';
+		$url        = ( is_scalar( $url ) ) ? trim( (string) $url ) : '';
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		return Gist_Embed::get_instance()->render( [ 'gist' => $url ] );
+
+	}    //end render_gist()
 
 	/**
 	 * Method to check whether the block is being rendered into a summary.
@@ -261,9 +319,9 @@ class Block {
 			/*
 			 * An entry pointing at a language this site cannot load is dropped rather than
 			 * offered. Taking it would put an id into a block attribute which nothing on
-			 * the site can highlight, and would throw away the author's own word — which a
-			 * drop-in language file may yet make good. The sentinel is kept: it names no
-			 * language, which is exactly why `has()` says no to it.
+			 * the site can highlight, and would throw away the author's own word — which
+			 * the `ig_syntax_hiliter/languages` filter may yet make good. The sentinel is
+			 * kept: it names no language, which is exactly why `has()` says no to it.
 			 */
 			if ( Language_Registry::NO_LANGUAGE !== $id && ! $registry->has( $id ) ) {
 				continue;

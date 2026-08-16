@@ -48,6 +48,13 @@ class Gist_Embed {
 	const PRIORITY_LINK = 9;
 
 	/**
+	 * Handle the Gist stylesheet is registered under.
+	 *
+	 * @var string
+	 */
+	const STYLE_HANDLE = 'ig-syntax-hiliter-gist';
+
+	/**
 	 * Filters which cannot carry an embed, and get a link instead.
 	 *
 	 * Display filters, every one of them. A save filter would put the link in the
@@ -68,6 +75,13 @@ class Gist_Embed {
 	 * @var bool
 	 */
 	protected bool $_hooked = false;
+
+	/**
+	 * Whether an embed has been rendered on this page.
+	 *
+	 * @var bool
+	 */
+	protected bool $_has_embeds = false;
 
 	/**
 	 * Method to hook the Gist pipeline up to WordPress.
@@ -98,7 +112,44 @@ class Gist_Embed {
 			add_filter( $filter, [ $this, 'parse' ], static::PRIORITY_LINK );
 		}
 
+		/*
+		 * The same two moments the asset manager decides at, and for the same reason:
+		 * a Gist rendered by something which itself runs from `wp_footer` would miss
+		 * the first pass, and core prints the footer styles at priority 20. A page
+		 * carrying nothing but a Gist loads no stylesheet of this plugin's otherwise,
+		 * so this is wiring of its own rather than one more rule in an existing sheet.
+		 */
+		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE );
+		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE_AGAIN );
+
 	}    //end register_hooks()
+
+	/**
+	 * Method to enqueue the Gist stylesheet, if the page has an embed on it.
+	 *
+	 * Safe to call more than once: enqueuing a handle which is already enqueued
+	 * does nothing.
+	 *
+	 * @return void
+	 */
+	public function enqueue(): void {
+
+		if ( is_admin() || ! $this->_has_embeds ) {
+			return;
+		}
+
+		if ( ! Shortcode_Handler::is_plugin_option_on( 'gist_limit_height', 'yes' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			static::STYLE_HANDLE,
+			Helper::get_asset_url( 'build/css/gist.css' ),
+			[],
+			( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0'
+		);
+
+	}    //end enqueue()
 
 	/**
 	 * Method to run the Gist shortcode over content.
@@ -184,6 +235,8 @@ class Gist_Embed {
 				esc_html( $gist )
 			);
 		}
+
+		$this->_has_embeds = true;
 
 		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- A Gist embed is a third party script tag placed inline, by design.
 		return sprintf( '<script src="%s.js"></script>', esc_url( $gist ) );

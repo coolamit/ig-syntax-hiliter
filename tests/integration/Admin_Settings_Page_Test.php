@@ -10,7 +10,7 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
-use iG\Syntax_Hiliter\Language_Registry;
+use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Option;
 use ReflectionProperty;
 use WP_UnitTestCase;
@@ -90,8 +90,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The settings GeSHi took with it are gone from the screen, and the drop-in
-	 * language directory and the revert tool are on it.
+	 * The settings GeSHi took with it are gone from the screen, and so are the two
+	 * this version dropped. The revert tool is on it.
 	 *
 	 * @return void
 	 */
@@ -105,12 +105,28 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			$this->assertStringNotContainsString( $gone, $html, sprintf( 'The removed %s setting is still on the screen.', $gone ) );
 		}
 
-		// The screen states where a site puts its own language files.
-		$this->assertStringContainsString( Language_Registry::DROPIN_DIR, $html );
-		$this->assertStringEndsWith( Language_Registry::DROPIN_DIR . '/', Admin::get_dropin_display_path() );
+		// Dropped in 6.0: the whitespace setting did nothing visible, and every language Prism has is now shipped.
+		$this->assertStringNotContainsString( 'normalize_whitespace', $html );
+		$this->assertStringNotContainsString( 'igsyntax-hiliter/components', $html );
 
 		// The revert tool, the way out of the block format, is offered on this screen.
 		$this->assertStringContainsString( 'igsh-revert-blocks', $html );
+
+	}
+
+	/**
+	 * The theme dropdown offers Okaidia as the default, and names the Prism theme
+	 * after itself.
+	 *
+	 * @return void
+	 */
+	public function test_the_theme_dropdown_offers_the_bundled_themes(): void {
+
+		$choices = Admin::get_theme_choices();
+
+		$this->assertArrayHasKey( Asset_Manager::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
+		$this->assertSame( 'prism-okaidia', Asset_Manager::DEFAULT_THEME );
+		$this->assertSame( 'Prism', $choices['prism'] ?? '', 'The Prism theme is named after itself, not after being the default.' );
 
 	}
 
@@ -125,12 +141,38 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	protected function _get_control( string $html, string $name ): string {
 
 		$found = preg_match(
-			sprintf( '#<input\b[^>]*data-igsh-option="%s"[^>]*>#s', preg_quote( $name, '#' ) ),
+			sprintf( '#<(?:button|select)\b[^>]*data-igsh-option="%s"[^>]*>#s', preg_quote( $name, '#' ) ),
 			$html,
 			$matches
 		);
 
 		return ( 1 === $found ) ? $matches[0] : '';
+
+	}
+
+	/**
+	 * A toggle is a button the whole of which can be clicked, not a checkbox.
+	 *
+	 * The admin stylesheet styles `input[type="checkbox"]` at a higher specificity
+	 * than a class of this plugin's, which put the real hit area back to a square
+	 * in the corner of the switch: every toggle on this screen could only be
+	 * operated through its label, and no test tier saw it for fifteen sessions.
+	 *
+	 * @return void
+	 */
+	public function test_a_toggle_is_a_button_and_not_a_checkbox(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$html    = $this->_render();
+		$control = $this->_get_control( $html, 'toolbar' );
+
+		$this->assertStringStartsWith( '<button', $control, 'The toggle is not a button.' );
+		$this->assertStringContainsString( 'type="button"', $control );
+		$this->assertStringContainsString( 'role="switch"', $control );
+		$this->assertStringContainsString( 'aria-checked=', $control );
+
+		$this->assertStringNotContainsString( 'type="checkbox"', $html, 'A checkbox is still being drawn for a setting.' );
 
 	}
 
@@ -158,8 +200,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			array_merge(
 				(array) $before,
 				[
-					'normalize_whitespace' => 'perhaps',    //this setting is off by default
-					'hilite_comments'      => 'perhaps',    //and this one is on by default
+					'gist_in_comments' => 'perhaps',    //this setting is off by default
+					'hilite_comments'  => 'perhaps',    //and this one is on by default
 				]
 			)
 		);
@@ -170,14 +212,14 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			$property->setValue( $option, $before );
 		}
 
-		$off = $this->_get_control( $html, 'normalize_whitespace' );
+		$off = $this->_get_control( $html, 'gist_in_comments' );
 		$on  = $this->_get_control( $html, 'hilite_comments' );
 
-		$this->assertNotSame( '', $off, 'The normalize_whitespace control is not on the page at all.' );
+		$this->assertNotSame( '', $off, 'The gist_in_comments control is not on the page at all.' );
 		$this->assertNotSame( '', $on, 'The hilite_comments control is not on the page at all.' );
 
-		$this->assertStringNotContainsString( 'checked', $off, 'A setting which is off by default was drawn as on.' );
-		$this->assertStringContainsString( 'checked', $on );
+		$this->assertStringContainsString( 'aria-checked="false"', $off, 'A setting which is off by default was drawn as on.' );
+		$this->assertStringContainsString( 'aria-checked="true"', $on );
 
 	}
 

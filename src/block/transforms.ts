@@ -46,6 +46,77 @@ function toPlainCode( value: unknown ): string {
 	return '';
 }
 
+/**
+ * Undoes what the paste handler's markdown pass did to a snippet.
+ *
+ * A paste of plain text does not reach the shortcode transform as plain text.
+ * `pasteHandler()` decides the paste is plain, runs the whole clipboard through
+ * `markdownConverter` — `marked`, configured `gfm: true, breaks: true` — and only
+ * then looks for shortcodes in the HTML that came out. So the body handed to the
+ * transform has a `<br>` where the author had a newline, a paragraph boundary
+ * where the author had a blank line, and `&amp;`/`&lt;`/`&gt;` where the author
+ * had those characters in ordinary text. Stored as it arrived, that is the
+ * `<br />` on the end of every line which is what got this looked at.
+ *
+ * **This works on the string and never parses it as HTML, and that is the whole
+ * design.** Reading it as HTML looks tidier and loses code: `marked` passes an
+ * inline HTML run through untouched, so a PHP snippet arrives holding a literal
+ * `<?php … if ( $a < $b && $c > $d )`, and an HTML parser eats every byte from
+ * that `<?` to the first `>` after it. Failure here has to mean "changed
+ * nothing", never "matched everything".
+ *
+ * What each replacement is, and what it costs:
+ *
+ * - `</p><p>` is a paragraph boundary `marked` built. An author who typed those
+ *   characters had them escaped on the way here, so the sequence can only be the
+ *   converter's.
+ * - `<br>` is exactly what `marked` emits for a line break, byte for byte. The
+ *   author's own `<br />`, `<br/>` and `<BR>` are left alone, because they are
+ *   not that sequence. An author who typed a bare lower case `<br>` loses it to a
+ *   newline, and that is the one case this cannot tell apart.
+ * - The three entities go back to the characters they stand for. An author whose
+ *   code contains the literal text `&amp;` gets `&` instead, which is the same
+ *   trade the other way round — and `&`, `<` and `>` are in nearly every snippet,
+ *   while the spelled out entity is in almost none.
+ *
+ * `convert.ts` deliberately does none of this. It reads the author's bytes out of
+ * the stored post, where no markdown converter has ever been near them.
+ *
+ * @param value Text as the paste handler matched it.
+ */
+function decodePastedText( value: unknown ): string {
+	if ( typeof value !== 'string' ) {
+		return toPlainCode( value );
+	}
+
+	return value
+		.replace( /<\/p>\s*<p[^>]*>/g, '\n\n' )
+		.replace( /<br>/g, '\n' )
+		.replace( /&lt;/g, '<' )
+		.replace( /&gt;/g, '>' )
+		.replace( /&amp;/g, '&' );
+}
+
+/**
+ * Reads every attribute of a pasted shortcode the same way.
+ *
+ * The attribute string went through the same markdown pass the body did, so a
+ * file label of `a&b.java` arrives as `a&amp;b.java`.
+ *
+ * @param named Attributes as the paste handler matched them.
+ */
+function decodePastedAttributes(
+	named: ShortcodeNamedAttributes
+): ShortcodeNamedAttributes {
+	const decoded: ShortcodeNamedAttributes = {};
+
+	Object.keys( named ).forEach( ( key ) => {
+		decoded[ key ] = decodePastedText( named[ key ] );
+	} );
+
+	return decoded;
+}
+
 const transforms = {
 	from: [
 		{
@@ -93,8 +164,8 @@ const transforms = {
 				createBlock( BLOCK_NAME, {
 					...mapShortcodeAttributes(
 						match.shortcode.tag,
-						attributes.named ?? {},
-						match.shortcode.content ?? ''
+						decodePastedAttributes( attributes.named ?? {} ),
+						decodePastedText( match.shortcode.content ?? '' )
 					),
 				} ),
 		},

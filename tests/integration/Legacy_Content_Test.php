@@ -310,7 +310,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 		$output = $this->_render_single( $this->_create_fixture_post() );
 
 		$this->assertStringContainsString( 'data-line="2,4-6"', $output );
-		$this->assertStringContainsString( 'data-file="x.php"', $output );
+		$this->assertStringContainsString( '<span class="igsh-code-box__file">x.php</span>', $output );
 		$this->assertStringContainsString( 'data-start="10"', $output );
 		$this->assertStringContainsString( 'data-start="7"', $output );
 

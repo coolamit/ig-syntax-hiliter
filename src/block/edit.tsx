@@ -47,9 +47,10 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 	 * A language this site cannot currently load still gets an option of its own,
 	 * because a select whose value matches no option shows the first one instead —
 	 * and merely opening this panel would then write that back and destroy a
-	 * language which was highlighting perfectly well. It covers a drop-in language
-	 * file that has been removed, a snippet saved by an older version of the plugin,
-	 * and a block written by hand or by WP-CLI.
+	 * language which was highlighting perfectly well. It covers a language the
+	 * `ig_syntax_hiliter/languages` filter used to add and no longer does, a snippet
+	 * saved by an older version of the plugin, and a block written by hand or by
+	 * WP-CLI.
 	 */
 	if (
 		language !== '' &&

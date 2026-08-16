@@ -116,9 +116,11 @@ export function getEditorData(): EditorData {
  * language which was highlighting perfectly well.
  *
  * An unrecognised name is handed straight back rather than replaced with a
- * default. Resolution stayed late for twenty years, so a snippet written as
- * `rust` on a site with no `prism-rust.js` starts highlighting the day a drop-in
- * appears — and a name overwritten here could never do that again.
+ * default. It is the author's own word, it is what the snippet has said for as
+ * long as the post has existed, and the site may yet add the language through
+ * the `ig_syntax_hiliter/languages` filter — a name overwritten here could never
+ * be recovered. It renders as an unhighlighted box until then, which is what it
+ * did before.
  *
  * @param value Language name, alias or legacy tag as the author wrote it.
  */

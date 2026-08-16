@@ -74,8 +74,8 @@ describe( 'resolveLanguage', () => {
 
 	/*
 	 * The one that matters most. A name nothing recognises is the author's own
-	 * word, and it is kept: a drop-in language file added tomorrow makes it good,
-	 * where a name overwritten here could never recover.
+	 * word, and it is kept: the `ig_syntax_hiliter/languages` filter can make it good
+	 * tomorrow, where a name overwritten here could never recover.
 	 */
 	it( 'hands back a name it does not recognise, rather than replacing it', () => {
 		expect( resolveLanguage( 'rust' ) ).toBe( 'rust' );

@@ -18,17 +18,17 @@ use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
- * `get_instance()` end to end — the filter running over a memoised instance, and
- * the cache key noticing a drop-in language arriving.
+ * `get_instance()` end to end — the extension filter running over a memoised
+ * instance, and the cache the registry is built through.
  *
- * The unit tier covers `parse_manifest()`, `scan_dropins()` and `merge()`, none of
- * which go anywhere near `get_instance()`. Everything here does, because that is
- * where the ordering and the caching live.
+ * The unit tier covers `parse_manifest()` and `merge()`, neither of which goes
+ * anywhere near `get_instance()`. Everything here does, because that is where the
+ * ordering and the caching live.
  */
 class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 	/**
-	 * Id of the language these tests add, by filter or by drop-in file.
+	 * Id of the language these tests add through the filter.
 	 *
 	 * @var string
 	 */
@@ -40,27 +40,6 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * @var array
 	 */
 	protected array $_cache_keys = [];
-
-	/**
-	 * Absolute path of the drop-in directory, once a test has looked it up.
-	 *
-	 * @var string
-	 */
-	protected string $_dropin_dir = '';
-
-	/**
-	 * Absolute path of the drop-in file a test wrote, if it wrote one.
-	 *
-	 * @var string
-	 */
-	protected string $_dropin_file = '';
-
-	/**
-	 * Whether the drop-in directory was made by the test rather than found.
-	 *
-	 * @var bool
-	 */
-	protected bool $_made_dropin_dir = false;
 
 	/**
 	 * Starts every test from the state a request which has not yet built a registry
@@ -77,31 +56,18 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Takes away the drop-in, the cache entries and the memoised objects, so that
-	 * whatever runs next sees the registry the plugin actually ships.
+	 * Takes away the cache entries and the memoised objects, so that whatever runs
+	 * next sees the registry the plugin actually ships.
 	 *
 	 * @return void
 	 */
 	public function tear_down(): void {
 
-		if ( '' !== $this->_dropin_file && file_exists( $this->_dropin_file ) ) {
-			unlink( $this->_dropin_file );
-		}
-
-		if ( $this->_made_dropin_dir && '' !== $this->_dropin_dir && is_dir( $this->_dropin_dir ) ) {
-			rmdir( $this->_dropin_dir );
-		}
-
-		clearstatcache();
-
 		foreach ( $this->_cache_keys as $key ) {
 			Cache::create( $key )->delete();
 		}
 
-		$this->_cache_keys      = [];
-		$this->_dropin_dir      = '';
-		$this->_dropin_file     = '';
-		$this->_made_dropin_dir = false;
+		$this->_cache_keys = [];
 
 		$this->_reset_registry();
 
@@ -215,9 +181,8 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 			Renderer::get_instance();
 
 			$registry['languages'][ self::LANGUAGE ] = [
-				'title'  => 'Probe Lang',
-				'file'   => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
-				'dropin' => true,
+				'title' => 'Probe Lang',
+				'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
 			];
 
 			return $registry;
@@ -306,103 +271,94 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A language file dropped into the uploads directory is visible on the next
-	 * request, not on the next plugin release.
+	 * A language the filter added is never written into the cache.
 	 *
-	 * The built registry is cached, and the key used to be the plugin version and
-	 * nothing else, with an expiry of a year. A site owner who did exactly what the
-	 * settings screen asks — put `prism-{id}.min.js` in the drop-in directory — saw
-	 * no change at all until the plugin was next updated.
+	 * The filter deliberately runs after the cache, and this is what that buys: a
+	 * site which removes its callback gets the plugin's own registry back on the very
+	 * next request. Bake the filtered value in instead and the callback's languages
+	 * outlive it by up to a day, which is a site rendering snippets against a grammar
+	 * nothing is loading any more.
 	 *
 	 * @return void
 	 */
-	public function test_a_dropin_language_does_not_wait_for_a_plugin_update(): void {
+	public function test_a_language_added_by_the_filter_is_not_cached(): void {
 
-		$dir = Language_Registry::get_dropin_dir();
+		$callback = static function ( array $registry ): array {
 
-		$this->assertNotSame( '', $dir, 'Drop-in languages live in the uploads directory.' );
+			$registry['languages'][ self::LANGUAGE ] = [
+				'title' => 'Probe Lang',
+				'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
+			];
 
-		$this->_dropin_dir      = $dir;
-		$this->_made_dropin_dir = ( ! is_dir( $dir ) );
+			return $registry;
 
-		wp_mkdir_p( $dir );
-		clearstatcache();
+		};
 
-		// A registry built and cached while the site had nothing dropped in.
+		add_filter( Language_Registry::FILTER_LANGUAGES, $callback );
+
 		$this->_remember_cache_key();
 
-		$this->assertFalse( Language_Registry::get_instance()->has( self::LANGUAGE ), 'Nothing has been dropped in yet.' );
+		$this->assertTrue( Language_Registry::get_instance()->has( self::LANGUAGE ), 'The filter did add a language.' );
 
-		$before = (int) filemtime( $dir );
+		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
 
-		$this->_dropin_file = sprintf( '%s/prism-%s.min.js', $dir, self::LANGUAGE );
-
-		file_put_contents( $this->_dropin_file, '// a grammar the site brought itself' );
-
-		/*
-		 * The directory's modification time is what the plugin reads, and it moves in
-		 * whole seconds — the build above and this drop land inside the same one often
-		 * enough to matter. Moving it on by hand is the passage of time this test
-		 * cannot afford to wait for, not a stand-in for the mechanism being tested.
-		 */
-		touch( $dir, ( $before + 1 ) );
-
-		// The stat cache belongs to this process; a drop-in really arrives in a later request.
-		clearstatcache();
-
+		// A later request, with the callback gone but the cache entry the first one wrote still there.
 		$this->_reset_registry();
-		$this->_remember_cache_key();
 
-		$registry = Language_Registry::get_instance();
-
-		$this->assertTrue( $registry->has( self::LANGUAGE ), 'The drop-in is in the registry without the plugin having been updated.' );
-		$this->assertTrue( $registry->is_dropin( self::LANGUAGE ), 'It is known to have come from the site, not from the bundle.' );
-		$this->assertSame( sprintf( 'prism-%s.min.js', self::LANGUAGE ), $registry->get_file( self::LANGUAGE ) );
+		$this->assertFalse(
+			Language_Registry::get_instance()->has( self::LANGUAGE ),
+			'A language the filter added was written into the cache and outlived the callback.'
+		);
 
 	}
 
 	/**
-	 * Taking a drop-in away is noticed just as quickly.
+	 * The cache is what the registry is built through, and a second request in the
+	 * same state does not build it again.
 	 *
-	 * Without this the pair is only half tested: a key which changed when a file
-	 * appeared but not when one was removed would leave the registry promising a
-	 * language whose file the browser would then fail to fetch.
+	 * Parsing three hundred manifest entries and stat-ing a file for each is the
+	 * whole cost of this class, and it is paid once per plugin version rather than
+	 * once per request. A cache entry which stopped being read would be invisible —
+	 * the registry would be right, and every page would be slower.
 	 *
 	 * @return void
 	 */
-	public function test_a_removed_dropin_language_leaves_the_registry(): void {
-
-		$dir = Language_Registry::get_dropin_dir();
-
-		$this->_dropin_dir      = $dir;
-		$this->_made_dropin_dir = ( ! is_dir( $dir ) );
-
-		wp_mkdir_p( $dir );
-		clearstatcache();
-
-		$this->_dropin_file = sprintf( '%s/prism-%s.min.js', $dir, self::LANGUAGE );
-
-		file_put_contents( $this->_dropin_file, '// a grammar the site brought itself' );
-
-		clearstatcache();
+	public function test_the_registry_is_served_from_the_cache_on_a_later_request(): void {
 
 		$this->_remember_cache_key();
 
-		$this->assertTrue( Language_Registry::get_instance()->has( self::LANGUAGE ), 'The drop-in is there to begin with.' );
+		$key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
 
-		$before = (int) filemtime( $dir );
+		$this->assertTrue( Language_Registry::get_instance()->has( 'php' ), 'The registry built.' );
 
-		unlink( $this->_dropin_file );
+		$stored = get_option( Cache::KEY_PREFIX . md5( $key ) );
 
-		$this->_dropin_file = '';
+		$this->assertIsArray( $stored, 'The build was written to the cache.' );
+		$this->assertArrayHasKey( 'php', $stored['data']['languages'] ?? [] );
 
-		touch( $dir, ( $before + 1 ) );
-		clearstatcache();
+		/*
+		 * Put a registry of one language into that entry and ask again. Anything which
+		 * rebuilt from disk would answer with the bundled list; only a read of the cache
+		 * can answer with this.
+		 */
+		$stored['data'] = [
+			'languages' => [
+				self::LANGUAGE => [
+					'title' => 'Probe Lang',
+					'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
+				],
+			],
+			'aliases'   => [],
+		];
+
+		update_option( Cache::KEY_PREFIX . md5( $key ), $stored, false );
 
 		$this->_reset_registry();
-		$this->_remember_cache_key();
 
-		$this->assertFalse( Language_Registry::get_instance()->has( self::LANGUAGE ), 'A language whose file has gone is not offered.' );
+		$registry = Language_Registry::get_instance();
+
+		$this->assertTrue( $registry->has( self::LANGUAGE ), 'The registry was rebuilt rather than read from the cache.' );
+		$this->assertFalse( $registry->has( 'php' ), 'The registry was rebuilt rather than read from the cache.' );
 
 	}
 

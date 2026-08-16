@@ -9,7 +9,6 @@
  */
 
 $igsh-accent: #2271b1;
-$igsh-accent-hover: #135e96;
 $igsh-off: #8c8f94;
 $igsh-error: #d63638;
 $igsh-warning: #dba617;
@@ -33,40 +32,28 @@ $igsh-radius: 3px;
 	&__select {
 		min-width: 16rem;
 	}
-
-	&__path {
-		display: inline-block;
-		padding: 6px 10px;
-		background: #f0f0f1;
-		border-radius: $igsh-radius;
-	}
 }
 
 /*
- * Toggle switch. The checkbox stays a real checkbox — it is only moved out of
- * sight, so it keeps its focus behaviour, its label and its keyboard handling.
+ * Toggle switch. It is a button, not a checkbox: wp-admin styles
+ * `input[type="checkbox"]` at a higher specificity than a class of ours and
+ * forced the box back to 16px in the corner of the switch, leaving all but that
+ * corner unclickable. A button carries no such baggage, and `role="switch"`
+ * gives it the keyboard behaviour and the announcement the checkbox had.
  */
 .igsh-toggle {
 	display: inline-block;
 	position: relative;
 	width: 44px;
 	height: 24px;
+	padding: 0;
+	border: 0;
+	background: none;
 	vertical-align: middle;
+	cursor: pointer;
 
-	&__input {
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		padding: 0;
-		opacity: 0;
-		cursor: pointer;
-
-		&:disabled {
-			cursor: progress;
-		}
+	&:disabled {
+		cursor: progress;
 	}
 
 	&__track {
@@ -79,7 +66,6 @@ $igsh-radius: 3px;
 		background: $igsh-off;
 		border-radius: 12px;
 		transition: background-color 0.15s ease-in-out;
-		pointer-events: none;
 
 		&::after {
 			content: "";
@@ -94,7 +80,7 @@ $igsh-radius: 3px;
 		}
 	}
 
-	&__input:checked + &__track {
+	&[aria-checked="true"] &__track {
 		background: $igsh-accent;
 
 		&::after {
@@ -102,11 +88,15 @@ $igsh-radius: 3px;
 		}
 	}
 
-	&__input:focus + &__track {
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:focus-visible &__track {
 		box-shadow: 0 0 0 2px #fff, 0 0 0 4px $igsh-accent;
 	}
 
-	&__input:disabled + &__track {
+	&:disabled &__track {
 		opacity: 0.6;
 	}
 }

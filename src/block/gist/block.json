@@ -1,0 +1,27 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "igsyntax-hiliter/gist",
+	"title": "iG:Syntax Hiliter Gist",
+	"category": "embed",
+	"icon": "editor-code",
+	"description": "Embed a GitHub Gist.",
+	"keywords": [ "gist", "github", "code", "embed", "snippet" ],
+	"textdomain": "igsyntax-hiliter",
+	"supports": {
+		"html": false,
+		"customClassName": false,
+		"anchor": false,
+		"align": false,
+		"color": false,
+		"spacing": false,
+		"typography": false
+	},
+	"attributes": {
+		"url": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"editorScript": "file:./index.ts"
+}

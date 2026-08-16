@@ -315,9 +315,8 @@ class Snippet {
 	 *
 	 * Whitespace is collapsed, and that is the whole of it. The label is never treated
 	 * as markup on any path it reaches: `Renderer::escape_verbatim()` escapes it into
-	 * the `data-file` attribute, the stylesheet paints it from that attribute, the
-	 * front end script assigns it with `textContent`, and the editor holds it in a text
-	 * control. Stripping tags therefore protected nothing, and it deleted the type
+	 * the element the renderer prints above the code box, and the editor holds it in a
+	 * text control. Stripping tags therefore protected nothing, and it deleted the type
 	 * parameter out of `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` and
 	 * everything after an unbalanced `<`, which is a file name an author might well
 	 * write.

@@ -1,0 +1,26 @@
+/*
+ * iG:Syntax Hiliter — keeping an embedded GitHub Gist to a readable height.
+ *
+ * Compiled to assets/build/css/gist.css by the `sass` CLI, via the
+ * `build:css` script in package.json. Never edit the compiled file.
+ *
+ * This is plain CSS held in a .scss file, for the same reason
+ * frontend-chrome.scss is: every stylesheet the plugin ships comes out of one
+ * pipeline.
+ *
+ * Loaded only on a page which rendered an embed, and only while the
+ * "Limit the height of Gist embeds" setting is on.
+ */
+
+/*
+ * `.gist-data` is the file itself, so a Gist of several files gets a box each
+ * rather than one box around the lot — which is what a reader wants, and what
+ * the file headers and footers Gist prints between them assume.
+ *
+ * `max-height` is a ceiling, so a file shorter than this is untouched and shows
+ * no scrollbar at all.
+ */
+.gist .gist-data {
+	max-height: 400px;
+	overflow: auto;
+}

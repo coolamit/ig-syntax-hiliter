@@ -9,7 +9,7 @@
 
 **WordPress.org:** [https://wordpress.org/plugins/igsyntax-hiliter/](https://wordpress.org/plugins/igsyntax-hiliter/)
 
-**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [Prism.js library](https://prismjs.com/) to colourise your code and supports close to 300 programming languages, all of which are bundled with the plugin. More can be added by dropping in Prism component files.
+**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [Prism.js library](https://prismjs.com/) to colourise your code and supports close to 300 programming languages, all of which are bundled with the plugin.
 
 You can write code snippets using the block editor, or using this plugin's shortcodes in the classic editor's Text view. Both are supported. The classic editor's Visual (WYSIWYG) tab is not, and never has been — it mangles code before the plugin ever sees it.
 
@@ -57,7 +57,7 @@ A tag this plugin never shipped is left completely alone — not registered, not
 
 #### **Some old tags now highlight as a different language**
 
-Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. In a shortcode the mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts. A snippet converted to a block is the exception and stores the mapped name, because that is the name the block's language dropdown offers. A name Prism does not know is stored exactly as you typed it either way, so a language you add later as a component file starts working on posts you wrote years ago.
+Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. In a shortcode the mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts. A snippet converted to a block is the exception and stores the mapped name, because that is the name the block's language dropdown offers. A name Prism does not know is stored exactly as you typed it either way — it is your word, and a name overwritten could never be recovered — and such a snippet renders as an unhighlighted code box.
 
 Most of it is uncontroversial: `html`, `html4strict`, `html5` and `xml` all become `markup`; `mysql` and `postgresql` become `sql`; `oracle11` becomes `plsql`; `jquery` becomes `javascript`; `rails` becomes `ruby`; `pcre` becomes `regex`; `actionscript3` and `as` become `actionscript`; `java5` becomes `java`; `js` becomes `javascript`; `apache` becomes `apacheconf`; `vb` and `vbnet` both become `visual-basic`; and `code` and `text` become `none`, which is a styled but deliberately unhighlighted box.
 
@@ -73,12 +73,9 @@ Your code itself is untouched in every case; only the colouring differs.
 
 Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory, and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0 and both mechanisms go with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
 
-There are two ways to deal with that, neither as convenient as dropping in a file used to be:
+Close to 300 languages ship with the plugin, so there is a good chance one of them is the language you were adding — use it with `[sourcecode language="…"]`. If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
 
-- Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/`. That directory is outside the plugin, so it survives plugin updates. The language then works in `[sourcecode language="…"]` and shows up in the block's language dropdown.
-- If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
-
-The changelog entries for v3.0 and v4.1 still describe the drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0 does. Neither mechanism works in 6.0.
+The changelog entries for v3.0 and v4.1 still describe those drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0 does. Neither mechanism works in 6.0.
 
 #### **Highlighting is done by the browser now**
 
@@ -121,6 +118,8 @@ Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` and `geshi.
 
 In the block editor, add the **iG:Syntax Hiliter** block, paste your code into it and pick a language in the sidebar. The code is stored as plain text in the block's attributes, so nothing in the editor or in WordPress' content filters can get at it — paste whatever you like, entities and all.
 
+To embed a GitHub Gist, add the **iG:Syntax Hiliter Gist** block and paste the address of the Gist into it. The `[github]` shortcode goes on working exactly as it always has, and is not converted.
+
 In the classic editor's Text view, use the shortcodes. There is one tag and a handful of optional attributes. Here's how code is posted for it to be highlighted.
 
 ```
@@ -155,7 +154,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 #### **(Optional) Plugin Attributes**
 
-**language :** Use this to specify the programming language whose code you are posting. Any language Prism knows is accepted, as are languages you have dropped into `wp-content/uploads/igsyntax-hiliter/components/`. If `language` is not specified, or names something that cannot be resolved, a plain but properly styled code box is rendered instead. `lang` is the shorthand for `language` attribute.
+**language :** Use this to specify the programming language whose code you are posting. Any language Prism knows is accepted. If `language` is not specified, or names something that cannot be resolved, a plain but properly styled code box is rendered instead — and what you typed is kept, exactly as you typed it. `lang` is the shorthand for `language` attribute.
 
 **firstline :** Use this to start line numbering from a number greater than 1.
 
@@ -175,10 +174,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 [/sourcecode]
 ```
 
-**file :** Use this to show a file name/path. Where it appears depends on the **Show Toolbar?** setting:
-
-- **Toolbar on** — the label sits in the toolbar, which sits over the top right of the box and fades in when a visitor hovers over the code box or moves keyboard focus into it. v5's toolbar was drawn into the box and was always on screen; Prism's is not.
-- **Toolbar off** — the label is painted in the top right corner of the code box itself, and is always visible. In v5, turning the toolbar off hid the file label with it; in 6.0 the label still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
+**file :** Use this to show a file name/path. It is printed just above the code box, at the left, and is always visible — whatever the **Show Toolbar?** setting says. In v5 the label lived in the toolbar, so turning the toolbar off hid it too; in 6.0 it still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
 
 The whole path goes into the page exactly as you typed it. If it is too long for the space, the browser trims what it *shows* with an ellipsis, but the full path is still there in the page source. Two v5 behaviours are gone: v5 cut the label to 30 characters on the server before it ever reached the page, and v5 ran the label through `wp_strip_all_tags()`, which quietly ate the type parameter out of names like `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` — and everything after an unbalanced `<`. 6.0 collapses runs of whitespace and otherwise leaves the label alone; it is never treated as markup anywhere it is used, so there was nothing for the stripping to protect.
 
@@ -193,15 +189,15 @@ Configuring **iG:Syntax Hiliter** is a piece of cake. Login to your WordPress ad
 
 When you click the `iG:Syntax Hiliter` configuration page, you are offered some configuration settings which you can set to your liking. Lets go through each of them.
 
-**Theme :** Pick which of the bundled Prism themes is used to style code boxes. Choose `None` if you'd rather style code boxes yourself — nothing of the plugin's own CSS is loaded then. This replaces v5's *Use plugin CSS for styling?* option, and your old setting is carried over (`YES` becomes the default theme, `NO` becomes `None`).
+**Theme :** Pick which of the bundled Prism themes is used to style code boxes; **Okaidia** is the default. Choose `None` if you'd rather style code boxes yourself — nothing of the plugin's own CSS is loaded then. This replaces v5's *Use plugin CSS for styling?* option, and your old setting is carried over (`YES` becomes the default theme, `NO` becomes `None`).
 
-**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the file name and the copy button) above the code boxes or not. The language name is no longer shown there — v5 printed it, 6.0 does not. Unlike v5's, this toolbar is not drawn into the box: it fades in when a visitor hovers over the code box or moves keyboard focus into it. Turning it off does not hide the `file` label, which is painted on the box itself instead — see the `file` attribute above.
+**Show Toolbar? :** This option allows you to tell the plugin whether to show the tool-bar (which shows the language name and the copy button) above the code boxes or not. Unlike v5's, this toolbar is not drawn into the box: it fades in when a visitor hovers over the code box or moves keyboard focus into it. Turning it off does not hide the `file` label, which is printed above the box instead — see the `file` attribute above.
 
 **Show copy-to-clipboard button? :** Puts a button on the toolbar that copies the snippet to the clipboard. This is what became of v5's *Show Plain Text Option?*, and your old setting carries over — the intent was always "let people get at the raw code", and copying it is a better way to do that than a second view.
 
 **Show line numbers in code? :** This option allows you to tell the plugin whether to show the line numbers along with code in the code boxes or not. Line numbers along with code look great, are a great help when referring to some code from a code box. This option can be overridden for any code block using `gutter` attribute in the tag, or the equivalent toggle on the block.
 
-**Normalize whitespace? :** Trims leading and trailing blank lines and evens out indentation before highlighting. **Off by default**, deliberately — if your snippet's indentation is meaningful, this will change it. Turn it on only if you know your snippets need it.
+**Limit the height of Gist embeds? :** Keeps each file in an embedded GitHub Gist inside a box of its own and gives it a scrollbar when the file is taller than that, so a Gist of a few long files does not take over the page. **On by default.** A file shorter than the box is untouched and shows no scrollbar. Switch it off to get the full height back.
 
 **Hilite code in comments? :** This option allows you to tell the plugin whether to highlight code posted in comments or not. If this is enabled, code posted in the comments will be highlighted as it is in the posts. Comments are not block content and there is no block editor for them, so this remains a shortcode-only feature.
 
@@ -213,8 +209,6 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 
 ### **Extending the plugin**
-
-**Adding a language.** Drop a Prism component file — `prism-yourlang.js` or `prism-yourlang.min.js` — into `wp-content/uploads/igsyntax-hiliter/components/`. The directory is not created for you; make it yourself. Because it lives in uploads it survives plugin updates. The language then works with `[sourcecode language="yourlang"]` and appears in the block's language dropdown.
 
 **Filters.**
 
@@ -240,7 +234,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Q:** *I used to add languages by putting GeSHi language files in the plugin's or my theme's `geshi` directory. What now?*
 
-**A:** Both of those mechanisms are gone with GeSHi. Put a Prism component file for the language in `wp-content/uploads/igsyntax-hiliter/components/` instead — it survives plugin updates — and use it with `[sourcecode language="…"]` or the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
+**A:** Both of those mechanisms are gone with GeSHi. Close to 300 languages ship with the plugin now, so start by checking whether yours is one of them — use it with `[sourcecode language="…"]` or pick it in the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter, and if a language is genuinely missing, add it with the `ig_syntax_hiliter/languages` filter.
 
 **Q:** *I see some code that I can improve. Do you accept pull requests?*
 

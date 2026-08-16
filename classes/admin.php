@@ -134,46 +134,46 @@ class Admin extends Base {
 		];
 
 		return [
-			'theme'                => [
+			'theme'             => [
 				'type'        => 'choice',
 				'label'       => __( 'Theme', 'igsyntax-hiliter' ),
 				'description' => __( 'Colour scheme used for code boxes on the front end.', 'igsyntax-hiliter' ),
 				'choices'     => static::get_theme_choices(),
 			],
-			'toolbar'              => [
+			'toolbar'           => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show the toolbar', 'igsyntax-hiliter' ),
-				'description' => __( 'Puts a small toolbar above each code box, which carries the file label and the copy button.', 'igsyntax-hiliter' ),
+				'description' => __( 'Puts a small toolbar above each code box, which carries the language name and the copy button.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
-			'copy_code'            => [
+			'copy_code'         => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show the copy button', 'igsyntax-hiliter' ),
 				'description' => __( 'Adds a button which copies the code to the clipboard. It lives in the toolbar, so it needs the toolbar switched on.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
-			'show_line_numbers'    => [
+			'show_line_numbers' => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show line numbers', 'igsyntax-hiliter' ),
 				'description' => __( 'The default for every code box. A single snippet can override it with the gutter attribute or the block setting.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
-			'normalize_whitespace' => [
-				'type'        => 'toggle',
-				'label'       => __( 'Normalize whitespace', 'igsyntax-hiliter' ),
-				'description' => __( 'Trims blank lines and strips the indentation shared by every line of a snippet. Off by default, because that indentation is often deliberate.', 'igsyntax-hiliter' ),
-				'choices'     => $yes_no,
-			],
-			'hilite_comments'      => [
+			'hilite_comments'   => [
 				'type'        => 'toggle',
 				'label'       => __( 'Highlight code in comments', 'igsyntax-hiliter' ),
 				'description' => __( 'Runs the same highlighting over code posted in comments.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
-			'gist_in_comments'     => [
+			'gist_in_comments'  => [
 				'type'        => 'toggle',
 				'label'       => __( 'Allow Gist embeds in comments', 'igsyntax-hiliter' ),
 				'description' => __( 'Lets a commenter embed a GitHub Gist with the github shortcode. Off by default, because it lets a commenter load a third party script.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'gist_limit_height' => [
+				'type'        => 'toggle',
+				'label'       => __( 'Limit the height of Gist embeds', 'igsyntax-hiliter' ),
+				'description' => __( 'Keeps each file in an embedded Gist inside a box of its own and gives it a scrollbar when it is taller than that.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 		];
@@ -396,36 +396,11 @@ class Admin extends Base {
 			[
 				'plugin_name' => static::PLUGIN_NAME,
 				'settings'    => $settings,
-				'dropin_path' => static::get_dropin_display_path(),
 			],
 			true
 		);
 
 	}    //end render_page()
-
-	/**
-	 * Method to get the drop-in language directory as a path worth showing a person.
-	 *
-	 * The directory is never created by the plugin; the page only says where it goes.
-	 *
-	 * @return string Path relative to wp-content, with a trailing slash.
-	 */
-	public static function get_dropin_display_path(): string {
-
-		$uploads = wp_upload_dir( null, false );
-		$basedir = ( empty( $uploads['error'] ) && ! empty( $uploads['basedir'] ) ) ? $uploads['basedir'] : '';
-
-		if ( '' !== $basedir && defined( 'WP_CONTENT_DIR' ) && str_starts_with( $basedir, WP_CONTENT_DIR ) ) {
-			$basedir = 'wp-content' . substr( $basedir, strlen( WP_CONTENT_DIR ) );
-		}
-
-		$basedir = ( '' === $basedir ) ? 'wp-content/uploads' : $basedir;
-
-		return trailingslashit(
-			sprintf( '%s/%s', untrailingslashit( $basedir ), Language_Registry::DROPIN_DIR )
-		);
-
-	}    //end get_dropin_display_path()
 
 	/**
 	 * Method to load the settings page assets.
@@ -517,15 +492,16 @@ class Admin extends Base {
 	/**
 	 * Method to tell the site owner, once, that their settings were migrated.
 	 *
+	 * The migration itself runs on `init`, on every request, so by the time any admin
+	 * page is drawn it has already happened. This notice is deliberately shown on
+	 * whichever admin page comes first after that, and not on this plugin's settings
+	 * page alone: a site owner who upgrades and never opens the settings page would
+	 * otherwise never be told, and would have no way of knowing their settings had
+	 * been rewritten.
+	 *
 	 * @return void
 	 */
 	public function maybe_show_migration_message(): void {
-
-		$screen = get_current_screen();
-
-		if ( is_null( $screen ) || static::PAGE_HOOK !== $screen->id ) {
-			return;    //not our settings page, bail out
-		}
 
 		$old_version = get_option( static::PLUGIN_ID . '-migrated-from', '' );
 		$old_version = ( is_scalar( $old_version ) ) ? trim( (string) $old_version ) : '';

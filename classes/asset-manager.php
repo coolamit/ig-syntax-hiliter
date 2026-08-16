@@ -45,7 +45,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const DEFAULT_THEME = 'prism';
+	const DEFAULT_THEME = 'prism-okaidia';
 
 	/**
 	 * Theme setting value which means "load no theme stylesheet at all".
@@ -219,7 +219,6 @@ class Asset_Manager {
 		$this->_enqueue_theme();
 		$this->_enqueue_engine();
 		$this->_enqueue_plugins();
-		$this->_enqueue_dropins();
 		$this->_enqueue_setup();
 
 	}    //end enqueue()
@@ -238,8 +237,7 @@ class Asset_Manager {
 		/**
 		 * Filters the URL the highlighter fetches language files from.
 		 *
-		 * Only one directory can be served this way; drop-in languages are enqueued
-		 * directly and are unaffected.
+		 * Only one directory can be served this way.
 		 *
 		 * @param string $url URL with a trailing slash.
 		 */
@@ -255,7 +253,7 @@ class Asset_Manager {
 	public static function get_themes(): array {
 
 		$titles = [
-			'prism'                => 'Default',
+			'prism'                => 'Prism',
 			'prism-coy'            => 'Coy',
 			'prism-dark'           => 'Dark',
 			'prism-funky'          => 'Funky',
@@ -365,6 +363,20 @@ class Asset_Manager {
 				true
 			);
 
+			/*
+			 * The language name is a toolbar item, so it shows on hover beside the copy
+			 * button and shows nothing at all when the toolbar is off. It carries its own
+			 * title for every language the library has, read from the same manifest the
+			 * language registry reads, and it needs no stylesheet of its own.
+			 */
+			wp_enqueue_script(
+				static::_handle( 'show-language' ),
+				static::_get_library_url( 'plugins/show-language/prism-show-language.min.js' ),
+				[ static::_handle( 'toolbar' ) ],
+				$version,
+				true
+			);
+
 			if ( static::_is_option_on( 'copy_code', 'yes' ) ) {
 				wp_enqueue_script(
 					static::_handle( 'copy-to-clipboard' ),
@@ -418,68 +430,7 @@ class Asset_Manager {
 
 		}
 
-		// Off by default: it strips common leading indentation, which is often deliberate in a snippet.
-		if ( static::_is_option_on( 'normalize_whitespace', 'no' ) ) {
-			wp_enqueue_script(
-				static::_handle( 'normalize-whitespace' ),
-				static::_get_library_url( 'plugins/normalize-whitespace/prism-normalize-whitespace.min.js' ),
-				$engine,
-				$version,
-				true
-			);
-		}
-
 	}    //end _enqueue_plugins()
-
-	/**
-	 * Method to enqueue language files supplied by the site itself.
-	 *
-	 * The engine's language loader can only be pointed at one directory, so drop-ins
-	 * are enqueued directly. They define their grammar before highlighting starts,
-	 * which also stops the loader looking for them and getting a 404.
-	 *
-	 * @return void
-	 */
-	protected function _enqueue_dropins(): void {
-
-		$registry = Language_Registry::get_instance();
-		$base_url = '';
-
-		foreach ( $this->get_languages() as $language ) {
-
-			if ( ! $registry->is_dropin( $language ) ) {
-				continue;
-			}
-
-			$file = $registry->get_file( $language );
-
-			if ( is_null( $file ) ) {
-				continue;
-			}
-
-			$base_url = ( '' === $base_url ) ? Language_Registry::get_dropin_url() : $base_url;
-
-			if ( '' === $base_url ) {
-				return;
-			}
-
-			/*
-			 * The registry is filterable, so the file name reaching this line is not
-			 * guaranteed to be one `scan_dropins()` vetted. Encoding it keeps whatever
-			 * it holds inside a single path segment of the drop-in directory instead of
-			 * letting a `#` cut the URL short or a `/` walk out of it.
-			 */
-			wp_enqueue_script(
-				static::_handle( sprintf( 'language-%s', $language ) ),
-				sprintf( '%s/%s', $base_url, rawurlencode( $file ) ),
-				[ static::_handle( 'engine' ) ],
-				static::_get_version(),
-				true
-			);
-
-		}
-
-	}    //end _enqueue_dropins()
 
 	/**
 	 * Method to enqueue the plugin's own front end script.
@@ -519,7 +470,6 @@ class Asset_Manager {
 			'igSyntaxHiliter',
 			[
 				'componentsUrl' => $this->get_components_url(),
-				'fileLabel'     => __( 'File', 'igsyntax-hiliter' ),
 			]
 		);
 

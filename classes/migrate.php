@@ -23,8 +23,8 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  *
  * Versions are compared with `version_compare()` and never numerically. Every
  * version this plugin has ever stored is normalised to a three part semantic
- * version first, so that the float `5.1` an old install holds and the string
- * `6.0.0` this one writes are comparable.
+ * version first, so that the float `5.1` an old install holds and the two part
+ * string `6.0` this one writes are comparable.
  */
 class Migrate {
 
@@ -115,8 +115,9 @@ class Migrate {
 	 * Method to write the running version back when what is stored is the same
 	 * version spelled differently.
 	 *
-	 * Versions are compared normalised, so a stored `6.0.0-beta1` or `6.0` reads as
-	 * `6.0.0` and never reaches the write at the end of `settings()`. The option
+	 * Versions are compared normalised, so a stored `6.0.0` or `6.0.0-beta1` reads
+	 * the same as the `6.0` this version declares and never reaches the write at
+	 * the end of `settings()`. The option
 	 * then keeps that spelling for good, and every later read pays to normalise it
 	 * again.
 	 *
@@ -149,9 +150,10 @@ class Migrate {
 	/**
 	 * Method to normalise a version to three numeric parts.
 	 *
-	 * Versions up to 5.1 were stored as floats, so `version_compare()` would read
-	 * `5.1` as older than `5.1.0` and a two part `6.0` as older than `6.0.0`.
-	 * Padding both sides of every comparison to three parts removes that trap.
+	 * Versions up to 5.1 were stored as floats, and the plugin spells its own
+	 * version with two parts, so `version_compare()` would read `5.1` as older
+	 * than `5.1.0` and `6.0` as older than `6.0.0`. Padding both sides of every
+	 * comparison to three parts removes that trap.
 	 *
 	 * @param mixed $version Version as it was stored, or as the plugin declares it.
 	 *

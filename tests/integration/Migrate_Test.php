@@ -9,6 +9,8 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
+use iG\Syntax_Hiliter\Admin;
+use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Migrate;
@@ -48,13 +50,13 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * @var array
 	 */
 	const V6_DEFAULTS = [
-		'theme'                => 'prism',
-		'toolbar'              => 'yes',
-		'copy_code'            => 'yes',
-		'show_line_numbers'    => 'yes',
-		'normalize_whitespace' => 'no',
-		'hilite_comments'      => 'yes',
-		'gist_in_comments'     => 'no',
+		'theme'             => Asset_Manager::DEFAULT_THEME,
+		'toolbar'           => 'yes',
+		'copy_code'         => 'yes',
+		'show_line_numbers' => 'yes',
+		'hilite_comments'   => 'yes',
+		'gist_in_comments'  => 'no',
+		'gist_limit_height' => 'yes',
 	];
 
 	/**
@@ -118,18 +120,18 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			[
-				'theme'                => 'none',            // fe-styles=no
-				'toolbar'              => 'no',              // carried
-				'copy_code'            => 'no',              // plain_text=no
-				'show_line_numbers'    => 'no',              // carried
-				'normalize_whitespace' => 'no',              // new, defaults off
-				'hilite_comments'      => 'no',              // carried
-				'gist_in_comments'     => 'yes',             // carried
+				'theme'             => 'none',    // fe-styles=no
+				'toolbar'           => 'no',      // carried
+				'copy_code'         => 'no',      // plain_text=no
+				'show_line_numbers' => 'no',      // carried
+				'hilite_comments'   => 'no',      // carried
+				'gist_in_comments'  => 'yes',     // carried
+				'gist_limit_height' => 'yes',     // new, defaults on
 			],
 			get_option( Base::PLUGIN_ID . '-options' )
 		);
 
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 		$this->assertSame( '5.1.0', get_option( Base::PLUGIN_ID . '-migrated-from' ) );
 
 	}
@@ -158,7 +160,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$options = get_option( Base::PLUGIN_ID . '-options' );
 
-		$this->assertSame( 'prism', $options['theme'] );
+		$this->assertSame( Asset_Manager::DEFAULT_THEME, $options['theme'] );
 		$this->assertSame( 'yes', $options['copy_code'] );
 
 	}
@@ -216,7 +218,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertFalse( get_option( Migrate::V35_OPTION_NAME, false ) );
 		$this->assertSame( '3.5.0', get_option( Base::PLUGIN_ID . '-migrated-from' ) );
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 
 	}
 
@@ -288,7 +290,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->_migrate();
 
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 
 		//the install was already up to date, so nothing was migrated
 		$this->assertSame( static::V6_DEFAULTS, get_option( Base::PLUGIN_ID . '-options' ) );
@@ -330,7 +332,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		$this->_migrate();
 
 		$this->assertSame( static::V6_DEFAULTS, get_option( Base::PLUGIN_ID . '-options' ) );
-		$this->assertSame( '6.0.0', get_option( Base::PLUGIN_ID . '-version' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
 
 	}
@@ -360,6 +362,48 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-lang-time', false ) );
 		$this->assertFalse( get_option( $cache_key, false ) );
+
+	}
+
+	/**
+	 * The site owner is told about the migration on the first admin page they open,
+	 * whichever one it is, and told once.
+	 *
+	 * The migration itself runs on `init` on every request and always has. Only the
+	 * message waited: it printed on this plugin's settings page and nowhere else, so
+	 * a site owner who upgraded and never opened that page was never told their
+	 * settings had been rewritten — and the one who did open it, three pages in,
+	 * reasonably read the notice as the migration happening only then.
+	 *
+	 * @return void
+	 */
+	public function test_the_migration_notice_shows_on_whichever_admin_page_comes_first(): void {
+
+		set_current_screen( 'dashboard' );
+
+		update_option( Base::PLUGIN_ID . '-version', 5.1 );
+		update_option( Base::PLUGIN_ID . '-options', static::V5_OPTIONS );
+
+		$this->_migrate();
+
+		$this->assertSame( '5.1.0', get_option( Base::PLUGIN_ID . '-migrated-from' ) );
+
+		ob_start();
+		Admin::get_instance()->maybe_show_migration_message();
+		$notice = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'notice-success', $notice, 'The dashboard showed nothing.' );
+		$this->assertStringContainsString( '5.1.0', $notice );
+
+		// Shown once: the option it reads is deleted as it prints.
+		ob_start();
+		Admin::get_instance()->maybe_show_migration_message();
+		$again = (string) ob_get_clean();
+
+		$this->assertSame( '', $again, 'The notice printed a second time.' );
+		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
+
+		set_current_screen( 'front' );
 
 	}
 

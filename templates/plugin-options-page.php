@@ -9,7 +9,6 @@
  *
  * @var string $plugin_name Plugin name, for display.
  * @var array  $settings    Settings to show: name, type, label, description, choices and current value.
- * @var string $dropin_path Where a site may drop in its own language files.
  */
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Everything here is a template local. The file is only ever required from inside Helper::render_template(), which runs it in a method scope.
@@ -39,19 +38,29 @@
 				<td>
 					<?php if ( 'toggle' === $setting['type'] ) : ?>
 
-						<span class="igsh-toggle">
-							<input
-								type="checkbox"
-								class="igsh-toggle__input"
-								id="<?php echo esc_attr( $setting['name'] ); ?>"
-								data-igsh-option="<?php echo esc_attr( $setting['name'] ); ?>"
-								data-igsh-toggle="1"
-								title="<?php echo esc_attr( $setting['description'] ); ?>"
-								aria-describedby="<?php echo esc_attr( $setting['name'] ); ?>-description"
-								<?php checked( $setting['value'], 'yes' ); ?>
-							/>
+						<?php
+						/*
+						 * A button rather than a checkbox. There is no form and no submit button
+						 * on this page, so the control carries a value for nobody but the script
+						 * which reads it — and wp-admin styles `input[type="checkbox"]` at a
+						 * higher specificity than a class of ours, which cut the clickable area
+						 * down to a 16px square in the corner of the switch. `role="switch"`
+						 * brings the keyboard and the screen reader announcement with it.
+						 */
+						?>
+						<button
+							type="button"
+							role="switch"
+							class="igsh-toggle"
+							id="<?php echo esc_attr( $setting['name'] ); ?>"
+							data-igsh-option="<?php echo esc_attr( $setting['name'] ); ?>"
+							data-igsh-toggle="1"
+							title="<?php echo esc_attr( $setting['description'] ); ?>"
+							aria-checked="<?php echo ( 'yes' === $setting['value'] ) ? 'true' : 'false'; ?>"
+							aria-describedby="<?php echo esc_attr( $setting['name'] ); ?>-description"
+						>
 							<span class="igsh-toggle__track" aria-hidden="true"></span>
-						</span>
+						</button>
 
 					<?php else : ?>
 
@@ -75,18 +84,6 @@
 		<?php endforeach; ?>
 		</tbody>
 	</table>
-
-	<h2><?php esc_html_e( 'Adding your own languages', 'igsyntax-hiliter' ); ?></h2>
-
-	<p>
-		<?php esc_html_e( 'To highlight a language this plugin does not ship, put its highlighter file in this directory:', 'igsyntax-hiliter' ); ?>
-	</p>
-
-	<p><code class="igsh-settings__path"><?php echo esc_html( $dropin_path ); ?></code></p>
-
-	<p class="description">
-		<?php esc_html_e( 'The plugin does not create that directory — make it yourself, and name each file prism-{language}.js or prism-{language}.min.js. Either form works, and the minified one is used if both are there. Files found there are picked up automatically and are offered alongside the bundled languages.', 'igsyntax-hiliter' ); ?>
-	</p>
 
 	<h2 class="igsh-revert__heading"><?php esc_html_e( 'Before you deactivate', 'igsyntax-hiliter' ); ?></h2>
 

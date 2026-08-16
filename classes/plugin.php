@@ -77,7 +77,10 @@ final class Plugin {
 	/**
 	 * Returns the plugin version.
 	 *
-	 * @return string Semantic version string, eg. `6.0.0`.
+	 * The plugin spells its version `Major.Minor`, eg. `6.0`. Compare it with
+	 * `version_compare()` after normalising it, never numerically.
+	 *
+	 * @return string Version string, eg. `6.0`.
 	 */
 	public function get_version(): string {
 

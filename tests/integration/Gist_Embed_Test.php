@@ -9,8 +9,12 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
+use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Gist_Embed;
+use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
@@ -28,6 +32,15 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 		parent::set_up();
 
 		Gist_Embed::get_instance()->register_hooks();
+
+		/*
+		 * The class is a singleton and the style registry is a global, so both
+		 * outlive a test. Every test here starts from the state a request which has
+		 * rendered nothing starts in.
+		 */
+		( new ReflectionProperty( Gist_Embed::class, '_has_embeds' ) )->setValue( Gist_Embed::get_instance(), false );
+
+		wp_dequeue_style( Gist_Embed::STYLE_HANDLE );
 
 	}
 
@@ -273,6 +286,102 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 		$this->assertSame( $before, $GLOBALS['shortcode_tags'] );
 
 		remove_shortcode( 'ig_sh_test_tag' );
+
+	}
+
+	/**
+	 * The stylesheet which boxes an embed loads only where there is one to box.
+	 *
+	 * A page carrying nothing but a Gist loads no stylesheet of this plugin's
+	 * otherwise, so this is the only thing that puts one on it — and a page with no
+	 * embed must not pay for it.
+	 *
+	 * @return void
+	 */
+	public function test_the_gist_stylesheet_loads_only_where_a_gist_was_embedded(): void {
+
+		$gist = Gist_Embed::get_instance();
+
+		$this->assertSame( Asset_Manager::PRIORITY_DECIDE, has_action( 'wp_footer', [ $gist, 'enqueue' ] ) );
+
+		$gist->enqueue();
+
+		$this->assertFalse( wp_style_is( Gist_Embed::STYLE_HANDLE, 'enqueued' ), 'Nothing has been embedded yet.' );
+
+		$this->_filter( 'the_content', '[github id="abc123"]' );
+
+		$gist->enqueue();
+
+		$this->assertTrue( wp_style_is( Gist_Embed::STYLE_HANDLE, 'enqueued' ) );
+
+	}
+
+	/**
+	 * A link is not an embed, so it needs no stylesheet.
+	 *
+	 * @return void
+	 */
+	public function test_a_gist_rendered_as_a_link_loads_no_stylesheet(): void {
+
+		$gist = Gist_Embed::get_instance();
+
+		$this->_filter( 'the_excerpt', '[github id="abc123"]' );
+
+		$gist->enqueue();
+
+		$this->assertFalse( wp_style_is( Gist_Embed::STYLE_HANDLE, 'enqueued' ) );
+
+	}
+
+	/**
+	 * With the setting off, the embed is unchanged and nothing is loaded for it.
+	 *
+	 * @return void
+	 */
+	public function test_the_stylesheet_is_not_loaded_while_the_setting_is_off(): void {
+
+		$option   = Option::get_instance();
+		$property = new ReflectionProperty( Option::class, '_options' );
+		$before   = $property->getValue( $option );
+
+		$property->setValue( $option, array_merge( (array) $before, [ 'gist_limit_height' => 'no' ] ) );
+
+		try {
+
+			$this->_filter( 'the_content', '[github id="abc123"]' );
+
+			Gist_Embed::get_instance()->enqueue();
+
+		} finally {
+			$property->setValue( $option, $before );
+		}
+
+		$this->assertFalse( wp_style_is( Gist_Embed::STYLE_HANDLE, 'enqueued' ) );
+
+	}
+
+	/**
+	 * The Gist block renders through this same pipeline.
+	 *
+	 * There is one embed implementation, not two, which is what keeps the block and
+	 * the twenty year old shortcode agreeing on the id sanitising, on the link form
+	 * and on what a comment may carry.
+	 *
+	 * @return void
+	 */
+	public function test_the_gist_block_renders_through_this_pipeline(): void {
+
+		$block = Block::get_instance();
+
+		$this->assertSame(
+			$this->_expected_embed( 'abc123' ),
+			$block->render_gist( [ 'url' => 'https://gist.github.com/someone/abc123' ] )
+		);
+
+		// The same refusals the shortcode makes.
+		$this->assertSame( '', $block->render_gist( [ 'url' => '' ] ) );
+		$this->assertSame( '', $block->render_gist( [] ) );
+		$this->assertSame( '', $block->render_gist( [ 'url' => 'https://gist.github.com/someone/..' ] ) );
 
 	}
 

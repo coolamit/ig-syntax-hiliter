@@ -311,7 +311,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$rendered = apply_filters( 'the_content', get_post_field( 'post_content', $post_id, 'raw' ) );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hook is what an integration test does.
 
-		$this->assertSame( 1, preg_match( '#<pre .*?</pre>#s', $rendered, $matches ) );
+		// The fixture carries a file label, so the code box comes wrapped.
+		$this->assertSame( 1, preg_match( '#<div class="igsh-code-box">.*?</pre></div>#s', $rendered, $matches ) );
 		$this->assertSame( $from_block, $matches[0] );
 
 	}

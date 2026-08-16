@@ -10,9 +10,9 @@ namespace iG\Syntax_Hiliter;
 /**
  * Every language the highlighter can load, and every alias for it.
  *
- * `parse_manifest()`, `scan_dropins()` and `merge()` are pure and take their paths
- * as arguments. `get_instance()` is the only method which touches WordPress: it
- * resolves the paths, caches the result and applies the extension filter.
+ * `parse_manifest()` and `merge()` are pure and take their paths as arguments.
+ * `get_instance()` is the only method which touches WordPress: it resolves the
+ * paths, caches the result and applies the extension filter.
  */
 class Language_Registry {
 
@@ -31,16 +31,6 @@ class Language_Registry {
 	const FILTER_LANGUAGES = 'ig_syntax_hiliter/languages';
 
 	/**
-	 * Drop-in language directory, relative to the uploads directory.
-	 *
-	 * It lives in uploads, and is named after the plugin slug rather than the plugin
-	 * directory, so that it survives a plugin update.
-	 *
-	 * @var string
-	 */
-	const DROPIN_DIR = 'igsyntax-hiliter/components';
-
-	/**
 	 * Path of the highlighter library, relative to the plugin directory.
 	 *
 	 * @var string
@@ -50,9 +40,9 @@ class Language_Registry {
 	/**
 	 * How long a built registry is cached for, in seconds.
 	 *
-	 * A drop-in appearing or disappearing changes the cache key, so this is not what
-	 * picks those up; it is only a backstop for a filesystem whose directory times
-	 * cannot be trusted. Rebuilding costs a couple of milliseconds, once a day.
+	 * The plugin version is part of the cache key, and the bundled library can only
+	 * change when the plugin is updated, so this is not what picks a new language up;
+	 * it is only a backstop. Rebuilding costs a couple of milliseconds, once a day.
 	 *
 	 * @var int
 	 */
@@ -119,9 +109,8 @@ class Language_Registry {
 			}
 
 			$this->_languages[ $id ] = [
-				'title'  => (string) ( $language['title'] ?? $id ),
-				'file'   => (string) ( $language['file'] ?? '' ),
-				'dropin' => (bool) ( $language['dropin'] ?? false ),
+				'title' => (string) ( $language['title'] ?? $id ),
+				'file'  => (string) ( $language['file'] ?? '' ),
 			];
 
 		}
@@ -187,7 +176,7 @@ class Language_Registry {
 		 *
 		 * Runs after the cache, so a callback is never baked into the cached value.
 		 *
-		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding `title`, `file` and `dropin`; and `aliases`, mapping alias to canonical id.
+		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding `title` and `file`; and `aliases`, mapping alias to canonical id.
 		 */
 		$filtered = apply_filters( static::FILTER_LANGUAGES, $registry );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
@@ -211,7 +200,7 @@ class Language_Registry {
 	}    //end get_instance()
 
 	/**
-	 * Method to build the registry from the bundled library and the drop-in directory.
+	 * Method to build the registry from the bundled library.
 	 *
 	 * Public because the cache calls it back.
 	 *
@@ -225,47 +214,10 @@ class Language_Registry {
 			static::parse_manifest(
 				sprintf( '%s/components.json', $library_dir ),
 				sprintf( '%s/components', $library_dir )
-			),
-			static::scan_dropins( static::get_dropin_dir() )
+			)
 		);
 
 	}    //end build()
-
-	/**
-	 * Method to get the absolute path of the drop-in language directory.
-	 *
-	 * The directory is never created; it exists only if a site owner made it.
-	 *
-	 * @return string Absolute path with no trailing slash, or an empty string when uploads are unavailable.
-	 */
-	public static function get_dropin_dir(): string {
-
-		$uploads = wp_upload_dir( null, false );
-
-		if ( ! empty( $uploads['error'] ) || empty( $uploads['basedir'] ) ) {
-			return '';
-		}
-
-		return sprintf( '%s/%s', untrailingslashit( $uploads['basedir'] ), static::DROPIN_DIR );
-
-	}    //end get_dropin_dir()
-
-	/**
-	 * Method to get the URL of the drop-in language directory.
-	 *
-	 * @return string URL with no trailing slash, or an empty string when uploads are unavailable.
-	 */
-	public static function get_dropin_url(): string {
-
-		$uploads = wp_upload_dir( null, false );
-
-		if ( ! empty( $uploads['error'] ) || empty( $uploads['baseurl'] ) ) {
-			return '';
-		}
-
-		return sprintf( '%s/%s', untrailingslashit( $uploads['baseurl'] ), static::DROPIN_DIR );
-
-	}    //end get_dropin_url()
 
 	/**
 	 * Method to parse the library's language manifest.
@@ -312,9 +264,8 @@ class Language_Registry {
 			}
 
 			$registry['languages'][ $id ] = [
-				'title'  => (string) ( $language['title'] ?? $id ),
-				'file'   => $file,
-				'dropin' => false,
+				'title' => (string) ( $language['title'] ?? $id ),
+				'file'  => $file,
 			];
 
 			$aliases = $language['alias'] ?? [];
@@ -338,83 +289,19 @@ class Language_Registry {
 	}    //end parse_manifest()
 
 	/**
-	 * Method to discover drop-in language files supplied by the site.
+	 * Method to overlay one registry on top of another and tidy the result.
 	 *
-	 * A drop-in is any `prism-{id}.js` or `prism-{id}.min.js` file in the given
-	 * directory. The directory is only read, never created.
-	 *
-	 * @param string $dropin_dir Absolute path of the drop-in directory.
-	 *
-	 * @return array Registry array with `languages` and `aliases` keys.
-	 */
-	public static function scan_dropins( string $dropin_dir ): array {
-
-		$registry = [
-			'languages' => [],
-			'aliases'   => [],
-		];
-
-		$dropin_dir = rtrim( $dropin_dir, '/' );
-
-		if ( '' === $dropin_dir || ! is_dir( $dropin_dir ) || ! is_readable( $dropin_dir ) ) {
-			return $registry;
-		}
-
-		$files = glob( sprintf( '%s/prism-*.js', $dropin_dir ) );
-
-		if ( empty( $files ) ) {
-			return $registry;
-		}
-
-		foreach ( $files as $file ) {
-
-			$name = basename( $file );
-
-			/*
-			 * The id is held to what the highlighter itself will accept. Its own class
-			 * matcher reads `language-([\w-]+)`, so an id carrying anything else — `#`
-			 * and `+` being the tempting ones — never reaches the grammar it names, and
-			 * `#` would truncate the file URL at a fragment on the way there as well.
-			 * No bundled component id uses either character; `csharp` and `cpp` do.
-			 */
-			if ( ! preg_match( '/^prism-([a-z0-9_-]+?)(\.min)?\.js$/i', $name, $matches ) ) {
-				continue;
-			}
-
-			$id = strtolower( $matches[1] );
-
-			if ( 'core' === $id || static::NO_LANGUAGE === $id ) {
-				continue;
-			}
-
-			// A minified drop-in wins, so shipping both files does not depend on glob order.
-			if ( isset( $registry['languages'][ $id ] ) && empty( $matches[2] ) ) {
-				continue;
-			}
-
-			$registry['languages'][ $id ] = [
-				'title'  => $id,
-				'file'   => $name,
-				'dropin' => true,
-			];
-
-		}
-
-		return $registry;
-
-	}    //end scan_dropins()
-
-	/**
-	 * Method to overlay one registry on top of another.
-	 *
-	 * The overlay wins, so a site can replace a bundled language with its own.
+	 * The overlay wins, so a caller of the extension filter can replace a bundled
+	 * language with its own. Called with no overlay it does the tidying alone, which
+	 * is what `build()` wants of it: an alias pointing at no language, or shadowing a
+	 * language id, is dropped, and both lists come back sorted.
 	 *
 	 * @param array $base    Registry to overlay on to.
-	 * @param array $overlay Registry to overlay.
+	 * @param array $overlay Optional. Registry to overlay.
 	 *
 	 * @return array
 	 */
-	public static function merge( array $base, array $overlay ): array {
+	public static function merge( array $base, array $overlay = [] ): array {
 
 		$languages = array_merge(
 			( is_array( $base['languages'] ?? null ) ) ? $base['languages'] : [],
@@ -493,17 +380,6 @@ class Language_Registry {
 	}    //end get_title()
 
 	/**
-	 * Method to check whether a language comes from the drop-in directory.
-	 *
-	 * @param string $id Canonical language id.
-	 *
-	 * @return bool
-	 */
-	public function is_dropin( string $id ): bool {
-		return (bool) ( $this->_languages[ strtolower( trim( $id ) ) ]['dropin'] ?? false );
-	}    //end is_dropin()
-
-	/**
 	 * Method to get the base name of the file which defines a language.
 	 *
 	 * @param string $id Canonical language id.
@@ -571,10 +447,9 @@ class Language_Registry {
 	/**
 	 * Method to build the cache key.
 	 *
-	 * The plugin version is part of the key, so a plugin update invalidates the
-	 * cache and nothing else has to. So is a signature of the drop-in directory,
-	 * because a site owner who drops a language file in has done everything the
-	 * settings screen asks of them and expects to see it, not to wait out an expiry.
+	 * The plugin version is the whole of the key. The registry is built from the
+	 * bundled library and from nothing else, so it can only change when the plugin
+	 * is updated — and that is what moves the version.
 	 *
 	 * @return string
 	 */
@@ -582,31 +457,9 @@ class Language_Registry {
 
 		$version = ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0';
 
-		return sprintf( 'ig-syntax-hiliter-languages-%s-%s', $version, static::_get_dropin_signature() );
+		return sprintf( 'ig-syntax-hiliter-languages-%s', $version );
 
 	}    //end _get_cache_key()
-
-	/**
-	 * Method to get a signature which changes whenever the drop-in directory does.
-	 *
-	 * A directory's modification time moves when a file inside it is created, removed
-	 * or renamed, and the registry is built from nothing but those names — what is
-	 * inside a drop-in never reaches it. One `stat` is cheap enough to spend on every
-	 * request which renders a snippet, which listing the directory would not be.
-	 *
-	 * @return string
-	 */
-	protected static function _get_dropin_signature(): string {
-
-		$dir = static::get_dropin_dir();
-
-		if ( '' === $dir || ! is_dir( $dir ) ) {
-			return 'none';
-		}
-
-		return (string) (int) filemtime( $dir );
-
-	}    //end _get_dropin_signature()
 
 }    //end of class
 

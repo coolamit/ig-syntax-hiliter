@@ -51,7 +51,16 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 		$readme = (string) file_get_contents( IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/readme.txt' );
 
-		$this->assertMatchesRegularExpression( '/^Stable tag:\s*6\.0\.0\s*$/m', $readme );
+		/*
+		 * The release workflow's guard compares the stable tag against the header
+		 * version byte for byte, so this reads the constant rather than spelling a
+		 * version out — and the plugin spells its version with two parts, `6.0`, not
+		 * three.
+		 */
+		$this->assertMatchesRegularExpression(
+			sprintf( '/^Stable tag:\s*%s\s*$/m', preg_quote( IG_SYNTAX_HILITER_VERSION, '/' ) ),
+			$readme
+		);
 		$this->assertMatchesRegularExpression( '/^Requires at least:\s*6\.9\s*$/m', $readme );
 		$this->assertMatchesRegularExpression( '/^Requires PHP:\s*8\.4\s*$/m', $readme );
 

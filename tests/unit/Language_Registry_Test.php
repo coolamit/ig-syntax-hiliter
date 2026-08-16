@@ -13,10 +13,10 @@ use iG\Syntax_Hiliter\Language_Registry;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Manifest parsing, drop-in discovery, overlaying and resolution.
+ * Manifest parsing, overlaying and resolution.
  *
  * All of it is the WordPress free half of the class; the half which knows about
- * options, uploads and filters belongs to the integration tier.
+ * options, caching and filters belongs to the integration tier.
  */
 class Language_Registry_Test extends TestCase {
 
@@ -76,14 +76,12 @@ class Language_Registry_Test extends TestCase {
 			[
 				'languages' => [
 					'javascript' => [
-						'title'  => 'JavaScript',
-						'file'   => 'prism-javascript.min.js',
-						'dropin' => false,
+						'title' => 'JavaScript',
+						'file'  => 'prism-javascript.min.js',
 					],
 					'markup'     => [
-						'title'  => 'Markup',
-						'file'   => 'prism-markup.min.js',
-						'dropin' => false,
+						'title' => 'Markup',
+						'file'  => 'prism-markup.min.js',
 					],
 				],
 				'aliases'   => [
@@ -126,7 +124,6 @@ class Language_Registry_Test extends TestCase {
 		$this->assertArrayNotHasKey( 'meta', $registry['languages'] );
 		$this->assertSame( 'Present', $registry['languages']['present']['title'] );
 		$this->assertSame( 'prism-present.min.js', $registry['languages']['present']['file'] );
-		$this->assertFalse( $registry['languages']['present']['dropin'] );
 
 	}
 
@@ -194,103 +191,25 @@ class Language_Registry_Test extends TestCase {
 	}
 
 	/**
-	 * Drop-in language files are discovered by name.
+	 * An overlay replaces the language of the same name and adds its own.
+	 *
+	 * The plugin builds with no overlay of its own, so what this covers is the
+	 * `ig_syntax_hiliter/languages` filter — the one way a site can still change what
+	 * the registry holds.
 	 *
 	 * @return void
 	 */
-	public function test_dropins_are_discovered(): void {
-
-		$dir = $this->make_temp_dir();
-
-		file_put_contents( $dir . '/prism-mylang.min.js', '// mine' );
-		file_put_contents( $dir . '/prism-other.js', '// other' );
-		file_put_contents( $dir . '/prism-core.min.js', '// not a language' );
-		file_put_contents( $dir . '/whatever.js', '// not ours' );
-		file_put_contents( $dir . '/prism-notjs.css', '/* not a script */' );
-
-		$registry = Language_Registry::scan_dropins( $dir );
-
-		$this->assertSame( [ 'mylang', 'other' ], array_keys( $registry['languages'] ) );
-		$this->assertSame( 'prism-mylang.min.js', $registry['languages']['mylang']['file'] );
-		$this->assertSame( 'prism-other.js', $registry['languages']['other']['file'] );
-		$this->assertTrue( $registry['languages']['mylang']['dropin'] );
-
-	}
-
-	/**
-	 * A drop-in id is held to the characters the highlighter can carry.
-	 *
-	 * `#` and `+` are the tempting ones — a site owner shipping a grammar of their
-	 * own is quite likely to name the file after the language rather than after
-	 * Prism's id for it. Neither survives the round trip: the class attribute the
-	 * renderer writes is read back with `language-([\w-]+)`, which stops at both, and
-	 * a `#` in the file name truncates the script URL at a fragment on the way there.
-	 * A drop-in accepted under such a name is one which can never load, so it is not
-	 * accepted.
-	 *
-	 * @return void
-	 */
-	public function test_dropin_ids_the_highlighter_could_not_use_are_rejected(): void {
-
-		$dir = $this->make_temp_dir();
-
-		file_put_contents( $dir . '/prism-c#.min.js', '// c sharp' );
-		file_put_contents( $dir . '/prism-c++.min.js', '// c plus plus' );
-		file_put_contents( $dir . '/prism-my_lang-2.min.js', '// perfectly usable' );
-
-		$registry = Language_Registry::scan_dropins( $dir );
-
-		$this->assertSame( [ 'my_lang-2' ], array_keys( $registry['languages'] ) );
-		$this->assertSame( 'prism-my_lang-2.min.js', $registry['languages']['my_lang-2']['file'] );
-
-	}
-
-	/**
-	 * A drop-in directory which does not exist is not an error, and is not created.
-	 *
-	 * @return void
-	 */
-	public function test_missing_dropin_directory_is_not_created(): void {
-
-		$dir = $this->make_temp_dir() . '/never-made';
-
-		$this->assertSame(
-			[
-				'languages' => [],
-				'aliases'   => [],
-			],
-			Language_Registry::scan_dropins( $dir )
-		);
-
-		$this->assertDirectoryDoesNotExist( $dir );
-		$this->assertSame(
-			[
-				'languages' => [],
-				'aliases'   => [],
-			],
-			Language_Registry::scan_dropins( '' )
-		);
-
-	}
-
-	/**
-	 * A drop-in replaces the bundled language of the same name.
-	 *
-	 * @return void
-	 */
-	public function test_dropins_overlay_the_bundled_languages(): void {
+	public function test_an_overlay_replaces_the_bundled_languages(): void {
 
 		$base = [
 			'languages' => [
 				'php'  => [
-					'title'  => 'PHP',
-					'file'   => 'prism-php.min.js',
-					'dropin' => false,
+					'title' => 'PHP',
+					'file'  => 'prism-php.min.js',
 				],
 				'ruby' => [
-					'title'  => 'Ruby',
-					'file'   => 'prism-ruby.min.js',
-					'dropin' => false,
+					'title' => 'Ruby',
+					'file'  => 'prism-ruby.min.js',
 				],
 			],
 			'aliases'   => [
@@ -302,14 +221,12 @@ class Language_Registry_Test extends TestCase {
 		$overlay = [
 			'languages' => [
 				'php'    => [
-					'title'  => 'php',
-					'file'   => 'prism-php.js',
-					'dropin' => true,
+					'title' => 'php',
+					'file'  => 'prism-php.js',
 				],
 				'mylang' => [
-					'title'  => 'mylang',
-					'file'   => 'prism-mylang.min.js',
-					'dropin' => true,
+					'title' => 'mylang',
+					'file'  => 'prism-mylang.min.js',
 				],
 			],
 			'aliases'   => [],
@@ -317,12 +234,48 @@ class Language_Registry_Test extends TestCase {
 
 		$merged = Language_Registry::merge( $base, $overlay );
 
-		$this->assertTrue( $merged['languages']['php']['dropin'] );
 		$this->assertSame( 'prism-php.js', $merged['languages']['php']['file'] );
-		$this->assertFalse( $merged['languages']['ruby']['dropin'] );
+		$this->assertSame( 'prism-ruby.min.js', $merged['languages']['ruby']['file'] );
 		$this->assertArrayHasKey( 'mylang', $merged['languages'] );
 
 		// An alias pointing at a language which is not there is dropped.
+		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
+
+	}
+
+	/**
+	 * Called with no overlay, the merge still drops a dangling alias and sorts.
+	 *
+	 * That is the shape `build()` uses it in, and it is what keeps the registry from
+	 * carrying an alias which resolves to a language the browser cannot load.
+	 *
+	 * @return void
+	 */
+	public function test_merging_nothing_still_tidies_the_registry(): void {
+
+		$merged = Language_Registry::merge(
+			[
+				'languages' => [
+					'ruby' => [
+						'title' => 'Ruby',
+						'file'  => 'prism-ruby.min.js',
+					],
+					'php'  => [
+						'title' => 'PHP',
+						'file'  => 'prism-php.min.js',
+					],
+				],
+				'aliases'   => [
+					'rb'    => 'ruby',
+					'stale' => 'perl',
+					'php'   => 'ruby',
+				],
+			]
+		);
+
+		$this->assertSame( [ 'php', 'ruby' ], array_keys( $merged['languages'] ) );
+
+		// `stale` points nowhere; `php` shadows a language id.
 		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
 
 	}
@@ -372,9 +325,6 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( 'prism-javascript.min.js', $registry->get_file( 'javascript' ) );
 		$this->assertNull( $registry->get_file( 'madeuplang' ) );
-
-		$this->assertFalse( $registry->is_dropin( 'javascript' ) );
-		$this->assertFalse( $registry->is_dropin( 'madeuplang' ) );
 
 		$this->assertSame(
 			[

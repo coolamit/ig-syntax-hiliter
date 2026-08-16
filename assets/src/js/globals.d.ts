@@ -48,7 +48,6 @@ interface IgshAdminConfig {
  */
 interface IgshFrontendSettings {
 	componentsUrl?: string | undefined;
-	fileLabel?: string | undefined;
 }
 
 /**
@@ -59,29 +58,12 @@ interface IgshPrismAutoloader {
 }
 
 /**
- * What Prism hands a toolbar button callback.
- */
-interface IgshPrismToolbarEnv {
-	element?: Element | null | undefined;
-}
-
-/**
- * The toolbar plugin, as far as this plugin uses it.
- */
-interface IgshPrismToolbar {
-	registerButton: (
-		key: string,
-		callback: ( env: IgshPrismToolbarEnv ) => Element | undefined
-	) => void;
-}
-
-/**
  * Prism itself.
  *
  * Deliberately not `@types/prismjs`. Prism is loaded from `assets/lib/` and is
  * never imported, so a full declaration set would describe a library this code
  * does not link against and would go stale without anything noticing. Declared
- * here are the three things the setup script touches, and no more — the same
+ * here is the one thing the setup script touches, and no more — the same
  * reasoning as `types/wordpress-block-editor.d.ts`.
  *
  * Every member is optional because the whole point of the setup script is to
@@ -91,7 +73,6 @@ interface IgshPrism {
 	plugins?:
 		| {
 				autoloader?: IgshPrismAutoloader | undefined;
-				toolbar?: IgshPrismToolbar | undefined;
 		  }
 		| undefined;
 }

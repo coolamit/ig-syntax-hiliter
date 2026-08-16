@@ -147,6 +147,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 				'script:ig-syntax-hiliter-engine',
 				'script:ig-syntax-hiliter-line-numbers',
 				'script:ig-syntax-hiliter-setup',
+				'script:ig-syntax-hiliter-show-language',
 				'script:ig-syntax-hiliter-toolbar',
 				'style:ig-syntax-hiliter-chrome',
 				'style:ig-syntax-hiliter-line-numbers',

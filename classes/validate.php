@@ -45,33 +45,33 @@ class Validate {
 	 * @var array
 	 */
 	protected array $_option_values = [
-		'theme'                => [
+		'theme'             => [
 			'allowed' => null,    //the bundled themes readable on disk, plus `none`
 			'default' => Asset_Manager::DEFAULT_THEME,
 		],
-		'toolbar'              => [
+		'toolbar'           => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //show toolbar above hilited code by default
 		],
-		'copy_code'            => [
+		'copy_code'         => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //show the copy to clipboard button by default
 		],
-		'show_line_numbers'    => [
+		'show_line_numbers' => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //show line numbers in code by default
 		],
-		'normalize_whitespace' => [
-			'allowed' => [ 'yes', 'no' ],
-			'default' => 'no',    //don't strip common indentation from code by default
-		],
-		'hilite_comments'      => [
+		'hilite_comments'   => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //hilite code posted in comments by default
 		],
-		'gist_in_comments'     => [
+		'gist_in_comments'  => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'no',    //don't embed Github Gist in comments by default
+		],
+		'gist_limit_height' => [
+			'allowed' => [ 'yes', 'no' ],
+			'default' => 'yes',    //keep each file in an embedded Gist inside a scrollable box by default
 		],
 	];
 

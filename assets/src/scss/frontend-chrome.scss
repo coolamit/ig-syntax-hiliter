@@ -13,70 +13,34 @@
  * The file name label.
  *
  * `file="…"` is a v5 attribute and has to keep working whatever the toolbar
- * setting is, and the toolbar is where the only other label lives — with
- * `toolbar=no` the plugin loads no toolbar, so nothing on the page reads
- * `data-file` at all. So the box paints the label itself, out of the
- * attribute.
+ * setting is, so the label is markup of the plugin's own rather than a toolbar
+ * item: the toolbar is only loaded when the setting is on, and it hides itself
+ * until the reader hovers over the box.
  *
- * It is taken out of the flow deliberately. The line numbers and line
- * highlight plugins both measure the box to place their overlays, and the
- * highlight overlay is positioned against the `pre` when line numbers are
- * off, so anything added to the flow above the code slides the highlighted
- * lines off the lines they mark.
+ * It sits above the box and outside it. Inside there is nowhere to put it —
+ * the line numbers plugin reserves the left gutter for its numbers and the
+ * line highlight plugin puts its start-line badge in the same top left corner
+ * — and anything added to the flow *inside* the box slides those overlays off
+ * the lines they mark. Both plugins measure the `pre` alone, so a sibling in
+ * front of it moves neither.
  *
- * The Coy theme paints its page fold shadow on this same pseudo element, so
- * every property it sets is written back here rather than inherited.
+ * Only a snippet which was given a label is wrapped at all, so every other
+ * code box is the bare `pre` it always was.
  */
-pre[id^="ig-sh-"][data-file]::before {
-	content: attr(data-file);
-	position: absolute;
-	z-index: 2;
-	top: 0;
-	right: 0;
-	bottom: auto;
-	left: auto;
-	width: auto;
-	max-width: 60%;
-	height: auto;
-	max-height: none;
-	padding: 0.1em 0.6em;
+.igsh-code-box {
+	max-width: 100%;
+}
+
+.igsh-code-box__file {
+	display: block;
+	margin: 0 0 2px;
 	overflow: hidden;
 	font-family: inherit;
 	font-size: 0.8em;
 	font-style: italic;
 	line-height: 1.6;
-	text-align: right;
+	text-align: left;
 	text-overflow: ellipsis;
-	text-shadow: none;
-	white-space: nowrap;
-	background: none;
-	box-shadow: none;
-	opacity: 0.75;
-	transform: none;
-	pointer-events: none;
-}
-
-/* Where the toolbar is loaded it wraps the box and paints its own label. */
-.code-toolbar > pre[id^="ig-sh-"][data-file]::before {
-	content: none;
-}
-
-/* Except on a box which has opted out of the toolbar, where it does not. */
-.code-toolbar > pre[id^="ig-sh-"].igsh-no-toolbar[data-file]::before,
-.igsh-no-toolbar .code-toolbar > pre[id^="ig-sh-"][data-file]::before {
-	content: attr(data-file);
-}
-
-/* File name label added to the toolbar. */
-.code-toolbar > .toolbar .igsh-file-label {
-	display: inline-block;
-	max-width: 20em;
-	overflow: hidden;
-	font-family: inherit;
-	font-size: 0.8em;
-	font-style: italic;
-	text-overflow: ellipsis;
-	vertical-align: bottom;
 	white-space: nowrap;
 	opacity: 0.75;
 }
@@ -105,9 +69,9 @@ pre[class*="language-"] > code.language-none {
 
 /*
  * Minimal box styling for sites which load no theme at all. The box is
- * positioned so that the file label above has something to hang off; the line
- * numbers and line highlight plugins each position the box themselves when
- * they are loaded, and this is the same value they use.
+ * positioned because the line highlight plugin hangs its overlay off it; the
+ * line numbers and line highlight plugins each position the box themselves
+ * when they are loaded, and this is the same value they use.
  */
 pre[id^="ig-sh-"] {
 	position: relative;
