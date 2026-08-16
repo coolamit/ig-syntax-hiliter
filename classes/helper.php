@@ -109,6 +109,46 @@ class Helper {
 	}
 
 	/**
+	 * Method to build the pattern which matches this plugin's shortcodes.
+	 *
+	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
+	 * tags are all bounded exactly as `do_shortcode()` bounds them. It is handed one
+	 * addition, and only one: a closing tag whose brackets are doubled is consumed as
+	 * part of the snippet's code instead of ending the snippet. That is what lets a
+	 * snippet quote this plugin's own tags — see `Legacy_Map::escape_tags()`.
+	 *
+	 * Core's content group is
+	 *
+	 *     ( [^\[]*+ (?: \[(?!\/\2\]) [^\[]*+ )*+ )
+	 *
+	 * and the escaped closer goes in as the first alternative of that inner group. It
+	 * has to be first: the quantifiers around it are possessive, so nothing backtracks
+	 * and the order of the alternation is what decides. An opening tag needs no
+	 * alternative of its own, because a `[` inside the content group is allowed
+	 * already.
+	 *
+	 * If the substring is not found exactly once the pattern core built is handed back
+	 * untouched. A change in WordPress then costs the escape and nothing else, which
+	 * is the only failure worth having on a pattern that runs over post content.
+	 *
+	 * @param array $tags Shortcode tags to match.
+	 *
+	 * @return string Pattern without delimiters, the way `get_shortcode_regex()` returns one.
+	 */
+	public static function get_shortcode_pattern( array $tags ): string {
+
+		$pattern = get_shortcode_regex( $tags );
+		$search  = '\[(?!\/\2\])';
+
+		if ( 1 !== substr_count( $pattern, $search ) ) {
+			return $pattern;
+		}
+
+		return str_replace( $search, '(?:\[\[\/\2\]\]|\[(?!\/\2\]))', $pattern );
+
+	}
+
+	/**
 	 * This function accepts two arrays, $new & $default. The common items
 	 * keep value from $new, any extra items in $new are discarded
 	 * & extra items in $default are kept as is. This is different from wp_parse_args()

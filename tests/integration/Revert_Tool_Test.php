@@ -449,79 +449,106 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A snippet whose code contains the closing tag cannot be written as a shortcode
-	 * without losing the rest of it, so that block is left alone and reported rather
-	 * than damaged.
+	 * A snippet whose code quotes this plugin's own tags is the one a post about this
+	 * plugin is made of, and it used to be the one snippet the tool refused: a
+	 * shortcode ends at its own closing tag, so the code would have been cut short
+	 * there. The tags are written with doubled brackets instead, which the matcher
+	 * steps over, so the block converts like any other.
 	 *
 	 * @return void
 	 */
-	public function test_a_snippet_that_cannot_be_a_shortcode_is_left_alone(): void {
+	public function test_a_snippet_quoting_this_plugins_tags_converts_escaped(): void {
 
 		$this->_become_administrator();
 
-		$content = $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode]";',
-				'language' => 'php',
-			]
-		);
-
-		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
-
-		$totals = $this->_run_to_completion();
-
-		$this->assertSame( 0, $totals['converted'] );
-		$this->assertSame( 1, $totals['skipped'] );
-		$this->assertSame( 1, $totals['blocks_left_alone'], 'The post was left alone because a block of ours was, and only the block count says so.' );
-		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
-
-	}
-
-	/**
-	 * A post can hold both kinds of block at once, and the post level buckets cannot
-	 * say so: the post converted, so that is the bucket it lands in, and the block
-	 * left behind is invisible in every one of them. The batch has to carry the block
-	 * count as well, or the site owner is told the post is done while a snippet in it
-	 * is still a block.
-	 *
-	 * @return void
-	 */
-	public function test_a_block_left_alone_is_reported_even_when_its_post_converted(): void {
-
-		$this->_become_administrator();
-
-		$left_alone = $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode]";',
-				'language' => 'php',
-			]
-		);
+		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
 
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
 					$this->_block(
 						[
-							'code'     => self::CODE,
+							'code'     => $code,
 							'language' => 'php',
 						]
-					) . "\n\n" . $left_alone
+					)
 				),
 			]
 		);
 
 		$totals = $this->_run_to_completion();
 
-		$this->assertSame( 1, $totals['converted'], 'The post converted, so that is the bucket it belongs in.' );
-		$this->assertSame( 0, $totals['skipped'] + $totals['failed'], 'Nothing here is a post left alone or a post that failed.' );
-		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left behind is reported nowhere else.' );
-
-		$content = get_post_field( 'post_content', $post_id, 'raw' );
+		$this->assertSame( 1, $totals['converted'], 'The block holding this plugin\'s own tags has to convert like any other.' );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] + $totals['blocks_left_alone'] );
 
 		$this->assertSame(
-			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]\n\n%s", self::CODE, $left_alone ),
-			$content
+			"[sourcecode language=\"php\"]\n[[sourcecode language=\"php\"]]\nfunction f() {}\n[[/sourcecode]]\n[/sourcecode]",
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'Both tags in the code have to be doubled, or the snippet ends where the author\'s closing tag is.'
 		);
+
+	}
+
+	/**
+	 * The other half of the above, and the half that matters to a reader: the escape
+	 * is invisible on the page. One code box, showing the tags the author typed, with
+	 * nothing of the outer shortcode left over after it.
+	 *
+	 * @return void
+	 */
+	public function test_an_escaped_snippet_renders_the_tags_the_author_typed(): void {
+
+		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
+
+		$result = Block_Converter::convert_content(
+			$this->_block(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			)
+		);
+
+		$this->assertSame( 1, $result['converted'] );
+
+		$rendered = (string) apply_filters( 'the_content', $result['content'] );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
+
+		$this->assertSame( 1, substr_count( $rendered, '<pre ' ), 'The escaped closing tag ended the snippet, so the box was cut in two or cut short.' );
+
+		$this->assertStringContainsString(
+			Renderer::escape_verbatim( $code ),
+			$rendered,
+			'The reader is shown the doubled brackets rather than the tags the author wrote.'
+		);
+
+	}
+
+	/**
+	 * Writing a tag as text is a pattern, and PCRE reports having given up in a way
+	 * that is indistinguishable from having found nothing to escape. Read as "there
+	 * was nothing", the code would go into the shortcode unescaped and be cut short
+	 * at the first closing tag in it. So a block whose code could not be escaped is
+	 * left exactly as it was found, and reported.
+	 *
+	 * @return void
+	 */
+	public function test_a_block_whose_code_cannot_be_escaped_is_left_alone(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = Block_Converter::block_to_shortcode(
+			[
+				'code'     => 'echo "[/sourcecode]";',
+				'language' => 'php',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertNull( $shortcode, 'A shortcode was written from code that could not be escaped.' );
 
 	}
 
@@ -756,88 +783,20 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * `blocks_left_alone` counts blocks and the buckets count posts, so a post holding
-	 * two blocks the tool declined is one of the first and two of the second. Nothing
-	 * else in this file tells a count of blocks apart from a count of posts that had
-	 * one.
+	 * A post whose rewrite cannot be written back is reported as a failure and keeps
+	 * every byte it had. The site owner is on their way out of the plugin when they
+	 * read this, so a post reported as done while its blocks are still blocks is the
+	 * one answer that costs them their code.
 	 *
 	 * @return void
 	 */
-	public function test_two_blocks_left_alone_in_one_post_are_one_post_and_two_blocks(): void {
-
-		$this->_become_administrator();
-
-		$content = $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode] one";',
-				'language' => 'php',
-			]
-		) . "\n\n" . $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode] two";',
-				'language' => 'php',
-			]
-		);
-
-		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
-
-		$totals = $this->_run_to_completion();
-
-		$this->assertSame( 0, $totals['converted'] + $totals['failed'] );
-		$this->assertSame( 1, $totals['skipped'], 'The unit here is posts, and there is one post.' );
-		$this->assertSame( 2, $totals['blocks_left_alone'], 'The unit here is blocks, and there are two.' );
-		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
-
-	}
-
-	/**
-	 * A post can hold a delimiter nothing can read and a block the tool declined at
-	 * once. The post is reported as a failure, which is the worse of the two, and the
-	 * block count still has to carry the block that was left.
-	 *
-	 * @return void
-	 */
-	public function test_a_block_left_alone_is_reported_beside_a_delimiter_that_cannot_be_read(): void {
-
-		$this->_become_administrator();
-
-		$content = sprintf( '<!-- wp:%s {"code": "echo 1;",} /-->', Block_Converter::BLOCK_NAME ) . "\n\n" . $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode]";',
-				'language' => 'php',
-			]
-		);
-
-		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
-
-		$totals = $this->_run_to_completion();
-
-		$this->assertSame( 1, $totals['failed'], 'A delimiter nothing can read is what the post is reported as.' );
-		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
-		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left alone is reported whichever bucket the post lands in.' );
-		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
-
-	}
-
-	/**
-	 * A post which converted and had a block declined, whose write then failed, is
-	 * reported as a failure — and the block that was left is still a block that was
-	 * left, because the post kept every byte it had.
-	 *
-	 * @return void
-	 */
-	public function test_a_block_left_alone_is_reported_when_the_write_fails(): void {
+	public function test_a_post_whose_write_fails_is_reported_and_left_as_it_was(): void {
 
 		$this->_become_administrator();
 
 		$content = $this->_block(
 			[
 				'code'     => self::CODE,
-				'language' => 'php',
-			]
-		) . "\n\n" . $this->_block(
-			[
-				'code'     => 'echo "[/sourcecode]";',
 				'language' => 'php',
 			]
 		);
@@ -852,7 +811,6 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $totals['failed'], 'The rewrite could not be written, so that is the bucket the post lands in.' );
 		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
-		$this->assertSame( 1, $totals['blocks_left_alone'], 'The block left alone is reported whichever bucket the post lands in.' );
 		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ), 'The write failed, so the post is exactly as it was.' );
 
 	}
@@ -884,14 +842,17 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			]
 		);
 
+		/*
+		 * A delimiter inside one of this plugin's shortcodes is a snippet about blocks
+		 * and not a block, so the post matches the marker the tool searches on and then
+		 * has nothing in it to rewrite. That is what a post left alone looks like.
+		 */
 		self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$this->_block(
-						[
-							'code'     => 'echo "[/sourcecode]";',
-							'language' => 'php',
-						]
+					sprintf(
+						"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]",
+						Block_Converter::BLOCK_NAME
 					)
 				),
 			]

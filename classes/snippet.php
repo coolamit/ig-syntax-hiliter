@@ -313,13 +313,11 @@ class Snippet {
 	/**
 	 * Method to clean up a file name label.
 	 *
-	 * Whitespace is collapsed, and that is the whole of it. The label is never treated
-	 * as markup on any path it reaches: `Renderer::escape_verbatim()` escapes it into
-	 * the element the renderer prints above the code box, and the editor holds it in a
-	 * text control. Stripping tags therefore protected nothing, and it deleted the type
-	 * parameter out of `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` and
-	 * everything after an unbalanced `<`, which is a file name an author might well
-	 * write.
+	 * Whitespace is collapsed, and that is the whole of it here. The label is a free
+	 * text attribute, so it is treated as hostile — but that belongs at the output
+	 * boundary and not in the value object: `Renderer::render_snippet()` strips tags
+	 * out of it and then escapes what is left, which is where both the length and the
+	 * markup are decided. This class holds what the author wrote.
 	 *
 	 * @param string $file Raw label as written by the author.
 	 *

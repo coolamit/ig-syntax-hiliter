@@ -3,7 +3,8 @@
  * The few WordPress functions the domain core cannot avoid, shimmed.
  *
  * `_wp_specialchars()` and `esc_attr()` are what the renderer's tests are about,
- * and `apply_filters()` is what the tag list and registry extension points run
+ * `wp_strip_all_tags()` is the second layer under the first of those, and
+ * `apply_filters()` is what the tag list and registry extension points run
  * through. Anything in the domain core needing more of WordPress than this
  * belongs in the integration tier.
  *
@@ -43,6 +44,32 @@ if ( ! function_exists( 'esc_attr' ) ) {
 	 */
 	function esc_attr( $text ) {  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Shim for the WordPress function of the same name.
 		return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8', false );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	/**
+	 * Takes every tag out of a string, script and style bodies included.
+	 *
+	 * Core's is one `preg_replace()` and a `strip_tags()`, so this is the whole of it
+	 * rather than an approximation of it. `$remove_breaks` is the parameter core has
+	 * and the renderer never passes.
+	 *
+	 * @param string $text          Text to strip.
+	 * @param bool   $remove_breaks Whether to collapse whitespace as well.
+	 * @return string
+	 */
+	function wp_strip_all_tags( $text, $remove_breaks = false ) {  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Shim for the WordPress function of the same name.
+
+		$text = preg_replace( '@<(script|style)[^>]*?>.*?</\\1>@si', '', (string) $text );
+		$text = strip_tags( $text );
+
+		if ( $remove_breaks ) {
+			$text = preg_replace( '/[\r\n\t ]+/', ' ', $text );
+		}
+
+		return trim( $text );
+
 	}
 }
 

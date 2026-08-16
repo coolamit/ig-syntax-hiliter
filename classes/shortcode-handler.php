@@ -333,6 +333,11 @@ class Shortcode_Handler {
 	 * A named language tag names its own language; `[sourcecode]` carries it in an
 	 * attribute.
 	 *
+	 * The code has one pair of brackets taken off every escaped tag in it, which is
+	 * where a snippet quoting this plugin's own tags becomes readable again. It is one
+	 * of exactly two mirrors of `Legacy_Map::escape_tags()`, the other being the
+	 * editor's conversion of a shortcode into a block. Nothing stored is touched.
+	 *
 	 * @param string       $tag  Shortcode tag which was matched.
 	 * @param array|string $atts Attributes, either parsed or as the raw attribute string.
 	 * @param string       $code Shortcode content, ie. the source code.
@@ -341,6 +346,7 @@ class Shortcode_Handler {
 	 */
 	public static function build_snippet( string $tag, array|string $atts, string $code ): Snippet {
 
+		$code = Legacy_Map::unescape_tags( $code );
 		$atts = ( is_string( $atts ) ) ? shortcode_parse_atts( $atts ) : $atts;
 		$atts = ( is_array( $atts ) ) ? $atts : [];
 

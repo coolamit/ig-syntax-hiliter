@@ -207,6 +207,89 @@ class Legacy_Map_Test extends TestCase {
 
 	}
 
+	/**
+	 * The escape exists so that a snippet can quote this plugin's own tags. Both a
+	 * closing tag, which is what used to cut such a snippet short, and an opening tag
+	 * are written with doubled brackets, and reading them back gives the author's
+	 * bytes again.
+	 *
+	 * @return void
+	 */
+	public function test_a_quoted_tag_survives_a_round_trip(): void {
+
+		$code = "[sourcecode language=\"php\"]\n[php]echo 1;[/php]\n[/sourcecode]";
+
+		$escaped = Legacy_Map::escape_tags( $code );
+
+		$this->assertSame(
+			"[[sourcecode language=\"php\"]]\n[[php]]echo 1;[[/php]]\n[[/sourcecode]]",
+			$escaped,
+			'Every tag in the code has to be doubled, opening and closing alike.'
+		);
+
+		$this->assertSame( $code, Legacy_Map::unescape_tags( (string) $escaped ) );
+
+	}
+
+	/**
+	 * A tag which is already escaped gains a level rather than being left as it is,
+	 * and reading it back takes exactly that level off again. Anything else and an
+	 * author who wrote about the escape itself would lose a bracket per conversion.
+	 *
+	 * @return void
+	 */
+	public function test_an_already_escaped_tag_gains_one_level(): void {
+
+		$escaped = Legacy_Map::escape_tags( 'a [[/php]] b' );
+
+		$this->assertSame( 'a [[[/php]]] b', $escaped );
+		$this->assertSame( 'a [[/php]] b', Legacy_Map::unescape_tags( (string) $escaped ) );
+
+	}
+
+	/**
+	 * WordPress's own escape for a whole shortcode is a different construct, and the
+	 * round trip has to hand it back exactly as it was found.
+	 *
+	 * @return void
+	 */
+	public function test_wordpresss_own_escape_survives_a_round_trip(): void {
+
+		$code = '[[php]echo 1;[/php]]';
+
+		$this->assertSame( $code, Legacy_Map::unescape_tags( (string) Legacy_Map::escape_tags( $code ) ) );
+
+	}
+
+	/**
+	 * A tag this plugin never shipped belongs to somebody else, and neither half of
+	 * the escape may touch it.
+	 *
+	 * @return void
+	 */
+	public function test_a_tag_which_is_not_ours_is_left_alone(): void {
+
+		$this->assertSame( '[email]x[/email]', Legacy_Map::escape_tags( '[email]x[/email]' ) );
+		$this->assertSame( '[[email]]', Legacy_Map::unescape_tags( '[[email]]' ) );
+		$this->assertSame( '[phpx] and [php-doc]', Legacy_Map::escape_tags( '[phpx] and [php-doc]' ) );
+
+	}
+
+	/**
+	 * Code with no bracket in it is handed straight back, which is what keeps the
+	 * pattern off the overwhelming majority of snippets.
+	 *
+	 * @return void
+	 */
+	public function test_code_without_a_bracket_is_untouched(): void {
+
+		$code = "function f() {\n\treturn 1;\n}";
+
+		$this->assertSame( $code, Legacy_Map::escape_tags( $code ) );
+		$this->assertSame( $code, Legacy_Map::unescape_tags( $code ) );
+
+	}
+
 }    //end of class
 
 

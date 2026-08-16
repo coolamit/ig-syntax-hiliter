@@ -152,6 +152,52 @@ export function getLegacyTags(): string[] {
 }
 
 /**
+ * Escapes a value so it can stand for itself inside a regular expression.
+ *
+ * @param value Value to escape.
+ */
+export function escapeForRegExp( value: string ): string {
+	return value.replace( /[\\^$.*+?()[\]{}|]/g, '\\$&' );
+}
+
+/**
+ * Reads an escaped tag inside a snippet back as the text it stands for.
+ *
+ * A snippet ends at its own closing tag, so one whose code quotes this plugin's
+ * tags writes them with doubled brackets — `[[php]]` for the text `[php]`,
+ * `[[/php]]` for the text `[/php]`. The matcher steps over the doubled form
+ * instead of closing on it, and this is where the brackets come back off.
+ *
+ * The mirror of `Legacy_Map::escape_tags()` in PHP, and the counterpart of
+ * `Shortcode_Handler::build_snippet()`, which does exactly this on the display
+ * path. It belongs here rather than in either caller because both ways a
+ * shortcode becomes a block — the paste transform and the automatic conversion —
+ * go through `mapShortcodeAttributes()`, so doing it once is what keeps the two
+ * from drifting.
+ *
+ * Stored content is never touched: an author who typed `[[/php]]` keeps those
+ * bytes in their post, and one level of nesting falls out of the rule rather than
+ * being special cased.
+ *
+ * @param code Source code, as the matcher found it.
+ */
+export function unescapeTags( code: string ): string {
+	const tags = getLegacyTags();
+
+	if ( tags.length === 0 || ! code.includes( '[[' ) ) {
+		return code;
+	}
+
+	const alternation = tags.map( escapeForRegExp ).join( '|' );
+	const pattern = new RegExp(
+		`\\[(\\[\\/?(?:${ alternation })(?![\\w-])[^\\]]*\\])\\]`,
+		'gi'
+	);
+
+	return code.replace( pattern, '$1' );
+}
+
+/**
  * Named attributes of a shortcode, as `@wordpress/shortcode` parses them.
  */
 export type ShortcodeNamedAttributes = Record< string, string | undefined >;
@@ -223,6 +269,9 @@ function yesNoToBoolean( value: string ): boolean | undefined {
  * The language is resolved here, on the way in, rather than left for the server
  * to resolve on the way out. See `resolveLanguage()`.
  *
+ * The code has one pair of brackets taken off every escaped tag in it, which is
+ * what makes block to shortcode and back again byte exact. See `unescapeTags()`.
+ *
  * @param tag  Shortcode tag that was matched.
  * @param atts Named shortcode attributes.
  * @param code Shortcode content, ie. the source code.
@@ -246,7 +295,7 @@ export function mapShortcodeAttributes(
 	}
 
 	const attributes: CodeBlockAttributes = {
-		code: code.trim(),
+		code: unescapeTags( code ).trim(),
 		language: resolveLanguage( language ),
 		firstLine: Math.max(
 			1,

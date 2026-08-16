@@ -203,6 +203,26 @@ describe( 'planConversion, on a post the grammar reads correctly', () => {
 		expect( planFor( 'see [[php]echo 1;[/php]] for how' ) ).toBeNull();
 	} );
 
+	/*
+	 * A snippet whose code quotes this plugin's own tags writes them with doubled
+	 * brackets, which is what the revert tool writes and what an author writing about
+	 * the plugin types. The matcher has to step over the escaped closing tag rather
+	 * than end the snippet on it, and the code has to arrive in the block holding the
+	 * tags the author typed.
+	 */
+	it( "reads a snippet whose code quotes this plugin's own tags", () => {
+		const blocks = blocksFor(
+			'[sourcecode language="php"]\n[[sourcecode language="php"]]\nx\n[[/sourcecode]]\n[/sourcecode]'
+		);
+
+		expect( blocks.map( ( block ) => block.name ) ).toEqual( [
+			BLOCK_NAME,
+		] );
+		expect( snippetCode( blocks[ 0 ] ) ).toBe(
+			'[sourcecode language="php"]\nx\n[/sourcecode]'
+		);
+	} );
+
 	it( 'leaves an empty snippet alone', () => {
 		expect( planFor( '[php][/php]' ) ).toBeNull();
 	} );

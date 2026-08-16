@@ -444,8 +444,8 @@ class Block_Converter {
 	 * begins and ends.
 	 *
 	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
-	 * tags are bounded exactly as `do_shortcode()` bounds them, and the same way
-	 * `Content_Protector` bounds them on the save path.
+	 * tags are bounded exactly as `do_shortcode()` bounds them, and it is built by the
+	 * same call `Content_Protector` builds its own with, so the two cannot drift.
 	 *
 	 * The matches are walked one at a time rather than handed to
 	 * `preg_replace_callback()`, because where matching resumes has to be decided here.
@@ -473,7 +473,7 @@ class Block_Converter {
 			return [];
 		}
 
-		$pattern = sprintf( '/%s/', get_shortcode_regex( $tags ) );
+		$pattern = sprintf( '/%s/', Helper::get_shortcode_pattern( $tags ) );
 		$length  = strlen( $content );
 		$ranges  = [];
 		$offset  = 0;
@@ -656,11 +656,18 @@ class Block_Converter {
 		}
 
 		/*
-		 * A shortcode ends at its own closing tag, so code which contains that tag
-		 * cannot be written as one without losing the rest of the snippet. Such a
-		 * block is left alone and reported rather than damaged.
+		 * A shortcode ends at its own closing tag, so this plugin's tags are written as
+		 * text before the code goes into one — see `Legacy_Map::escape_tags()`. The
+		 * block a post about this plugin is made of holds exactly those tags, and it
+		 * used to be the one block this tool refused.
+		 *
+		 * NULL only where the escape itself failed. A block whose code could not be read
+		 * is left where it stands and reported, which is what `blocks_left_alone` has
+		 * always counted.
 		 */
-		if ( false !== stripos( $code, sprintf( '[/%s]', static::SHORTCODE_TAG ) ) ) {
+		$code = Legacy_Map::escape_tags( $code );
+
+		if ( is_null( $code ) ) {
 			return null;
 		}
 

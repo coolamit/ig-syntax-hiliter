@@ -11,6 +11,7 @@ import {
 	getEditorData,
 	mapShortcodeAttributes,
 	resolveLanguage,
+	unescapeTags,
 } from '../attributes';
 
 /**
@@ -146,5 +147,45 @@ describe( 'mapShortcodeAttributes', () => {
 		expect( attributes.highlightLines ).toBe( '2,4-6' );
 		expect( attributes.file ).toBe( '~/wp-config.php' );
 		expect( attributes.code ).toBe( 'code' );
+	} );
+
+	/*
+	 * The mirror of `Shortcode_Handler::build_snippet()`. A snippet whose code quotes
+	 * this plugin's tags writes them with doubled brackets, and a block whose code
+	 * still carried them would show the reader an escape they never typed — and would
+	 * gain another level every time the revert tool ran.
+	 */
+	it( 'reads an escaped tag in the code back as the text it stands for', () => {
+		expect(
+			mapShortcodeAttributes(
+				'sourcecode',
+				{ language: 'php' },
+				'[[sourcecode language="php"]]\nx\n[[/sourcecode]]'
+			).code
+		).toBe( '[sourcecode language="php"]\nx\n[/sourcecode]' );
+	} );
+} );
+
+describe( 'unescapeTags', () => {
+	it( 'takes one level off, so a quoted escape survives', () => {
+		expect( unescapeTags( 'a [[[/php]]] b' ) ).toBe( 'a [[/php]] b' );
+	} );
+
+	it( "leaves WordPress's own escape of a whole shortcode alone", () => {
+		expect( unescapeTags( '[[php]echo 1;[/php]]' ) ).toBe(
+			'[[php]echo 1;[/php]]'
+		);
+	} );
+
+	it( "leaves a tag which is not this plugin's alone", () => {
+		expect( unescapeTags( '[[email]] and [[phpx]]' ) ).toBe(
+			'[[email]] and [[phpx]]'
+		);
+	} );
+
+	it( 'claims nothing when PHP has sent no tag list', () => {
+		delete window.igSyntaxHiliterEditor;
+
+		expect( unescapeTags( '[[/php]]' ) ).toBe( '[[/php]]' );
 	} );
 } );

@@ -893,7 +893,8 @@ class Content_Protector {
 	 * Method to get the pattern which matches this plugin's shortcodes.
 	 *
 	 * WordPress builds the pattern, so escaped, self closing, unclosed and nested
-	 * tags are all treated exactly as `do_shortcode()` treats them.
+	 * tags are all treated exactly as `do_shortcode()` treats them, plus the one
+	 * addition `Helper::get_shortcode_pattern()` makes for an escaped closing tag.
 	 *
 	 * @return string Pattern with delimiters, or an empty string when the plugin claims no tags.
 	 */
@@ -906,7 +907,7 @@ class Content_Protector {
 		}
 
 		$this->_tags    = $tags;
-		$this->_pattern = ( empty( $tags ) ) ? '' : sprintf( '/%s/', get_shortcode_regex( $tags ) );
+		$this->_pattern = ( empty( $tags ) ) ? '' : sprintf( '/%s/', Helper::get_shortcode_pattern( $tags ) );
 
 		return $this->_pattern;
 

@@ -9,37 +9,37 @@
 
 **WordPress.org:** [https://wordpress.org/plugins/igsyntax-hiliter/](https://wordpress.org/plugins/igsyntax-hiliter/)
 
-**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting  (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [Prism.js library](https://prismjs.com/) to colourise your code and supports close to 300 programming languages, all of which are bundled with the plugin.
+**iG:Syntax Hiliter** allows you to post source code to your site with syntax highlighting and formatting (as seen in code editors, IDEs). You can paste the code as is from your code editor or IDE and this plugin will take care of all the code colouring and preserve your formatting. It uses the [Prism.js library](https://prismjs.com/) to colourise your code and supports ~300 programming languages, all of which are bundled with the plugin.
 
-You can write code snippets using the block editor, or using this plugin's shortcodes in the classic editor's Text view. Both are supported. The classic editor's Visual (WYSIWYG) tab is not, and never has been — it mangles code before the plugin ever sees it.
+You can write code snippets using the Gutenberg block editor or using this plugin's shortcodes in the classic editor's Code view. Both are supported. The classic editor's Visual (WYSIWYG) tab is not supported and never has been — it mangles code before the plugin ever sees it.
 
-**NOTE :** Highlighting happens in the visitor's browser, not on your server. Prism's files are loaded only on pages that actually contain a code snippet, and only the languages that page needs.
+**NOTE :** Highlighting happens in the visitor's browser, not on your server. Prism's files are loaded only on pages that actually contain a code snippet and it loads only the languages that page needs.
 
 ### **[Changelog](CHANGELOG.md)**
 
 ### **Important changes in 6.0-beta-1**
 
-Version 6.0-beta-1 replaces the GeSHi library, which has not been maintained in over a decade, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
+Version 6.0-beta-1 replaces the GeSHi library, which no longer seems to be maintained, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
 
 #### **Posts you never open in the block editor are not touched**
 
-Every shortcode this plugin has ever shipped keeps rendering straight out of `post_content`. A post written in 2004 that nobody ever edits again will keep rendering correctly, forever. Editing a post in the classic editor's Text view triggers no conversion either — shortcodes stay shortcodes. Code in comments keeps working the same way it always has.
+Every shortcode this plugin has ever shipped keeps rendering straight out of `post_content`. A post written in 2004 that nobody ever edits again will keep rendering correctly, forever. Editing a post in the classic editor's Code view triggers no conversion either — shortcodes stay shortcodes. Code in comments keeps working the same way it always has.
 
 #### **Opening a post that contains legacy shortcodes in the block editor converts its snippets to blocks**
 
-This happens automatically, on load, without asking, and it is written to the post the next time you save. Open the post and close it again without saving and nothing has changed.
+This happens automatically, on load, without asking and it is written to the post the next time you save. Open the post and close it again without saving and nothing has changed.
 
-The reason is that WordPress hands a classic post to the block editor as a single Classic (TinyMCE) block containing the whole post, code and all — and TinyMCE mangles code. It reads `<?php echo "<div>x</div>"; ?>` as HTML: the `<div>` becomes a real element and the `<?php … ?>` is dropped entirely. Because the whole post is one block, editing an unrelated paragraph is enough to re-save every snippet in the post in that damaged form. The conversion moves your code into block attributes, where TinyMCE cannot reach it, before that can happen. It is surgical — only the snippets are replaced, and every other byte of the post is left exactly as it was.
+The reason is that WordPress hands a classic post to the block editor as a single Classic (TinyMCE) block containing the whole post, code and all — and TinyMCE mangles code. It reads `<?php echo "<div>x</div>"; ?>` as HTML: the `<div>` becomes a real element and the `<?php … ?>` is dropped entirely. Because the whole post is one block, editing an unrelated paragraph is enough to re-save every snippet in the post in that damaged form. The conversion moves your code into block attributes, where TinyMCE cannot reach it, before that can happen. It is surgical — only the snippets are replaced and every other byte of the post is left exactly as it was.
 
-Snippets are lifted out of the post *before* the block editor's parser reads it, which is what makes a post about blocks safe to open. Block markup quoted inside a snippet — `<!-- wp:paragraph -->`, or this plugin's own delimiters — used to be read as real markup: an unclosed opening delimiter swallowed everything after it into that block, and a stray closing one stopped the parse dead, so every genuine block after it came back as Classic content. Neither happens now, whoever's block the quoted markup belongs to.
+A snippet whose *code* quotes block markup is handled too. The snippets are lifted out of the post before the block editor's parser reads it, so a post showing `<!-- wp:… -->` as an example is not taken apart on screen — whoever's block the quoted markup belongs to.
 
 #### **Snippets that have been converted to blocks are not visible if the plugin is deactivated**
 
-This is a genuine trade-off, and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing, and the snippet silently disappears from the post.
+This is the trade-off for the block editor support and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing and the snippet silently disappears from the post.
 
-So the settings page has a **Before you deactivate** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+To fix this issue, the settings page of the plugin has a **Before you deactivate** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
 
-One kind of snippet cannot be converted, and you should know about it: if the code inside a block itself contains the literal text `[/sourcecode]`, there is no shortcode that can hold it — the shortcode would end at that point and the rest of your code would be thrown away. The tool leaves those blocks exactly as it found them rather than truncating them, which means they stay blocks, and they stay invisible if the plugin is deactivated. If you have such a snippet, deal with it by hand before you deactivate.
+A snippet whose code quotes this plugin's own tags converts like any other, and it is worth knowing how. A shortcode ends at the first closing tag in its code, so the tool doubles the brackets of every one of this plugin's tags it finds there — `[[sourcecode language="php"]]` and `[[/sourcecode]]` — which is how a snippet says that a tag is text rather than a tag. A reader sees the tags you typed. With the plugin deactivated you see the doubled brackets in the code sample instead, which is the price of the snippet being on the page at all.
 
 #### **Only the tags the plugin actually shipped are recognised**
 
@@ -55,9 +55,11 @@ plus the aliases `as`, `html` and `js`, plus `[sourcecode]` and `[github]`.
 
 A tag this plugin never shipped is left completely alone — not registered, not rendered, not converted. If your post contains `[email]`, it stays `[email]` and goes to whichever plugin owns it. That is deliberate: claiming a wider set of tags would mean taking shortcodes away from other plugins, which is a worse problem than the one it would solve.
 
+This also means that if you added custom language files for GeSHi and were using them with drop-in tags (eg., you added `email` language file and were using `[email]` tag), those are no longer recognized by the plugin and are left behind. You can go back and update those posts if you want and switch those tags to `[sourcecode]` variant or into this plugin's block for the block editor - and they will then be picked by the plugin and have the syntax highlighted on frontend. This is a breaking change in v6.0 as it is almost impossible to determine if a BB tag (for a language not originally shipped with this plugin) is for use with this plugin via drop-in language support or use with some other plugin. But this affects only `[<LANGUAGE_NAME>]` type of tags. So `[email]` will be left behind but `[sourcecode language="email"]` would still be supported and get converted to this plugin's block if you use the block editor and open that post in it for editing.
+
 #### **Some old tags now highlight as a different language**
 
-Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. In a shortcode the mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts. A snippet converted to a block is the exception and stores the mapped name, because that is the name the block's language dropdown offers. A name Prism does not know is stored exactly as you typed it either way — it is your word, and a name overwritten could never be recovered — and such a snippet renders as an unhighlighted code box.
+Prism does not have a component for everything GeSHi had, so a handful of tags are mapped onto the nearest thing Prism does have. In a shortcode the mapping happens when the page is rendered — what is stored in your post is the tag you typed — so it can be improved later without touching your posts. A snippet converted to a block is the exception and stores the mapped name, because that is the name the block's language dropdown offers. A name Prism does not know is stored exactly as you typed it either way — it is your word and a name overwritten could never be recovered — and such a snippet renders as an unhighlighted code box.
 
 Most of it is uncontroversial: `html`, `html4strict`, `html5` and `xml` all become `markup`; `mysql` and `postgresql` become `sql`; `oracle11` becomes `plsql`; `jquery` becomes `javascript`; `rails` becomes `ruby`; `pcre` becomes `regex`; `actionscript3` and `as` become `actionscript`; `java5` becomes `java`; `js` becomes `javascript`; `apache` becomes `apacheconf`; `vb` and `vbnet` both become `visual-basic`; and `code` and `text` become `none`, which is a styled but deliberately unhighlighted box.
 
@@ -71,25 +73,25 @@ Your code itself is untouched in every case; only the colouring differs.
 
 #### **Languages added by dropping in GeSHi files are no longer supported**
 
-Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory, and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0-beta-1 and both mechanisms go with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
+Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0-beta-1 and both mechanisms are gone with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
 
-Close to 300 languages ship with the plugin, so there is a good chance one of them is the language you were adding — use it with `[sourcecode language="…"]`. If you need the tag itself back — `[yourlang]…[/yourlang]` — re-register it with the `ig_syntax_hiliter/shortcode_tags` filter.
+Approx 300 languages ship with the plugin, so there is a good chance one of them is the language you were adding — use it with `[sourcecode language="…"]`.
 
-The changelog entries for v3.0 and v4.1 still describe those drop-in directories, and are left as they are — they are the record of what those versions shipped, not of what 6.0-beta-1 does. Neither mechanism works in 6.0-beta-1.
+The changelog entries for v3.0 and v4.1 still describe those drop-in directories and are left as they are — they are the record of what those versions shipped, not of what 6.0-beta-1 does. Neither mechanism works in 6.0-beta-1.
 
 #### **Highlighting is done by the browser now**
 
-Prism colours the code client side. Its files load only on pages that contain a snippet, and only the languages that page uses. Visitors with JavaScript turned off get a plain but properly styled code box with the code intact. A language the plugin cannot resolve produces an unhighlighted-but-styled box rather than an error — nothing breaks and nothing 404s.
+Prism colours the code client side. Its files load only on pages that contain a snippet and only the languages that page uses. Visitors with JavaScript turned off get a plain but properly styled code box with the code intact. A language the plugin cannot resolve produces an unhighlighted but styled box rather than an error — nothing breaks and nothing 404s.
 
 #### **`strip_shortcodes()` now strips this plugin's tags too**
 
 Worth knowing if you write themes or plugins. This plugin hooks `strip_shortcodes_tagnames`, so *any* call to `strip_shortcodes()` anywhere on the site — yours, your theme's, another plugin's — now removes `[php]`, `[code]`, `[html]`, `[js]`, `[c]`, `[sourcecode]` and the rest of this plugin's tags along with the shortcodes WordPress knows about.
 
-That is deliberate. The plugin does not register its tags globally any more, so core has no idea they are shortcodes, and an automatic excerpt would otherwise print a whole snippet as prose. Naming the tags to core fixes that everywhere at once — but it is wider than the excerpt path. If you were relying on `strip_shortcodes()` leaving `[php]…[/php]` standing in some other bit of content, it no longer will.
+That is deliberate. The plugin does not register its tags globally any more, so core has no idea they are shortcodes and an automatic excerpt would otherwise print a whole snippet as prose. Naming the tags to core fixes that everywhere at once — but it is wider than the excerpt path. If you were relying on `strip_shortcodes()` leaving `[php]…[/php]` standing in some other bit of content, it no longer will.
 
 #### **The classic editor's Visual tab is still not a place to write code**
 
-It never was. Snippets are supported in the block editor and in the classic editor's Text view. Switching a post to Visual mode can corrupt code inside shortcodes. That is documented behaviour, not a bug.
+It never was. Snippets are supported in the block editor and in the classic editor's Code view. Switching a post to Visual mode can corrupt code inside shortcodes. That is documented behaviour since beginning when TinyMCE WYSIWYG editor was added; it is not a bug.
 
 ### **Installation**
 
@@ -107,11 +109,11 @@ Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` and `geshi.
 #### **Installing The Plugin**
 1. Login to your WordPress `wp-admin` area.
 2. Click `Add New` in the `Plugins` menu on left.
-3. Enter `iG:Syntax Hiliter` in the search bar on the right of the page that opens and press Enter key.
+3. Enter `iG:Syntax Hiliter` in the search bar on the right on the page that opens and press Enter key.
 4. WordPress would show the **iG:Syntax Hiliter** plugin with install button, click that to install the plugin.
 5. Click on `Activate Plugin` link on the page that opens after the plugin has been installed successfully.
 
-**See Also:** ["Finding and Installing Plugins" article on the WordPress Support](https://wordpress.org/support/article/managing-plugins/#finding-and-installing-plugins)
+**See Also:** ["Installing Plugins" in the WP documentation](https://wordpress.org/documentation/article/manage-plugins/#finding-and-installing-plugins-1)
 
 
 ### **Plugin Usage**
@@ -120,7 +122,7 @@ In the block editor, add the **iG:Syntax Hiliter** block, paste your code into i
 
 To embed a GitHub Gist, add the **iG:Syntax Hiliter Gist** block and paste the address of the Gist into it. The `[github]` shortcode goes on working exactly as it always has, and is not converted.
 
-In the classic editor's Text view, use the shortcodes. There is one tag and a handful of optional attributes. Here's how code is posted for it to be highlighted.
+In the classic editor's Code view, use the shortcodes. There is one tag and a handful of optional attributes. Here's how code is posted for it to be highlighted.
 
 ```
 [sourcecode language="language_name"]
@@ -150,7 +152,19 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **Important :** Do not forget to close the tags, as your code will not be highlighted if you don't close your tags. Also, *don't nest tags*. Nesting of tags don't work, so don't try it, it'll ruin your output.
 
-**Important :** The classic editor's Visual (WYSIWYG) tab will mess up your code as soon as you paste it in. That is TinyMCE, not this plugin, and it happens before the plugin sees anything — so please don't report it as a bug. Write code in the block editor or in the classic editor's Text view.
+**Writing about this plugin :** If the code inside a snippet has to contain one of this plugin's own tags, double its brackets. `[[php]]` shows a reader `[php]` and `[[/php]]` shows `[/php]`, so a whole example fits inside a code box:
+
+```
+[sourcecode language="php"]
+[[sourcecode language="php"]]
+echo 'hello';
+[[/sourcecode]]
+[/sourcecode]
+```
+
+Without this a snippet would end at the first closing tag in its code and everything after it would be lost. What is stored is what you typed — the extra brackets come off on the way to a reader and nowhere else — and the rule applies to itself, so `[[[/php]]]` shows a reader `[[/php]]`. This is *not* the same as WordPress's escape for a whole shortcode, `[[php]x[/php]]`, which prints the shortcode instead of rendering it and still works exactly as it always has.
+
+**Important :** The classic editor's Visual (WYSIWYG) tab will mess up your code as soon as you paste it in. That is TinyMCE, not this plugin, and it happens before the plugin sees anything — so please don't report it as a bug. Write code in the block editor or in the classic editor's Code view.
 
 #### **(Optional) Plugin Attributes**
 
@@ -176,7 +190,7 @@ HTML entities need not be escaped, you can post your code as is and the plugin t
 
 **file :** Use this to show a file name/path. It is printed just above the code box, at the left, and is always visible — whatever the **Show Toolbar?** setting says. In v5 the label lived in the toolbar, so turning the toolbar off hid it too; in 6.0-beta-1 it still shows, because `file` is an attribute you asked for and the toolbar setting is not about it.
 
-The whole path goes into the page exactly as you typed it. If it is too long for the space, the browser trims what it *shows* with an ellipsis, but the full path is still there in the page source. Two v5 behaviours are gone: v5 cut the label to 30 characters on the server before it ever reached the page, and v5 ran the label through `wp_strip_all_tags()`, which quietly ate the type parameter out of names like `vector<int>.cpp`, `Foo<T>.cs` and `List<String>.java` — and everything after an unbalanced `<`. 6.0-beta-1 collapses runs of whitespace and otherwise leaves the label alone; it is never treated as markup anywhere it is used, so there was nothing for the stripping to protect.
+Thirty characters of the label go on the page, the end of it rather than the beginning, because the end of a path is the part that names the file. A label longer than that is shown behind an ellipsis and the whole of it is in the tooltip, so hovering the label reads out the full path. A label that fits is written whole and gets no tooltip. The label is also run through `wp_strip_all_tags()` before any of that — it is free text on a public page and is treated as hostile. The cost of that is worth knowing: a name like `vector<int>.cpp`, `Foo<T>.cs` or `List<String>.java` loses its type parameter and shows as `vector.cpp`, `Foo.cs` and `List.java`. All of this is what v5 did as well.
 
 **gutter :** Use this to tell plugin whether to show line numbers in the code box or not. It accepts either `yes` or `no`. This, if specified, will override the global option to show line numbers for that particular code box.
 
@@ -203,38 +217,28 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Blocks whose code contains a literal `[/sourcecode]` are left alone, since they cannot be written as a shortcode without losing part of the code. See *Important changes in 6.0-beta-1* above for why you would want it.
+**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Every block converts: where the code holds one of this plugin's own tags, the tool doubles its brackets, which is how a snippet says a tag is text. See *Important changes in 6.0-beta-1* above for why you would want it.
 
 *(Gone in 6.0-beta-1: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
-
-
-### **Extending the plugin**
-
-**Filters.**
-
-- `ig_syntax_hiliter/languages` — filters the finished language registry, so you can add, remove or rename languages programmatically.
-- `ig_syntax_hiliter/prism_components_url` — filters the URL Prism's autoloader fetches language files from, if you want to serve them from somewhere other than the plugin.
-- `ig_syntax_hiliter/shortcode_tags` — filters the list of shortcode tags the plugin claims. (Claims, not registers — the plugin deliberately never calls `add_shortcode()` for these tags, it matches them itself.) Use this to bring back a tag the plugin no longer ships (see *Important changes in 6.0-beta-1*), or to stop it claiming one you want for something else.
-- `ig_syntax_hiliter/revert_batch_size` — filters how many posts the revert tool in the **Before you deactivate** section works through per request. Defaults to 20, and is clamped to between 1 and 200. Lower it on a host that times out, raise it to get through a large site in fewer requests.
 
 
 ### **Frequently Asked Questions**
 
 **Q:** *My code looks all odd, characters appear as HTML entities. Why is your plugin screwing up my code?*
 
-**A:** If you are writing your post in the classic editor's Visual (WYSIWYG) tab then that is what is messing things up for you. That tab is TinyMCE, it treats your code as HTML, and it does its damage before this plugin ever sees the content. It has never been supported. Use the block editor, or the classic editor's Text view. If you are using either of those and still see this, please report it.
+**A:** If you are writing your post in the classic editor's Visual (WYSIWYG) tab then that is what is messing things up for you. That tab is TinyMCE, it treats your code as HTML and it does its damage before this plugin ever sees the content. It has never been supported. Use the block editor or the classic editor's Code view. If you are using either of those and still see this, please report it.
 
 **Q:** *I opened an old post in the block editor and my code blocks turned into iG:Syntax Hiliter blocks. Why?*
 
-**A:** Because leaving them alone was worse. See *Important changes in 6.0-beta-1* above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code, and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it, and it leaves the rest of your post byte-for-byte as it was.
+**A:** Because leaving them alone was worse. See the **Important changes in 6.0-beta-1** section above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it and it leaves the rest of your post byte-for-byte as it was.
 
 **Q:** *What happens to my code if I deactivate the plugin?*
 
-**A:** Snippets still stored as shortcodes stay visible as `[php]…[/php]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Before you deactivate** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. A block whose code contains a literal `[/sourcecode]` cannot be converted and is left alone, so that one still needs sorting out by hand.
+**A:** Snippets still stored as shortcodes stay visible as `[sourcecode]…[/sourcecode]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Before you deactivate** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. Every block converts, this plugin's own tags in the code included.
 
 **Q:** *I used to add languages by putting GeSHi language files in the plugin's or my theme's `geshi` directory. What now?*
 
-**A:** Both of those mechanisms are gone with GeSHi. Close to 300 languages ship with the plugin now, so start by checking whether yours is one of them — use it with `[sourcecode language="…"]` or pick it in the block. If you need the old `[yourlang]` tag itself to keep working, re-register it with the `ig_syntax_hiliter/shortcode_tags` filter, and if a language is genuinely missing, add it with the `ig_syntax_hiliter/languages` filter.
+**A:** Both of those mechanisms are gone with GeSHi. Approx 300 languages ship with the plugin now, so start by checking whether yours is one of them — use it with `[sourcecode language="…"]` or pick it in the block.
 
 **Q:** *I see some code that I can improve. Do you accept pull requests?*
 

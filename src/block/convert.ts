@@ -51,6 +51,7 @@ import {
 
 import {
 	BLOCK_NAME,
+	escapeForRegExp,
 	getLegacyTags,
 	mapShortcodeAttributes,
 } from './attributes';
@@ -216,9 +217,15 @@ interface ConversionPlan {
  */
 type Range = [ number, number ];
 
-function escapeForRegExp( value: string ): string {
-	return value.replace( /[\\^$.*+?()[\]{}|]/g, '\\$&' );
-}
+/**
+ * The one substring of the shortcode pattern that is rewritten, and what it
+ * becomes. Kept beside each other because they are only meaningful as a pair.
+ *
+ * Mirrors `Helper::get_shortcode_pattern()` in PHP, which does the same thing to
+ * the same substring of the pattern `get_shortcode_regex()` builds.
+ */
+const CLOSER_GUARD = '\\[(?!\\/\\2\\])';
+const ESCAPED_CLOSER = '(?:\\[\\[\\/\\2\\]\\]|\\[(?!\\/\\2\\]))';
 
 /**
  * Builds the pattern that matches this plugin's shortcodes.
@@ -228,10 +235,28 @@ function escapeForRegExp( value: string ): string {
  * `do_shortcode()` treats them. The tag list comes from PHP: a tag the plugin
  * has never shipped belongs to somebody else and is never matched.
  *
+ * It is handed the same one addition PHP's is: a closing tag whose brackets are
+ * doubled is consumed as part of the snippet's code rather than ending the
+ * snippet, so a snippet may quote this plugin's own tags. The escaped form goes
+ * in as the first alternative, so it is what a match takes when both would fit.
+ *
+ * A pattern that no longer holds the substring exactly once is handed back
+ * untouched, the same fail-safe PHP has: a change in `@wordpress/shortcode` then
+ * costs the escape, and nothing else.
+ *
  * @param tags Shortcode tags the plugin claims.
  */
 function buildTagPattern( tags: string[] ): RegExp {
-	return regexp( tags.map( escapeForRegExp ).join( '|' ) );
+	const pattern = regexp( tags.map( escapeForRegExp ).join( '|' ) );
+
+	if ( pattern.source.split( CLOSER_GUARD ).length !== 2 ) {
+		return pattern;
+	}
+
+	return new RegExp(
+		pattern.source.replace( CLOSER_GUARD, ESCAPED_CLOSER ),
+		pattern.flags
+	);
 }
 
 /**

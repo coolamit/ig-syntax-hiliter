@@ -401,30 +401,130 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * A tag in a file label reaches the reader as text, which is what makes keeping it
-	 * safe. It is escaped into the label element the same way the code is escaped into
-	 * the code element, so nothing downstream reads it as markup.
+	 * The file label is a free text attribute and is treated as hostile. Escaping it
+	 * is what makes it safe; taking the markup out of it first is the second layer,
+	 * and a free text attribute printed on every page of a site is worth two.
+	 *
+	 * The cost is stated rather than hidden: a type parameter goes with the tags, so
+	 * `vector<int>.cpp` is shown as `vector.cpp`. 5.1 did the same.
 	 *
 	 * @return void
 	 */
-	public function test_a_file_label_which_looks_like_markup_is_escaped_not_stripped(): void {
+	public function test_a_file_label_which_looks_like_markup_is_stripped(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
 				[
 					'language' => 'php',
-					'file'     => '<script>alert(1)</script>vector<int>.cpp',
+					'file'     => '<b>vector<int>.cpp</b>',
 				],
 				'x'
 			)
 		);
 
 		$this->assertStringContainsString(
-			'<span class="igsh-code-box__file">&lt;script&gt;alert(1)&lt;/script&gt;vector&lt;int&gt;.cpp</span>',
+			'<span class="igsh-code-box__file">vector.cpp</span>',
 			$markup
 		);
 
-		$this->assertStringNotContainsString( '<script>', $markup );
+	}
+
+	/**
+	 * A label which is nothing but markup leaves nothing to label the box with, so
+	 * the box is the bare one a snippet without a label has always had. An empty
+	 * element would be a wrapper and a gap above every such snippet.
+	 *
+	 * @return void
+	 */
+	public function test_a_file_label_which_is_only_markup_leaves_the_box_bare(): void {
+
+		$markup = $this->renderer->render_snippet(
+			Snippet::from_shortcode_atts(
+				[
+					'language' => 'php',
+					'file'     => '<script>alert(1)</script>',
+				],
+				'x'
+			)
+		);
+
+		$this->assertStringStartsWith( '<pre ', $markup );
+		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
+		$this->assertStringNotContainsString( 'alert(1)', $markup );
+
+	}
+
+	/**
+	 * A label is as often a path as a file name, and a path is long. Thirty
+	 * characters go on the page and the whole of it goes in the tooltip, which is
+	 * what 5.1 did — the tail is what is kept, because the end of a path is the part
+	 * that names the file.
+	 *
+	 * @return void
+	 */
+	public function test_a_long_file_label_is_cut_and_the_whole_of_it_is_the_tooltip(): void {
+
+		$label = 'aaaaaaaaaa/bbbbbbbbbb/cccccccccc/dd.php';
+
+		$this->assertSame( 39, strlen( $label ), 'The fixture is not longer than the label length.' );
+
+		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+
+		$this->assertStringContainsString(
+			sprintf(
+				'<span class="igsh-code-box__file" title="%s">…/bbbbbbbbbb/cccccccccc/dd.php</span>',
+				$label
+			),
+			$markup
+		);
+
+	}
+
+	/**
+	 * A label that fits is written whole and gets no tooltip. A tooltip repeating
+	 * what is already on screen teaches a reader that hovering it is pointless.
+	 *
+	 * @return void
+	 */
+	public function test_a_label_which_fits_is_written_whole_with_no_tooltip(): void {
+
+		$label = str_repeat( 'a', 26 ) . '.php';
+
+		$this->assertSame( 30, strlen( $label ), 'The fixture is not exactly the label length.' );
+
+		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+
+		$this->assertStringContainsString(
+			sprintf( '<span class="igsh-code-box__file">%s</span>', $label ),
+			$markup
+		);
+
+		$this->assertStringNotContainsString( 'title=', $markup );
+
+	}
+
+	/**
+	 * The cut counts characters and not bytes. Cutting a UTF-8 label by bytes ends it
+	 * on half a character, which the browser draws as a replacement glyph.
+	 *
+	 * @return void
+	 */
+	public function test_a_multibyte_label_is_not_cut_through_a_character(): void {
+
+		$label = str_repeat( 'é', 35 );
+
+		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+
+		$this->assertStringContainsString(
+			sprintf( '>…%s</span>', str_repeat( 'é', 29 ) ),
+			$markup
+		);
+
+		$this->assertSame(
+			1,
+			preg_match( '#<span class="igsh-code-box__file"[^>]*>(.*?)</span>#u', $markup ),
+			'The label element holds a byte sequence UTF-8 cannot read.'
+		);
 
 	}
 

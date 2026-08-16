@@ -25,6 +25,23 @@ class Renderer {
 	const ID_PREFIX = 'ig-sh-';
 
 	/**
+	 * How many characters of a file label are put on the page.
+	 *
+	 * Carried over from `Frontend::FILE_PATH_LENGTH` in 5.1, which showed the same
+	 * thirty. A label is a path as often as it is a file name, and a path is long.
+	 *
+	 * @var int
+	 */
+	const FILE_LABEL_LENGTH = 30;
+
+	/**
+	 * What stands in front of a label which was cut.
+	 *
+	 * @var string
+	 */
+	const FILE_LABEL_ELLIPSIS = '…';
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @var \iG\Syntax_Hiliter\Renderer|null
@@ -118,7 +135,9 @@ class Renderer {
 			static::escape_verbatim( $snippet->code )
 		);
 
-		if ( '' === $snippet->file ) {
+		$label = wp_strip_all_tags( $snippet->file );
+
+		if ( '' === $label ) {
 			return $markup;
 		}
 
@@ -132,12 +151,63 @@ class Renderer {
 		 * left. Both measure the `pre` alone, so a sibling in front of it moves neither.
 		 */
 		return sprintf(
-			'<div class="igsh-code-box"><span class="igsh-code-box__file">%1$s</span>%2$s</div>',
-			static::escape_verbatim( $snippet->file ),
+			'<div class="igsh-code-box"><span class="igsh-code-box__file"%1$s>%2$s</span>%3$s</div>',
+			static::_build_label_title( $label ),
+			static::escape_verbatim( static::shorten_file_label( $label ) ),
 			$markup
 		);
 
 	}    //end render_snippet()
+
+	/**
+	 * Method to cut a file label down to what goes on the page.
+	 *
+	 * The tail is what is kept, because the end of a path is the file name and the
+	 * file name is what the label is for. 5.1 did the same, in `_snip_file_path()`.
+	 *
+	 * `mb_substr()` where the site has it, so a label is never cut through the middle
+	 * of a character and left as a broken byte sequence for the browser to draw as a
+	 * replacement glyph.
+	 *
+	 * @param string $label File label, with any markup already taken out of it.
+	 *
+	 * @return string The label, or its last characters behind an ellipsis.
+	 */
+	public static function shorten_file_label( string $label ): string {
+
+		$length = ( function_exists( 'mb_strlen' ) ) ? mb_strlen( $label, 'UTF-8' ) : strlen( $label );
+
+		if ( static::FILE_LABEL_LENGTH >= $length ) {
+			return $label;
+		}
+
+		$keep = static::FILE_LABEL_LENGTH - 1;    //the ellipsis takes one of them
+		$tail = ( function_exists( 'mb_substr' ) ) ? mb_substr( $label, -$keep, null, 'UTF-8' ) : substr( $label, -$keep );
+
+		return static::FILE_LABEL_ELLIPSIS . $tail;
+
+	}    //end shorten_file_label()
+
+	/**
+	 * Method to build the `title` attribute of a file label.
+	 *
+	 * Only a label which was cut gets one. A tooltip repeating what is already on
+	 * screen is noise, and a reader who hovers and is told what they can already read
+	 * learns that hovering this element is pointless.
+	 *
+	 * @param string $label File label, with any markup already taken out of it.
+	 *
+	 * @return string The attribute with its leading space, or an empty string.
+	 */
+	protected static function _build_label_title( string $label ): string {
+
+		if ( static::shorten_file_label( $label ) === $label ) {
+			return '';
+		}
+
+		return sprintf( ' title="%s"', static::escape_verbatim( $label ) );
+
+	}    //end _build_label_title()
 
 	/**
 	 * Method to escape text so that a reader is shown the bytes an author typed.
