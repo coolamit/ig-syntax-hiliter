@@ -90,16 +90,16 @@
 	<div class="igsh-revert">
 
 		<p>
-			<?php esc_html_e( 'A snippet stored as a block needs this plugin to be active in order to appear at all: switch the plugin off and the block renders as nothing, and the code vanishes from the post. A snippet stored as a shortcode stays visible as text you can do something about.', 'igsyntax-hiliter' ); ?>
+			<?php esc_html_e( 'A snippet stored as a Gutenberg block needs this plugin to be active in order to appear at all: switch the plugin off and the Gutenberg block renders as nothing and the code vanishes from the post. A snippet stored as a shortcode stays visible as text you can do something about.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p>
-			<?php esc_html_e( 'The button below rewrites every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode carrying the same code and the same settings. It covers every public post type, and published, draft, pending, scheduled and private content alike — drafts included. Content in the trash is left alone, and nothing outside the blocks themselves is changed.', 'igsyntax-hiliter' ); ?>
+			<?php esc_html_e( 'The button below rewrites every "iG:Syntax Hiliter" Gutenberg block on this site back into a [sourcecode] shortcode carrying the same code and the same settings. It covers every public post type having published, draft, pending, scheduled and private statuses alike. Content in the trash is left alone and nothing outside the blocks themselves is changed.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p class="igsh-revert__warning">
 			<strong><?php esc_html_e( 'This rewrites your content and it cannot be undone.', 'igsyntax-hiliter' ); ?></strong>
-			<?php esc_html_e( 'Post revisions are left switched on, so each rewritten post keeps a revision of what it said before. Take a database backup first if you would rather not rely on that.', 'igsyntax-hiliter' ); ?>
+			<?php esc_html_e( 'If post revisions are enabled then they are left as is, so each rewritten post keeps a revision of what it said before. Take a database backup first if you would rather not rely on that or if you do not have post revisions enabled.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p>
