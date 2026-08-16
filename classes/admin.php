@@ -477,6 +477,24 @@ class Admin extends Base {
 				 */
 				/* translators: %s: name of the setting being saved. */
 				'saving'            => __( '%s — saving…', 'igsyntax-hiliter' ),
+
+				/*
+				 * A saved setting says what it was saved to, and a toggle and a choice
+				 * do not read the same way: every toggle label on this screen is a verb
+				 * phrase — "Show the toolbar", "Limit the height of Gist embeds" — so
+				 * the em dash form reads naturally for those, while "Theme" wants
+				 * "changed to". One template forced onto both would be clumsy for one of
+				 * them.
+				 *
+				 * `saved` is the fallback for a choice whose value has no name to give,
+				 * because "Theme changed to ." would be worse than saying less.
+				 */
+				/* translators: %s: name of the setting that was switched on. */
+				'savedOn'           => __( '%s — enabled.', 'igsyntax-hiliter' ),
+				/* translators: %s: name of the setting that was switched off. */
+				'savedOff'          => __( '%s — disabled.', 'igsyntax-hiliter' ),
+				/* translators: 1: name of the setting, 2: value it now holds. */
+				'savedChoice'       => __( '%1$s changed to %2$s.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that was saved. */
 				'saved'             => __( '%s — saved.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that could not be saved. */

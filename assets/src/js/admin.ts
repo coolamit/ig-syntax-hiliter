@@ -147,7 +147,7 @@
 	 * elements, so the browser has already made that association and `labels` is
 	 * it. One translated string, in one place, is what the reader sees in both.
 	 *
-	 * An empty answer is survivable — `withLabel()` still produces a sentence.
+	 * An empty answer is survivable — `fill()` still produces a sentence.
 	 *
 	 * @param control Control standing for the setting.
 	 *
@@ -160,32 +160,77 @@
 	}
 
 	/**
-	 * Puts the setting's name into a translated string.
+	 * The name of the value a choice control currently stands for.
 	 *
-	 * Every `%s` and `%1$s` is replaced, and a string carrying neither gets the
-	 * name put on the front, so a mistranslated string costs a clumsy sentence
-	 * rather than a placeholder on screen or a message naming no setting at all.
-	 * Same reasoning as `withCount()` below, for the same kind of string.
+	 * Read off the selected `<option>` for the same reason `controlLabel()` reads
+	 * the `<label>`: the words are in the document already, translated once by the
+	 * same PHP that drew the control. Sending them over again in the script data
+	 * would be a second copy of the same list to keep in step.
 	 *
-	 * @param template String the name goes into.
-	 * @param label    Name of the setting.
+	 * A toggle has no options to read, and gets no name from here — it is reported
+	 * as enabled or disabled instead.
 	 *
-	 * @return The string, with the name in it.
+	 * @param control Control standing for the setting.
+	 *
+	 * @return The selected option's text, or an empty string when there is none.
 	 */
-	function withLabel( template: string, label: string ): string {
-		const text = String( template || '' );
+	function choiceLabel( control: OptionControl ): string {
+		if ( isToggle( control ) ) {
+			return '';
+		}
 
-		if ( '' === label ) {
+		const option = control.selectedOptions[ 0 ];
+
+		return ( option?.textContent ?? '' ).trim();
+	}
+
+	/**
+	 * Fills a translated string's placeholders in.
+	 *
+	 * `%1$s` is taken by position and a bare `%s` in order, which is what
+	 * `sprintf()` would have done with the same string on the PHP side. A
+	 * placeholder with no value behind it is left standing rather than blanked,
+	 * and a string carrying no placeholder at all gets the values put on the
+	 * front — so a mistranslated string costs a clumsy sentence rather than a
+	 * `%s` on screen or a message naming nothing.
+	 *
+	 * `withCount()` below is the `%d` half of this and stays separate: its
+	 * fallback is about a number rather than a name, and the revert report is the
+	 * only thing that needs it.
+	 *
+	 * @param template String the values go into.
+	 * @param values   Values to put in it, in order.
+	 *
+	 * @return The string, with the values in it.
+	 */
+	function fill( template: string, ...values: string[] ): string {
+		const text = String( template || '' );
+		const given = values.filter( function ( value ) {
+			return '' !== value;
+		} );
+
+		if ( ! given.length ) {
 			return text;
 		}
 
-		const filled = text.replace( /%(?:\d+\$)?s/g, label );
+		let next = 0;
+
+		const filled = text.replace(
+			/%(?:(\d+)\$)?s/g,
+			function ( placeholder: string, position?: string ): string {
+				const at = position ? parseInt( position, 10 ) - 1 : next++;
+
+				return values[ at ] ?? placeholder;
+			}
+		);
 
 		if ( filled !== text ) {
 			return filled;
 		}
 
-		return '' === text ? label : label + ' — ' + text;
+		const named = given.join( ' — ' );
+
+		return '' === text ? named : named + ' — ' + text;
 	}
 
 	/**
@@ -395,6 +440,39 @@
 	}
 
 	/**
+	 * What to say about a setting that has just been saved.
+	 *
+	 * Naming the setting is not enough on its own: switching a toggle off and
+	 * switching it back on both used to read "Show the toolbar — saved", which
+	 * confirms that something happened without confirming what — and what is the
+	 * one part the reader can no longer see, the notice having taken their eye off
+	 * the control. It is the whole of what the live region announces, too.
+	 *
+	 * @param control Control that was saved.
+	 * @param label   Name of the setting.
+	 *
+	 * @return The message to show.
+	 */
+	function savedMessage( control: OptionControl, label: string ): string {
+		if ( isToggle( control ) ) {
+			return fill(
+				'yes' === readControl( control )
+					? strings.savedOn
+					: strings.savedOff,
+				label
+			);
+		}
+
+		const choice = choiceLabel( control );
+
+		if ( '' === choice ) {
+			return fill( strings.saved, label );
+		}
+
+		return fill( strings.savedChoice, label, choice );
+	}
+
+	/**
 	 * Locks or unlocks the whole page for the length of a request.
 	 *
 	 * The screen saves one setting per request and all seven settings live in one
@@ -470,10 +548,7 @@
 		 * two messages on screen, each naming its own setting — which is the whole
 		 * reason they carry the setting's name.
 		 */
-		const notice = notices.notify(
-			withLabel( strings.saving, label ),
-			'busy'
-		);
+		const notice = notices.notify( fill( strings.saving, label ), 'busy' );
 
 		request< OptionResponse >(
 			'POST',
@@ -487,13 +562,17 @@
 
 				writeControl( control, control.dataset.igshPrevious );
 
-				notice.settle( withLabel( strings.saved, label ), 'success' );
+				/*
+				 * Read after the control has been put back, so the message describes
+				 * what is stored rather than what was sent. The two agree today — the
+				 * REST layer answers 400 for a value the setting does not accept rather
+				 * than quietly substituting one — but this is the honest order.
+				 */
+				notice.settle( savedMessage( control, label ), 'success' );
 			} )
 			.catch( function ( error: RequestError ) {
 				let message =
-					withLabel( strings.saveFailed, label ) +
-					' ' +
-					error.message;
+					fill( strings.saveFailed, label ) + ' ' + error.message;
 
 				/*
 				 * A save which timed out may still have been saved: the request was
@@ -503,7 +582,7 @@
 				 * what is on screen may no longer be what is stored.
 				 */
 				if ( error.isTimeout ) {
-					message = withLabel( strings.saveTimedOut, label );
+					message = fill( strings.saveTimedOut, label );
 				} else if (
 					403 === error.status &&
 					'rest_cookie_invalid_nonce' === error.code

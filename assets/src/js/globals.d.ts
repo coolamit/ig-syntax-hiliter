@@ -48,6 +48,9 @@ interface IgshNotices {
  */
 interface IgshAdminStrings {
 	saving: string;
+	savedOn: string;
+	savedOff: string;
+	savedChoice: string;
 	saved: string;
 	saveFailed: string;
 	saveTimedOut: string;
