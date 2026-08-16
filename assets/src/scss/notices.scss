@@ -8,14 +8,29 @@
  * reusable notice stack whose styles live in some other screen's stylesheet is
  * not reusable. Whatever enqueues `notices.js` enqueues this beside it.
  *
- * Colours are wp-admin's own, so a notice looks like the notices WordPress
- * draws and follows the palette if it ever moves.
+ * Every colour below is copied out of wp-admin's own notices, in
+ * `wp-admin/css/common.css`, so that one of these looks like the notices
+ * WordPress itself draws on the same screen.
+ *
+ * Note the shape of that: core carries the colour on a 4px left border and
+ * fills the box with a near white tint of it. **Nothing in wp-admin is filled
+ * with a saturated green or red**, and a box that is reads as much louder than
+ * anything WordPress would put on the page.
  */
 
-$igsh-notice-success: #00a32a;    // the green wp-admin uses on a success notice
-$igsh-notice-error: #d63638;      // the red wp-admin uses on an error notice
-$igsh-notice-busy: #72aee6;       // the blue wp-admin uses on an informational notice
-$igsh-notice-text: #1d2327;       // wp-admin's body text colour
+// `.notice-success` / `div.updated`, common.css:1554.
+$igsh-notice-success: #4ab866;
+$igsh-notice-success-bg: #eff9f1;
+
+// `.notice-error` / `div.error`, common.css:1574.
+$igsh-notice-error: #cc1818;
+$igsh-notice-error-bg: #fcf0f0;
+
+// `.notice-info`, common.css:1585. Nothing is wrong; it is happening.
+$igsh-notice-busy: #3858e9;
+$igsh-notice-busy-bg: #fff;
+
+$igsh-notice-text: #1e1e1e;       // `.notice p`, common.css:1477
 $igsh-notice-radius: 3px;
 $igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices.ts
 
@@ -43,23 +58,35 @@ $igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices
 	pointer-events: none;
 }
 
+/*
+ * The padding and the text metrics are core's too, from `.notice` and
+ * `.notice p`. The one departure is the shadow: a wp-admin notice sits in the
+ * flow of the document and needs no elevation, while this one floats over the
+ * page and would otherwise have nothing at all separating a near white box from
+ * the content behind it.
+ */
 .igsh-notice {
-	padding: 10px 16px;
+	padding: 8px 12px;
 	color: $igsh-notice-text;
-	background: $igsh-notice-busy;
+	font-size: 13px;
+	line-height: 1.54;
+	background: $igsh-notice-busy-bg;
+	border-left: 4px solid $igsh-notice-busy;
 	border-radius: $igsh-notice-radius;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	animation: igsh-notice-in $igsh-notice-fade ease-in-out;
 	transition:
 		opacity $igsh-notice-fade ease-in-out,
 		transform $igsh-notice-fade ease-in-out;
 
 	&--success {
-		background: $igsh-notice-success;
+		background: $igsh-notice-success-bg;
+		border-left-color: $igsh-notice-success;
 	}
 
 	&--error {
-		background: $igsh-notice-error;
+		background: $igsh-notice-error-bg;
+		border-left-color: $igsh-notice-error;
 	}
 
 	&--leaving {

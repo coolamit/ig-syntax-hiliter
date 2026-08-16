@@ -26,13 +26,13 @@
 	 * something still happening, and taking it away while it is still true would
 	 * say the opposite of what it means.
 	 *
-	 * A failure is left up three times as long as a success. A success confirms
-	 * something the reader just did and already expected; a failure tells them
-	 * something they did not expect and may have to act on.
+	 * A failure is left up more than twice as long as a success. A success
+	 * confirms something the reader just did and already expected; a failure tells
+	 * them something they did not expect and may have to act on.
 	 */
 	const LINGER_MS: Record< IgshNoticeTone, number > = {
 		busy: 0,
-		success: 2000,
+		success: 2500,
 		error: 6000,
 	};
 
