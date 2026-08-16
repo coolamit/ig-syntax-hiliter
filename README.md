@@ -1,4 +1,4 @@
-## **iG:Syntax Hiliter v6.0.0**
+## **iG:Syntax Hiliter v6.0**
 ---------------------------------
 
 **iG:Syntax Hiliter** is a WordPress plugin to easily present source code on your site with syntax highlighting and formatting  (as seen in code editors, IDEs).

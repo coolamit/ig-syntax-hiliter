@@ -3,7 +3,7 @@
  * Plugin Name:       iG:Syntax Hiliter
  * Plugin URI:        https://igeek.info/category/wp-plugins/igsyntax-hiliter/
  * Description:       Present source code on your site with syntax highlighting and formatting. See the <a href="https://github.com/coolamit/ig-syntax-hiliter/blob/master/README.md">documentation</a> for instructions.
- * Version:           6.0.0
+ * Version:           6.0
  * Requires at least: 6.9
  * Requires PHP:      8.4
  * Author:            Amit Gupta
@@ -24,7 +24,7 @@
  * Plugin version. A semantic version string — compare with version_compare(),
  * never numerically.
  */
-define( 'IG_SYNTAX_HILITER_VERSION', '6.0.0' );
+define( 'IG_SYNTAX_HILITER_VERSION', '6.0' );
 
 /**
  * Absolute path of the plugin directory, without a trailing slash.

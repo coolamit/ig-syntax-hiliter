@@ -4,7 +4,7 @@ Tags: syntax highlighter, code highlighter, code, source code, php, mysql, html,
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.4
-Stable tag: 6.0.0
+Stable tag: 6.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -162,7 +162,7 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == ChangeLog ==
 
-= v6.0.0 =
+= v6.0 =
 
 * Minimum requirements are now PHP 8.4 and WordPress 6.9. Below either of those the plugin refuses to load — no fatal error, no half-loaded plugin, just an admin notice naming the versions it needs.
 * The GeSHi library has been dropped, along with its 37 bundled language files. Highlighting now happens in the browser with [Prism.js](https://prismjs.com/) 1.30.0, which is bundled with the plugin (MIT licensed). Prism's files load only on pages that contain a snippet, and only the languages those snippets need.
@@ -296,8 +296,8 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == Upgrade Notice ==
 
-= 6.0.0 =
-GeSHi is replaced by Prism.js and highlighting moves to the browser. Requires PHP 8.4 and WordPress 6.9. Old posts keep working, but opening one in the block editor converts its snippets to blocks — read "Important changes in 6.0" before updating.
+= 6.0 =
+GeSHi is replaced by Prism.js and Gutenberg support added. Requires PHP 8.4 and WordPress 6.9. Old posts keep working, but opening one in the block editor converts its snippets to blocks — read "Important changes in 6.0" before updating.
 
 = 5.1 =
 Major refactor of plugin code for compatibility with PHP 7.4.0 and above.
