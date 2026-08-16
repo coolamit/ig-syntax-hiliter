@@ -32,6 +32,13 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	const HANDLE = 'ig-syntax-hiliter-admin';
 
 	/**
+	 * Handle the notice stack is registered under.
+	 *
+	 * @var string
+	 */
+	const NOTICES_HANDLE = 'ig-syntax-hiliter-notices';
+
+	/**
 	 * Method to render the settings page and capture what it printed.
 	 *
 	 * @return string
@@ -224,8 +231,13 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The settings screen carries no jQuery dependency of its own, and its assets
-	 * load on that screen and nowhere else.
+	 * The settings screen carries no jQuery dependency, and its assets load on
+	 * that screen and nowhere else.
+	 *
+	 * The one dependency it does declare is this plugin's own notice stack, which
+	 * itself depends on nothing. That is the whole of the chain: two scripts of
+	 * ours and no library, which is what keeps this page cheap. Nothing else may
+	 * be added to either list without a reason good enough to write down here.
 	 *
 	 * @return void
 	 */
@@ -236,14 +248,45 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$admin->enqueue_assets( 'options-writing.php' );
 
 		$this->assertFalse( wp_script_is( self::HANDLE, 'enqueued' ), 'The settings assets loaded on somebody else\'s admin page.' );
+		$this->assertFalse( wp_script_is( self::NOTICES_HANDLE, 'enqueued' ), 'The notice stack loaded on somebody else\'s admin page.' );
 
 		$admin->enqueue_assets( Admin::PAGE_HOOK );
 
 		$this->assertTrue( wp_script_is( self::HANDLE, 'enqueued' ) );
 		$this->assertTrue( wp_style_is( self::HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_script_is( self::NOTICES_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_style_is( self::NOTICES_HANDLE, 'enqueued' ) );
 
-		$this->assertSame( [], wp_scripts()->registered[ self::HANDLE ]->deps );
+		$this->assertSame( [ self::NOTICES_HANDLE ], wp_scripts()->registered[ self::HANDLE ]->deps );
+		$this->assertSame( [ self::NOTICES_HANDLE ], wp_styles()->registered[ self::HANDLE ]->deps );
+
+		//the notice stack knows nothing about this screen, so it asks for nothing
+		$this->assertSame( [], wp_scripts()->registered[ self::NOTICES_HANDLE ]->deps );
+		$this->assertSame( [], wp_styles()->registered[ self::NOTICES_HANDLE ]->deps );
+
 		$this->assertFalse( wp_script_is( 'jquery', 'enqueued' ) );
+
+	}
+
+	/**
+	 * Both of the screen's compiled assets are where they are enqueued from.
+	 *
+	 * `build/` and `assets/build/` are generated and git-ignored, so a path that
+	 * has gone stale is a 404 in wp-admin and nothing else — no PHP notice, no
+	 * failing request, just a settings page that quietly stops working.
+	 *
+	 * @return void
+	 */
+	public function test_the_screen_assets_exist_where_they_are_enqueued_from(): void {
+
+		$root = untrailingslashit( IG_SYNTAX_HILITER_ROOT );
+
+		foreach ( [ 'css/admin.css', 'css/notices.css', 'js/admin.js', 'js/notices.js' ] as $asset ) {
+			$this->assertFileExists(
+				sprintf( '%s/assets/build/%s', $root, $asset ),
+				sprintf( '`assets/build/%s` is enqueued but is not there. Run `make build`.', $asset )
+			);
+		}
 
 	}
 

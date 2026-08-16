@@ -12,7 +12,6 @@ $igsh-accent: #2271b1;
 $igsh-off: #8c8f94;
 $igsh-error: #d63638;
 $igsh-warning: #dba617;
-$igsh-surface: #1d2327;
 $igsh-radius: 3px;
 
 .igsh-settings {
@@ -151,38 +150,15 @@ $igsh-radius: 3px;
 	}
 }
 
-/* Feedback. One live region, bottom right, out of the way of the controls. */
-.igsh-toast {
-	position: fixed;
-	right: 24px;
-	bottom: 24px;
-	z-index: 100000;
-	max-width: 24rem;
-	padding: 10px 16px;
-	background: $igsh-surface;
-	color: #fff;
-	border-radius: $igsh-radius;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-	opacity: 0;
-	transform: translateY(8px);
-	transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
-	pointer-events: none;
-
-	&--visible {
-		opacity: 1;
-		transform: translateY(0);
-	}
-
-	&--error {
-		background: $igsh-error;
-	}
-}
+/*
+ * Feedback about a save lives in `assets/src/scss/notices.scss`, beside the
+ * script that draws it. This page is only one of its callers.
+ */
 
 @media (prefers-reduced-motion: reduce) {
 
 	.igsh-toggle__track,
-	.igsh-toggle__track::after,
-	.igsh-toast {
+	.igsh-toggle__track::after {
 		transition: none;
 	}
 }

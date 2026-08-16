@@ -331,11 +331,16 @@ class Admin extends Base {
 			);
 		}
 
+		/*
+		 * No message. The settings page words its own, because only the browser
+		 * knows which control was changed and so which label the reader needs to see
+		 * named. A second sentence here saying the same thing in different words is
+		 * a string nothing reads and nobody notices going stale.
+		 */
 		return new WP_REST_Response(
 			[
-				'name'    => $name,
-				'value'   => (string) $this->_option->get( $name ),
-				'message' => __( 'Setting saved.', 'igsyntax-hiliter' ),
+				'name'  => $name,
+				'value' => (string) $this->_option->get( $name ),
 			]
 		);
 
@@ -418,11 +423,25 @@ class Admin extends Base {
 		}
 
 		$handle  = sprintf( '%s-admin', static::PLUGIN_ID );
+		$notices = sprintf( '%s-notices', static::PLUGIN_ID );
 		$version = (string) IG_SYNTAX_HILITER_VERSION;
 
-		wp_enqueue_style( $handle, Helper::get_asset_url( 'build/css/admin.css' ), [], $version );
+		/*
+		 * The notice stack is a script and a stylesheet of its own, knowing nothing
+		 * about this screen — it is handed a string and a tone. This page is its
+		 * only caller today; it is separate so that the next thing needing to say
+		 * something to a site owner does not grow a second copy of it.
+		 *
+		 * Both are declared as dependencies rather than merely enqueued first, so
+		 * the order holds however else the page is put together.
+		 */
+		wp_enqueue_style( $notices, Helper::get_asset_url( 'build/css/notices.css' ), [], $version );
 
-		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [], $version, true );
+		wp_enqueue_style( $handle, Helper::get_asset_url( 'build/css/admin.css' ), [ $notices ], $version );
+
+		wp_enqueue_script( $notices, Helper::get_asset_url( 'build/js/notices.js' ), [], $version, true );
+
+		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [ $notices ], $version, true );
 
 		wp_add_inline_script(
 			$handle,
@@ -447,10 +466,23 @@ class Admin extends Base {
 			'restUrl' => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'i18n'    => [
-				'saving'            => __( 'Saving…', 'igsyntax-hiliter' ),
-				'saved'             => __( 'Setting saved.', 'igsyntax-hiliter' ),
-				'saveFailed'        => __( 'That setting could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
-				'saveTimedOut'      => __( 'Your site did not answer in time, so that setting has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
+
+				/*
+				 * The first four name the setting they are about. More than one message
+				 * can be on screen at once now, and a "Setting saved." sitting above
+				 * another "Setting saved." says nothing about which setting either of
+				 * them saved. The name is the label this screen already prints, read
+				 * off the control by the script rather than sent over a second time, so
+				 * that one translated string is what the reader sees in both places.
+				 */
+				/* translators: %s: name of the setting being saved. */
+				'saving'            => __( '%s — saving…', 'igsyntax-hiliter' ),
+				/* translators: %s: name of the setting that was saved. */
+				'saved'             => __( '%s — saved.', 'igsyntax-hiliter' ),
+				/* translators: %s: name of the setting that could not be saved. */
+				'saveFailed'        => __( '%s — could not be saved, so it has been put back the way it was.', 'igsyntax-hiliter' ),
+				/* translators: %s: name of the setting that could not be saved. */
+				'saveTimedOut'      => __( '%s — your site did not answer in time, so it has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
 				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
 				'revertConfirm'     => __(
 					"This will convert every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode, in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",

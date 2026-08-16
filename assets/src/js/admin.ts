@@ -35,10 +35,15 @@
 
 	/**
 	 * What a save answers with.
+	 *
+	 * The stored value, which is what the control is put back to — the setting's
+	 * own default comes back where the value sent was one it does not accept, so
+	 * what is on screen afterwards is what is in the database. The message the
+	 * reader sees is built here, not sent, because only this side knows the label
+	 * of the setting it is about.
 	 */
 	interface OptionResponse {
 		value?: string | undefined;
-		message?: string | undefined;
 	}
 
 	/**
@@ -109,8 +114,21 @@
 	 */
 	const strings: IgshAdminStrings = config.i18n || ( {} as IgshAdminStrings );
 
-	let toast: HTMLDivElement | null = null;
-	let toastTimer: number | undefined;
+	/*
+	 * `notices.js` is declared as a dependency of this script in PHP, so it is
+	 * always there. The fallback is for the case where somebody dequeues it: the
+	 * page goes on saving settings, it just stops narrating them. Silently doing
+	 * the work beats a settings page that throws on every change.
+	 */
+	const notices: IgshNotices = window.igshNotices || {
+		notify(): IgshNotice {
+			return {
+				settle(): void {},
+				dismiss(): void {},
+			};
+		},
+	};
+
 	let busyElements: LockableElement[] = [];
 	let pageBusy = false;
 
@@ -122,41 +140,52 @@
 	const SAVE_TIMEOUT_MS = 15000;
 
 	/**
-	 * Shows a short message in the page's live region.
+	 * The name of a setting, as the screen already shows it.
 	 *
-	 * @param message Message to show.
-	 * @param isError Whether the message reports a failure.
-	 * @param sticky  Whether the message stays until it is replaced.
+	 * Read off the `<label for="…">` the template prints rather than sent over a
+	 * second time in the script data: both a button and a select are labelable
+	 * elements, so the browser has already made that association and `labels` is
+	 * it. One translated string, in one place, is what the reader sees in both.
+	 *
+	 * An empty answer is survivable — `withLabel()` still produces a sentence.
+	 *
+	 * @param control Control standing for the setting.
+	 *
+	 * @return The label's text, or an empty string when there is no label.
 	 */
-	function notify(
-		message: string,
-		isError?: boolean,
-		sticky?: boolean
-	): void {
-		if ( ! toast ) {
-			toast = document.createElement( 'div' );
-			toast.className = 'igsh-toast';
-			toast.setAttribute( 'role', 'status' );
-			toast.setAttribute( 'aria-live', 'polite' );
-			document.body.appendChild( toast );
+	function controlLabel( control: OptionControl ): string {
+		const label = control.labels ? control.labels[ 0 ] : null;
+
+		return ( label?.textContent ?? '' ).trim();
+	}
+
+	/**
+	 * Puts the setting's name into a translated string.
+	 *
+	 * Every `%s` and `%1$s` is replaced, and a string carrying neither gets the
+	 * name put on the front, so a mistranslated string costs a clumsy sentence
+	 * rather than a placeholder on screen or a message naming no setting at all.
+	 * Same reasoning as `withCount()` below, for the same kind of string.
+	 *
+	 * @param template String the name goes into.
+	 * @param label    Name of the setting.
+	 *
+	 * @return The string, with the name in it.
+	 */
+	function withLabel( template: string, label: string ): string {
+		const text = String( template || '' );
+
+		if ( '' === label ) {
+			return text;
 		}
 
-		const element = toast;
+		const filled = text.replace( /%(?:\d+\$)?s/g, label );
 
-		window.clearTimeout( toastTimer );
-
-		element.textContent = message;
-		element.classList.toggle( 'igsh-toast--error', !! isError );
-		element.classList.add( 'igsh-toast--visible' );
-
-		if ( ! sticky ) {
-			toastTimer = window.setTimeout(
-				function () {
-					element.classList.remove( 'igsh-toast--visible' );
-				},
-				isError ? 6000 : 2500
-			);
+		if ( filled !== text ) {
+			return filled;
 		}
+
+		return '' === text ? label : label + ' — ' + text;
 	}
 
 	/**
@@ -431,10 +460,20 @@
 		const name = control.dataset.igshOption;
 		const value = readControl( control );
 		const previous = control.dataset.igshPrevious;
+		const label = controlLabel( control );
 
 		setBusy( true );
 
-		notify( strings.saving, false, true );
+		/*
+		 * One message per save, which reports itself and then settles into what
+		 * became of it. Two settings changed one after the other therefore leave
+		 * two messages on screen, each naming its own setting — which is the whole
+		 * reason they carry the setting's name.
+		 */
+		const notice = notices.notify(
+			withLabel( strings.saving, label ),
+			'busy'
+		);
 
 		request< OptionResponse >(
 			'POST',
@@ -448,13 +487,13 @@
 
 				writeControl( control, control.dataset.igshPrevious );
 
-				notify(
-					( payload && payload.message ) || strings.saved,
-					false
-				);
+				notice.settle( withLabel( strings.saved, label ), 'success' );
 			} )
 			.catch( function ( error: RequestError ) {
-				let message = strings.saveFailed + ' ' + error.message;
+				let message =
+					withLabel( strings.saveFailed, label ) +
+					' ' +
+					error.message;
 
 				/*
 				 * A save which timed out may still have been saved: the request was
@@ -464,11 +503,12 @@
 				 * what is on screen may no longer be what is stored.
 				 */
 				if ( error.isTimeout ) {
-					message = strings.saveTimedOut;
+					message = withLabel( strings.saveTimedOut, label );
 				} else if (
 					403 === error.status &&
 					'rest_cookie_invalid_nonce' === error.code
 				) {
+					// About the page rather than about this setting, so it names none.
 					message = strings.reloadNeeded;
 				}
 
@@ -482,7 +522,7 @@
 					writeControl( control, previous );
 				}
 
-				notify( message, true );
+				notice.settle( message, 'error' );
 			} )
 			.finally( function () {
 				setBusy( false );

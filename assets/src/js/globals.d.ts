@@ -1,14 +1,43 @@
 /**
- * The globals the two scripts in this directory read, and nothing else.
+ * The globals the scripts in this directory read and write, and nothing else.
  *
- * Both are classic scripts rather than modules — they are enqueued with
+ * All three are classic scripts rather than modules — they are enqueued with
  * `wp_enqueue_script()` and run in the global scope — so what they can see is
- * whatever PHP printed before them and whatever Prism put on `window`. None of
- * that has types of its own, and this file is where they are written down.
+ * whatever PHP printed before them, whatever Prism put on `window`, and whatever
+ * another of these scripts published there. None of that has types of its own,
+ * and this file is where they are written down.
  *
  * `types/` is for declarations that patch a third-party package. These describe
  * this plugin's own contract with itself, so they live beside the code.
  */
+
+/**
+ * What a message says about the thing it reports.
+ *
+ * `busy` is something still happening, and is the one tone that does not take
+ * itself off the screen.
+ */
+type IgshNoticeTone = 'busy' | 'success' | 'error';
+
+/**
+ * One message on screen, as its caller holds it.
+ *
+ * A caller keeps this for as long as it has more to say about the same thing —
+ * a save reports itself as `busy` and then settles that same message into a
+ * `success` or an `error`, rather than leaving the first one up and stacking a
+ * second beside it.
+ */
+interface IgshNotice {
+	settle: ( message: string, tone: IgshNoticeTone ) => void;
+	dismiss: () => void;
+}
+
+/**
+ * The notice stack, published by `notices.js`.
+ */
+interface IgshNotices {
+	notify: ( message: string, tone: IgshNoticeTone ) => IgshNotice;
+}
 
 /**
  * Every string `Admin::_get_script_data()` sends over.
@@ -80,5 +109,6 @@ interface IgshPrism {
 interface Window {
 	igSyntaxHiliterAdmin?: IgshAdminConfig | undefined;
 	igSyntaxHiliter?: IgshFrontendSettings | undefined;
+	igshNotices?: IgshNotices | undefined;
 	Prism?: IgshPrism | undefined;
 }
