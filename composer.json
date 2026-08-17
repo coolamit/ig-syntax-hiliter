@@ -40,11 +40,10 @@
 	"minimum-stability": "stable",
 	"prefer-stable": true,
 	"autoload-dev": {
-		"psr-4": {
-			"iG\\Syntax_Hiliter\\Tests\\Unit\\": "tests/unit/",
-			"iG\\Syntax_Hiliter\\Tests\\Integration\\": "tests/integration/",
-			"iG\\Syntax_Hiliter\\Tests\\": "tests/"
-		}
+		"classmap": [
+			"tests/unit/",
+			"tests/integration/"
+		]
 	},
 	"scripts": {
 		"lint": "phpcs",
@@ -61,7 +60,7 @@
 	"scripts-descriptions": {
 		"lint": "Check the v6 PHP against WordPress Coding Standards.",
 		"fix": "Auto-fix coding standards violations where phpcbf can.",
-		"lint-files": "Check specific files/directories, eg. composer run lint-files classes/foo.php",
+		"lint-files": "Check specific files/directories, eg. composer run lint-files classes/class-foo.php",
 		"fix-files": "Auto-fix specific files/directories.",
 		"test": "Run both test tiers.",
 		"test:unit": "Run the unit tier — no WordPress required.",

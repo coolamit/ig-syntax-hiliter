@@ -11,7 +11,7 @@
 #   make build
 #   make ssh-cmd -- composer --version
 #   make ssh-cmd -- ls -alt
-#   make lint-files -- classes/renderer.php
+#   make lint-files -- classes/class-renderer.php
 
 .PHONY: shell ssh-cmd install install-php install-js update versions lint fix lint-files fix-files test test-unit test-integration test-js build watch
 
@@ -78,12 +78,12 @@ fix:
 	@$(call SSH_EXEC,composer run fix)
 
 # Check code style for specific files or directories.
-# Usage: make lint-files -- classes/renderer.php classes/snippet.php
+# Usage: make lint-files -- classes/class-renderer.php classes/class-snippet.php
 lint-files:
 	@$(call SSH_EXEC,composer run lint-files $(filter-out $@,$(MAKECMDGOALS)))
 
 # Fix code style for specific files or directories.
-# Usage: make fix-files -- classes/renderer.php
+# Usage: make fix-files -- classes/class-renderer.php
 fix-files:
 	@$(call SSH_EXEC,composer run fix-files $(filter-out $@,$(MAKECMDGOALS)))
 

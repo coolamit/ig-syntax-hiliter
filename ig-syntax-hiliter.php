@@ -53,7 +53,7 @@ add_action( 'init', 'ig_syntax_hiliter_loader' );
 function ig_syntax_hiliter_loader() {
 
 	//load the Gatekeeper
-	require_once __DIR__ . '/classes/ig-syntax-hiliter-gatekeeper.php';
+	require_once __DIR__ . '/classes/class-ig-syntax-hiliter-gatekeeper.php';
 
 	//activate the Gatekeeper
 	iG_Syntax_Hiliter_Gatekeeper::activate();

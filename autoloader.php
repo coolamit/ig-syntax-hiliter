@@ -37,17 +37,34 @@ function ig_syntax_hiliter_autoloader( $class_name = '' ) {
 	//remove the namespace root and grab the actual resource
 	$parts = array_slice( explode( '\\', $class_name ), 2 );
 
-	$path = str_replace( '_', '-', implode( '/', $parts ) );
+	//the resource's own name, which is the only segment carrying a file name prefix
+	$name = strtolower( str_replace( '_', '-', (string) array_pop( $parts ) ) );
+
+	$directory = ( empty( $parts ) ) ? '' : strtolower( str_replace( '_', '-', implode( '/', $parts ) ) ) . '/';
 
 	/*
+	 * WordPress file naming: a file declaring a class is `class-<name>.php` and one
+	 * declaring a trait is `trait-<name>.php`. Which of the two a resource is cannot
+	 * be known before the file is read, so both names are tried in turn rather than
+	 * this function being taught which namespaces hold traits.
+	 *
 	 * rtrim() rather than untrailingslashit(): this autoloader must have no
 	 * WordPress dependency at all, so that the unit test tier can exercise the
 	 * plugin's classes with no WordPress loaded and nothing shimmed.
 	 */
-	$path = sprintf( '%s/classes/%s.php', rtrim( IG_SYNTAX_HILITER_ROOT, '/\\' ), strtolower( $path ) );
+	$root = rtrim( IG_SYNTAX_HILITER_ROOT, '/\\' );
 
-	if ( file_exists( $path ) ) {
-		require_once $path;
+	foreach ( [ 'class', 'trait' ] as $prefix ) {
+
+		$path = sprintf( '%s/classes/%s%s-%s.php', $root, $directory, $prefix, $name );
+
+		if ( file_exists( $path ) ) {
+
+			require_once $path;
+
+			return;
+
+		}
 	}
 }
 

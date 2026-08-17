@@ -142,15 +142,6 @@
 		#############################################################################
 	-->
 
-	<!-- The autoloader maps `Foo_Bar` to `foo-bar.php`, so `class-foo.php` naming is
-	     not possible. Tests use PHPUnit's `Class_Name.php` naming. -->
-	<rule ref="WordPress.Files.FileName">
-		<properties>
-			<property name="strict_class_file_names" value="false"/>
-		</properties>
-		<exclude-pattern>*/tests/*</exclude-pattern>
-	</rule>
-
 	<!-- Short array syntax is the house style, and it is enforced: WPCS's mandate for
 	     `array()` is switched off and the opposite rule is switched on in its place. -->
 	<rule ref="Universal.Arrays.DisallowShortArraySyntax">
@@ -175,7 +166,7 @@
 
 	<!-- The `iG` branding starts lowercase. -->
 	<rule ref="PEAR.NamingConventions.ValidClassName.StartWithCapital">
-		<exclude-pattern>*/classes/ig-syntax-hiliter-gatekeeper.php</exclude-pattern>
+		<exclude-pattern>*/classes/class-ig-syntax-hiliter-gatekeeper.php</exclude-pattern>
 	</rule>
 
 	<!--

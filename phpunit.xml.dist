@@ -10,10 +10,11 @@
 	Running the `phpunit` binary without naming a test suite is rejected by
 	tests/bootstrap.php, because each tier needs a different bootstrap.
 
-	Test case files are named after the class they hold, eg. `Renderer_Test.php`,
-	because PHPUnit resolves a test class from its file name and will not find it
-	otherwise. This is the one place in the plugin that does not use kebab-case
-	file names.
+	Test case files follow WordPress file naming like every other file in the
+	plugin, so a case class lands in `class-<name>-test.php` and the suffix below
+	is what picks it out. The suffix also keeps the fixtures out of the suites:
+	`class-singleton-fixture-alpha.php` and `trait-asset-test-helpers.php` are
+	loaded by the cases that use them and are not test cases themselves.
 -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -38,12 +39,12 @@
 	<testsuites>
 		<!-- Pure PHP. No WordPress, no database. -->
 		<testsuite name="unit">
-			<directory suffix="Test.php">tests/unit</directory>
+			<directory suffix="-test.php">tests/unit</directory>
 		</testsuite>
 
 		<!-- Runs against a real WordPress install and the wordpress_unit_tests database. -->
 		<testsuite name="integration">
-			<directory suffix="Test.php">tests/integration</directory>
+			<directory suffix="-test.php">tests/integration</directory>
 		</testsuite>
 	</testsuites>
 
