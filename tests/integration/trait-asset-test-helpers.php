@@ -34,6 +34,7 @@ trait Asset_Test_Helpers {
 			'_needs_line_numbers'   => false,
 			'_needs_line_highlight' => false,
 			'_languages'            => [],
+			'_font_styled'          => false,
 		];
 
 		foreach ( $defaults as $name => $value ) {

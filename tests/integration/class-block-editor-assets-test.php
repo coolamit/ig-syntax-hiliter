@@ -326,7 +326,6 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 			$this->assertStringStartsWith( '.wp-block-igsyntax-hiliter-code {', $rules );
 			$this->assertStringContainsString( '--igsh-editor-font: "Fira Code"', $rules );
-			$this->assertStringContainsString( '--igsh-editor-ligatures: common-ligatures contextual', $rules );
 
 		} finally {
 			$this->_reset_editor_font();
@@ -337,14 +336,22 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The editor and the front end name the same family for the same font.
+	 * The editor and the front end name the same family, and only the front end asks
+	 * for ligatures.
 	 *
-	 * Two rules describing one font is two chances to disagree, so both are built from
-	 * the same declarations. This is what fails if somebody edits one of them alone.
+	 * The family has to match: two rules describing one font is two chances to
+	 * disagree, and both are built from the same map.
+	 *
+	 * The ligatures have to differ, and that is the point of this case. A textarea is
+	 * where an author counts characters and puts a caret between them, and a caret
+	 * cannot sit inside one glyph standing for two — typing `__construct` and reading
+	 * back what looks like ` _construct` is alarming enough to make somebody correct
+	 * code which was never wrong. Putting them back here would look like tidying up an
+	 * inconsistency, so this is what says the inconsistency is deliberate.
 	 *
 	 * @return void
 	 */
-	public function test_the_editor_and_the_front_end_cannot_name_different_fonts(): void {
+	public function test_only_the_front_end_asks_for_ligatures(): void {
 
 		foreach ( Asset_Manager::get_fonts() as $slug => $title ) {
 
@@ -353,13 +360,23 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 			$this->assertStringContainsString( $needle, Asset_Manager::get_font_css( $slug ) );
 			$this->assertStringContainsString( $needle, Asset_Manager::get_editor_font_css( $slug ) );
 
-			$this->assertSame(
-				str_contains( Asset_Manager::get_font_css( $slug ), 'common-ligatures contextual' ),
-				str_contains( Asset_Manager::get_editor_font_css( $slug ), 'common-ligatures contextual' ),
-				sprintf( '%s asks for ligatures in one place and not the other.', $slug )
+			$this->assertStringNotContainsString(
+				'ligatures',
+				Asset_Manager::get_editor_font_css( $slug ),
+				sprintf( 'The editor must say nothing about ligatures, and it does for %s.', $slug )
 			);
 
 		}
+
+		/*
+		 * The control. Without this the case above would go on passing if the front end
+		 * quietly stopped asking for ligatures too.
+		 */
+		$this->assertStringContainsString(
+			'--igsh-code-ligatures',
+			Asset_Manager::get_font_css( 'fira-code' ),
+			'The front end still asks for ligatures where the family has them.'
+		);
 
 	}
 

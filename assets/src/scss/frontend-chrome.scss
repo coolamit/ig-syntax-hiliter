@@ -27,6 +27,15 @@
  * Only a snippet which was given a label is wrapped at all, so every other
  * code box is the bare `pre` it always was.
  */
+
+/*
+ * What a code box is set in when no font has been chosen, which is the
+ * default. It is the fallback of a custom property rather than a value of its
+ * own, so that the font setting has only a value to supply and never a rule.
+ */
+/* stylelint-disable-next-line value-keyword-case -- Font names. */
+$igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+
 .igsh-code-box {
 	max-width: 100%;
 }
@@ -102,7 +111,31 @@ pre[id^="ig-sh-"][class*="language-"] {
 
 pre[id^="ig-sh-"] > code {
 	display: block;
-	font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 	white-space: pre;
 	word-wrap: normal;
+}
+
+/*
+ * How the code is set. The three values come from the font setting, and PHP
+ * sends nothing but the values — the selectors and the fallbacks are here,
+ * which is what keeps adding a font to one file and keeps the cascade
+ * readable in the place a reader would look for it.
+ *
+ * The token spans are claimed as well as the `code` element, for one theme out
+ * of the 43: `prism-z-touch` carries `pre[class*="language-"] * { font-family:
+ * monospace }`, which otherwise wins on every coloured token and leaves a
+ * reader looking at two fonts in one box.
+ *
+ * **`inherit` is the fallback for the last two, deliberately.** It is exactly
+ * what happens when nothing declares them, so a site which has chosen no font
+ * — the default — renders as it always has, and a theme's own letter spacing
+ * is left alone. A chosen font with ligatures sets the letter spacing to zero,
+ * because a non-zero one suppresses ligatures outright and a theme setting it
+ * on its article text is enough to do that.
+ */
+pre[id^="ig-sh-"] > code,
+pre[id^="ig-sh-"] > code * {
+	font-family: var(--igsh-code-font, #{$igsh-code-font});
+	font-variant-ligatures: var(--igsh-code-ligatures, inherit);
+	letter-spacing: var(--igsh-code-letter-spacing, inherit);
 }

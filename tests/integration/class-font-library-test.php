@@ -217,7 +217,14 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$rules = $this->_inline_chrome_rules();
 
 		$this->assertStringContainsString( '"JetBrains Mono"', $rules );
-		$this->assertStringContainsString( Renderer::ID_PREFIX, $rules );
+		$this->assertStringContainsString( '--igsh-code-font', $rules );
+
+		/*
+		 * Values and not a rule: the selectors live in the stylesheet, which is what
+		 * keeps the cascade readable and adding a font a one file job.
+		 */
+		$this->assertStringNotContainsString( Renderer::ID_PREFIX, $rules );
+		$this->assertStringStartsWith( ':root {', $rules );
 
 	}
 
@@ -308,7 +315,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
-			if ( ! str_contains( Asset_Manager::get_font_css( $slug ), 'font-variant-ligatures' ) ) {
+			if ( ! str_contains( Asset_Manager::get_font_css( $slug ), '--igsh-code-ligatures' ) ) {
 				continue;
 			}
 
@@ -319,6 +326,53 @@ class Font_Library_Test extends WP_UnitTestCase {
 		sort( $asking );
 
 		$this->assertSame( static::FONTS_WITH_LIGATURES, $asking );
+
+	}
+
+	/**
+	 * A font which asks for ligatures also zeroes the letter spacing, and one which
+	 * does not asks for no letter spacing at all.
+	 *
+	 * The two belong together and neither is any use alone. **A non-zero
+	 * `letter-spacing` suppresses ligatures outright** — specified behaviour, not a
+	 * quirk — the property is inherited, and a theme setting it on its article text is
+	 * enough to switch off the ligatures a site owner picked the font for. That is
+	 * exactly what happened: `letter-spacing: 0.013rem` on a theme's `.entry-content`
+	 * meant the settings preview ligated and the published post did not.
+	 *
+	 * The other half matters as much. A site running one of the seven fonts without
+	 * ligatures, or no font at all, keeps whatever letter spacing its theme asks for —
+	 * this plugin has no business changing how a theme sets type where nothing of ours
+	 * depends on it.
+	 *
+	 * @return void
+	 */
+	public function test_the_letter_spacing_is_zeroed_for_ligature_fonts_and_no_others(): void {
+
+		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
+
+			$css       = Asset_Manager::get_font_css( $slug );
+			$ligatures = in_array( $slug, static::FONTS_WITH_LIGATURES, true );
+
+			if ( $ligatures ) {
+
+				$this->assertStringContainsString(
+					'--igsh-code-letter-spacing: 0',
+					$css,
+					sprintf( '%s draws ligatures, so it has to zero the letter spacing.', $slug )
+				);
+
+				continue;
+
+			}
+
+			$this->assertStringNotContainsString(
+				'--igsh-code-letter-spacing',
+				$css,
+				sprintf( '%s has no ligatures, so it has no business touching the letter spacing.', $slug )
+			);
+
+		}
 
 	}
 

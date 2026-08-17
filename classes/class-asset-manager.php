@@ -159,6 +159,17 @@ class Asset_Manager {
 	protected bool $_hooked = false;
 
 	/**
+	 * Whether the front end's font values have been added already.
+	 *
+	 * The decision is taken twice during `wp_footer`, and the enqueue has to run both
+	 * times because the second pass is what catches a snippet rendered from the footer
+	 * itself. Adding the values twice only prints them twice.
+	 *
+	 * @var bool
+	 */
+	protected bool $_font_styled = false;
+
+	/**
 	 * Whether the editor's font rule has been added already.
 	 *
 	 * @var bool
@@ -677,18 +688,14 @@ class Asset_Manager {
 	/**
 	 * Method to get the CSS which puts a font on the code boxes.
 	 *
-	 * Three things about the rule this returns, and all three are load-bearing:
+	 * **Values and never a rule.** The selectors and the fallbacks live in
+	 * `frontend-chrome.scss`, which reads these custom properties; all that is not
+	 * known until a site owner has picked a font is what the values are. Keeping it
+	 * that way means the cascade is legible where a reader of CSS would look for it,
+	 * and adding a font is still an edit to `_get_font_titles()` and nothing else.
 	 *
-	 * - It is added inline against the chrome stylesheet rather than written into
-	 *   `frontend-chrome.scss`, because the family name is not known until a site owner
-	 *   picks one, and because the "no font" case has to leave that stylesheet's own
-	 *   rule exactly as it is. An inline style prints after the stylesheet it belongs
-	 *   to, so the same specificity is enough and nothing needs `!important`.
-	 * - It claims the descendants of the `code` element as well as the element itself,
-	 *   for one theme out of the 43. `prism-z-touch` carries
-	 *   `pre[class*="language-"] * { font-family: monospace }`, which otherwise wins on
-	 *   every coloured token inside the box and leaves a reader looking at two fonts.
-	 * - It asks for ligatures only where the family has them. See `_get_font_titles()`.
+	 * The properties are set on `:root` because they are read on the code element and
+	 * on every token span inside it, and a custom property is inherited.
 	 *
 	 * @param string $slug Font slug.
 	 *
@@ -702,22 +709,24 @@ class Asset_Manager {
 			return '';
 		}
 
-		return sprintf(
-			'pre[id^="%1$s"] > code, pre[id^="%1$s"] > code * { %2$s }',
-			Renderer::ID_PREFIX,
-			$declarations
-		);
+		return sprintf( ':root { %s }', $declarations );
 
 	}    //end get_font_css()
 
 	/**
-	 * Method to get the declarations which describe a font.
+	 * Method to get the custom property values which describe a font.
 	 *
-	 * The family and, where the family really has the lookups for them, the ligatures.
-	 * Kept apart from the selectors it is wrapped in because the same font has to be
-	 * put on two different elements — the rendered code box and the textarea the block
-	 * is edited in — and a reader of one of those rules should never have to wonder
-	 * whether the other one says something different about the same font.
+	 * The family, and for a family which really has the lookups for them, the
+	 * ligatures — plus the one thing that has to go with ligatures and would look
+	 * arbitrary anywhere else:
+	 *
+	 * **A non-zero `letter-spacing` suppresses ligatures outright.** That is specified
+	 * behaviour and not a quirk, the property is inherited, and a theme setting it on
+	 * its article text — `letter-spacing: 0.013rem` on `.entry-content` is a real
+	 * example — reaches inside the code box and silently switches off the ligatures a
+	 * site owner chose the font for. So a ligature font zeroes it and nothing else
+	 * does: a site running one of the other seven, or no font at all, keeps whatever
+	 * its theme asks for.
 	 *
 	 * @param string $slug Font slug.
 	 *
@@ -732,13 +741,13 @@ class Asset_Manager {
 		}
 
 		$declarations = sprintf(
-			'font-family: "%s", %s;',
+			'--igsh-code-font: "%s", %s;',
 			$fonts[ $slug ]['title'],
 			static::FONT_STACK
 		);
 
 		if ( ! empty( $fonts[ $slug ]['ligatures'] ) ) {
-			$declarations .= ' font-variant-ligatures: common-ligatures contextual;';
+			$declarations .= ' --igsh-code-ligatures: common-ligatures contextual; --igsh-code-letter-spacing: 0;';
 		}
 
 		return $declarations;
@@ -753,10 +762,18 @@ class Asset_Manager {
 	 * rule can reach, and inside the editor's iframe this rule is enqueued *before* the
 	 * block's own stylesheet — core fires `enqueue_block_assets` first and enqueues the
 	 * blocks' editor styles second. Setting the same property would therefore lose.
-	 * Nothing else declares these two variables, so there is no cascade to win.
+	 * Nothing else declares that variable, so there is no cascade to win.
 	 *
 	 * The block wrapper is the whole of the selector, so nothing else a site owner is
 	 * editing can be reached by it.
+	 *
+	 * **The family and nothing else. Ligatures are never asked for here**, and
+	 * `editor.scss` switches them off outright: the block is edited in a textarea,
+	 * which is where somebody counts characters and puts a caret between them, and a
+	 * caret cannot sit inside one glyph standing for two. Typing `__construct` and
+	 * reading back what looks like ` _construct` is alarming enough to make an author
+	 * correct code which was never wrong. The rendered box and the preview keep their
+	 * ligatures, because nobody edits those.
 	 *
 	 * @param string $slug Font slug.
 	 *
@@ -770,13 +787,10 @@ class Asset_Manager {
 			return '';
 		}
 
-		$ligatures = ( ! empty( $fonts[ $slug ]['ligatures'] ) ) ? 'common-ligatures contextual' : 'normal';
-
 		return sprintf(
-			'.wp-block-igsyntax-hiliter-code { --igsh-editor-font: "%1$s", %2$s; --igsh-editor-ligatures: %3$s; }',
+			'.wp-block-igsyntax-hiliter-code { --igsh-editor-font: "%1$s", %2$s; }',
 			$fonts[ $slug ]['title'],
-			static::FONT_STACK,
-			$ligatures
+			static::FONT_STACK
 		);
 
 	}    //end get_editor_font_css()
@@ -841,6 +855,12 @@ class Asset_Manager {
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Deliberate. This URL is not this plugin's, so a version of this plugin's on the end of it is meaningless there and a second cache key for the same file.
 		);
+
+		if ( $this->_font_styled ) {
+			return;
+		}
+
+		$this->_font_styled = true;
 
 		wp_add_inline_style( static::_handle( 'chrome' ), static::get_font_css( $font ) );
 

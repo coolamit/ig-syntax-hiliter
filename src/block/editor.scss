@@ -30,7 +30,19 @@ $igsh-editor-font: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
 		background: #f6f7f7;
 		color: #1e1e1e;
 		font-family: var(--igsh-editor-font, #{$igsh-editor-font});
-		font-variant-ligatures: var(--igsh-editor-ligatures, normal);
+
+		/*
+		 * Never ligatures here, whatever font is chosen. This is a textarea:
+		 * it is where an author counts characters and puts a caret between
+		 * them, and a caret cannot sit inside one glyph standing for two.
+		 * Typing `__construct` and reading back what looks like ` _construct`
+		 * is alarming enough to make somebody correct code which was never
+		 * wrong. `none` covers contextual alternates as well as common
+		 * ligatures, and `->` and `=>` are contextual.
+		 *
+		 * The rendered code box and the settings preview keep theirs.
+		 */
+		font-variant-ligatures: none;
 		font-size: 0.85rem;
 		line-height: 1.6;
 		tab-size: 4;

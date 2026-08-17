@@ -458,6 +458,65 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 	}
 
+	/**
+	 * The stylesheet reads every custom property the font setting sets.
+	 *
+	 * The two halves are in different files on purpose — the selectors here, the values
+	 * from PHP — which is what keeps adding a font a one file job and the cascade
+	 * legible. The cost of that split is that either half can stop referring to the
+	 * other without a word: a rule which stopped reading a variable would simply draw
+	 * the fallback for ever, and a site owner would report that picking a font does
+	 * nothing.
+	 *
+	 * @return void
+	 */
+	public function test_the_stylesheet_reads_what_the_font_setting_sets(): void {
+
+		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
+
+		foreach ( [ '--igsh-code-font', '--igsh-code-ligatures', '--igsh-code-letter-spacing' ] as $property ) {
+
+			$this->assertStringContainsString(
+				sprintf( 'var(%s', $property ),
+				$css,
+				sprintf( 'Nothing in the stylesheet reads %s, so setting it does nothing.', $property )
+			);
+
+		}
+
+	}
+
+	/**
+	 * The font's values are printed once, however many times the assets are decided.
+	 *
+	 * The manager decides at `wp_footer` 1 and again at 19, and it has to enqueue on
+	 * both passes — the second is what catches a snippet rendered from the footer
+	 * itself. Adding the inline values twice only prints them twice, which is what the
+	 * front end did until this was guarded.
+	 *
+	 * @return void
+	 */
+	public function test_the_font_values_are_printed_once(): void {
+
+		$option = Option::get_instance();
+
+		$option->save( 'font', 'fira-code' );
+
+		try {
+
+			$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+			$rules = wp_styles()->get_data( 'ig-syntax-hiliter-chrome', 'after' );
+			$rules = ( is_array( $rules ) ) ? $rules : [];
+
+			$this->assertCount( 1, $rules, 'The font values are added once, not once per footer pass.' );
+
+		} finally {
+			( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+		}
+
+	}
+
 }    //end of class
 
 
