@@ -5,6 +5,19 @@
  * it has to look like code rather than like prose.
  */
 
+/*
+ * What the textarea is set in when the font setting is on "None", which is the
+ * default. It is the fallback of a custom property rather than a value of its
+ * own, so that the rule the plugin adds for a chosen font can win without any
+ * specificity of its own — inside the editor's iframe that rule is loaded
+ * before this stylesheet is, so a plain `font-family` there would lose.
+ *
+ * The disable below is because these are font names, which the linter can only
+ * tell from inside a `font-family` property and this is not one.
+ */
+/* stylelint-disable-next-line value-keyword-case -- Font names. */
+$igsh-editor-font: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
+
 .wp-block-igsyntax-hiliter-code {
 
 	.igsh-code-block__input {
@@ -16,7 +29,8 @@
 		border-radius: 2px;
 		background: #f6f7f7;
 		color: #1e1e1e;
-		font-family: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
+		font-family: var(--igsh-editor-font, #{$igsh-editor-font});
+		font-variant-ligatures: var(--igsh-editor-ligatures, normal);
 		font-size: 0.85rem;
 		line-height: 1.6;
 		tab-size: 4;

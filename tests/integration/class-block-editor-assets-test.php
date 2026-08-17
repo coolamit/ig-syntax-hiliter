@@ -9,9 +9,12 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
+use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Legacy_Map;
+use iG\Syntax_Hiliter\Option;
+use ReflectionProperty;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
@@ -205,6 +208,184 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		$this->assertIsArray( $data, 'What was printed is readable JSON.' );
 
 		return $data;
+
+	}
+
+	/**
+	 * Method to put the asset state back and run the editor's asset hook.
+	 *
+	 * @param int $times How many times to fire the hook.
+	 *
+	 * @return void
+	 */
+	protected function _fire_block_assets( int $times = 1 ): void {
+
+		for ( $run = 0; $run < $times; $run++ ) {
+			Block::get_instance()->enqueue_editor_font();
+		}
+
+	}
+
+	/**
+	 * Method to read the rules added inline against the editor font stylesheet.
+	 *
+	 * @return string
+	 */
+	protected function _editor_font_rules(): string {
+
+		$rules = wp_styles()->get_data( 'ig-syntax-hiliter-editor-font', 'after' );
+
+		if ( ! is_array( $rules ) ) {
+			return '';
+		}
+
+		return implode( '', $rules );
+
+	}
+
+	/**
+	 * Method to forget the editor font, so each case starts where a request does.
+	 *
+	 * @return void
+	 */
+	protected function _reset_editor_font(): void {
+
+		wp_dequeue_style( 'ig-syntax-hiliter-editor-font' );
+		wp_deregister_style( 'ig-syntax-hiliter-editor-font' );
+
+		( new ReflectionProperty( Asset_Manager::class, '_editor_font_styled' ) )
+			->setValue( Asset_Manager::get_instance(), false );
+
+		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+
+	}
+
+	/**
+	 * The editor asks for no font unless one is chosen.
+	 *
+	 * The same promise the front end makes, and it has to be kept on a screen a site
+	 * owner opens far more often than they open their own posts.
+	 *
+	 * @return void
+	 */
+	public function test_the_editor_fetches_no_font_unless_one_is_chosen(): void {
+
+		$this->_reset_editor_font();
+
+		set_current_screen( 'post' );
+
+		try {
+
+			$this->_fire_block_assets();
+
+			$this->assertArrayNotHasKey( 'ig-syntax-hiliter-editor-font', wp_styles()->registered );
+			$this->assertSame( '', $this->_editor_font_rules() );
+
+		} finally {
+			$this->_reset_editor_font();
+
+			set_current_screen( 'front' );
+		}
+
+	}
+
+	/**
+	 * A chosen font reaches the editor, and reaches nothing but this plugin's block.
+	 *
+	 * The rule sets two custom properties on the block wrapper and says nothing else,
+	 * which is what keeps it away from every other block on the screen. Firing the
+	 * hook twice is not academic: core fires it a second time while it builds the
+	 * editor iframe, and the two passes share the registered style objects.
+	 *
+	 * @return void
+	 */
+	public function test_a_chosen_font_reaches_the_block_and_nothing_else(): void {
+
+		$this->_reset_editor_font();
+
+		set_current_screen( 'post' );
+
+		Option::get_instance()->save( 'font', 'fira-code' );
+
+		try {
+
+			$this->_fire_block_assets( 2 );
+
+			$style = wp_styles()->registered['ig-syntax-hiliter-editor-font'] ?? null;
+
+			$this->assertNotNull( $style, 'The webfont stylesheet is registered for the editor.' );
+			$this->assertSame( Asset_Manager::get_font_url( 'fira-code' ), (string) $style->src );
+
+			$rules = $this->_editor_font_rules();
+
+			$this->assertSame(
+				Asset_Manager::get_editor_font_css( 'fira-code' ),
+				$rules,
+				'The rule is added once, however many times the hook fires.'
+			);
+
+			$this->assertStringStartsWith( '.wp-block-igsyntax-hiliter-code {', $rules );
+			$this->assertStringContainsString( '--igsh-editor-font: "Fira Code"', $rules );
+			$this->assertStringContainsString( '--igsh-editor-ligatures: common-ligatures contextual', $rules );
+
+		} finally {
+			$this->_reset_editor_font();
+
+			set_current_screen( 'front' );
+		}
+
+	}
+
+	/**
+	 * The editor and the front end name the same family for the same font.
+	 *
+	 * Two rules describing one font is two chances to disagree, so both are built from
+	 * the same declarations. This is what fails if somebody edits one of them alone.
+	 *
+	 * @return void
+	 */
+	public function test_the_editor_and_the_front_end_cannot_name_different_fonts(): void {
+
+		foreach ( Asset_Manager::get_fonts() as $slug => $title ) {
+
+			$needle = sprintf( '"%s", %s', $title, Asset_Manager::FONT_STACK );
+
+			$this->assertStringContainsString( $needle, Asset_Manager::get_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Asset_Manager::get_editor_font_css( $slug ) );
+
+			$this->assertSame(
+				str_contains( Asset_Manager::get_font_css( $slug ), 'common-ligatures contextual' ),
+				str_contains( Asset_Manager::get_editor_font_css( $slug ), 'common-ligatures contextual' ),
+				sprintf( '%s asks for ligatures in one place and not the other.', $slug )
+			);
+
+		}
+
+	}
+
+	/**
+	 * The front end never loads the editor's font stylesheet.
+	 *
+	 * `enqueue_block_assets` fires on the front end too, and the plugin's whole rule
+	 * about assets is that a page carrying no code box downloads nothing of ours.
+	 *
+	 * @return void
+	 */
+	public function test_the_front_end_is_left_to_its_own_asset_decision(): void {
+
+		$this->_reset_editor_font();
+
+		Option::get_instance()->save( 'font', 'fira-code' );
+
+		try {
+
+			$this->_fire_block_assets();
+
+			$this->assertArrayNotHasKey( 'ig-syntax-hiliter-editor-font', wp_styles()->registered );
+
+		} finally {
+			$this->_reset_editor_font();
+		}
 
 	}
 

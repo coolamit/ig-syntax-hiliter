@@ -91,7 +91,35 @@ class Block {
 
 		add_action( 'enqueue_block_editor_assets', [ $this, 'add_editor_data' ] );
 
+		/*
+		 * `enqueue_block_assets` and not `enqueue_block_editor_assets`, because the
+		 * editor canvas is an iframe and only the former is fired again while core
+		 * builds what goes inside it. On admin it runs on block editor screens alone.
+		 */
+		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_font' ] );
+
 	}    //end register_hooks()
+
+	/**
+	 * Method to put the chosen font on the block while it is being edited.
+	 *
+	 * Only in the editor. `enqueue_block_assets` fires on the front end as well, where
+	 * the asset manager decides during `wp_footer` and loads nothing at all until a
+	 * code box has actually been rendered — a rule this must not go around.
+	 *
+	 * @return void
+	 */
+	public function enqueue_editor_font(): void {
+
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		Asset_Manager::get_instance()->enqueue_for_editor(
+			(string) Option::get_instance()->get( 'font' )
+		);
+
+	}    //end enqueue_editor_font()
 
 	/**
 	 * Method to register the block from its built metadata.

@@ -159,6 +159,13 @@ class Asset_Manager {
 	protected bool $_hooked = false;
 
 	/**
+	 * Whether the editor's font rule has been added already.
+	 *
+	 * @var bool
+	 */
+	protected bool $_editor_font_styled = false;
+
+	/**
 	 * Method to get the shared asset manager.
 	 *
 	 * @return \iG\Syntax_Hiliter\Asset_Manager
@@ -689,6 +696,35 @@ class Asset_Manager {
 	 */
 	public static function get_font_css( string $slug ): string {
 
+		$declarations = static::_get_font_declarations( $slug );
+
+		if ( '' === $declarations ) {
+			return '';
+		}
+
+		return sprintf(
+			'pre[id^="%1$s"] > code, pre[id^="%1$s"] > code * { %2$s }',
+			Renderer::ID_PREFIX,
+			$declarations
+		);
+
+	}    //end get_font_css()
+
+	/**
+	 * Method to get the declarations which describe a font.
+	 *
+	 * The family and, where the family really has the lookups for them, the ligatures.
+	 * Kept apart from the selectors it is wrapped in because the same font has to be
+	 * put on two different elements — the rendered code box and the textarea the block
+	 * is edited in — and a reader of one of those rules should never have to wonder
+	 * whether the other one says something different about the same font.
+	 *
+	 * @param string $slug Font slug.
+	 *
+	 * @return string Declarations, or an empty string for a font this plugin does not offer.
+	 */
+	protected static function _get_font_declarations( string $slug ): string {
+
 		$fonts = static::_get_font_titles();
 
 		if ( ! isset( $fonts[ $slug ] ) ) {
@@ -705,13 +741,45 @@ class Asset_Manager {
 			$declarations .= ' font-variant-ligatures: common-ligatures contextual;';
 		}
 
+		return $declarations;
+
+	}    //end _get_font_declarations()
+
+	/**
+	 * Method to get the CSS which puts a font on the block being edited.
+	 *
+	 * **Custom properties rather than the properties themselves, deliberately.**
+	 * `editor.scss` already sets a font on that textarea, at the same specificity this
+	 * rule can reach, and inside the editor's iframe this rule is enqueued *before* the
+	 * block's own stylesheet — core fires `enqueue_block_assets` first and enqueues the
+	 * blocks' editor styles second. Setting the same property would therefore lose.
+	 * Nothing else declares these two variables, so there is no cascade to win.
+	 *
+	 * The block wrapper is the whole of the selector, so nothing else a site owner is
+	 * editing can be reached by it.
+	 *
+	 * @param string $slug Font slug.
+	 *
+	 * @return string CSS, or an empty string where no font is to be loaded.
+	 */
+	public static function get_editor_font_css( string $slug ): string {
+
+		$fonts = static::_get_font_titles();
+
+		if ( ! isset( $fonts[ $slug ] ) ) {
+			return '';
+		}
+
+		$ligatures = ( ! empty( $fonts[ $slug ]['ligatures'] ) ) ? 'common-ligatures contextual' : 'normal';
+
 		return sprintf(
-			'pre[id^="%1$s"] > code, pre[id^="%1$s"] > code * { %2$s }',
-			Renderer::ID_PREFIX,
-			$declarations
+			'.wp-block-igsyntax-hiliter-code { --igsh-editor-font: "%1$s", %2$s; --igsh-editor-ligatures: %3$s; }',
+			$fonts[ $slug ]['title'],
+			static::FONT_STACK,
+			$ligatures
 		);
 
-	}    //end get_font_css()
+	}    //end get_editor_font_css()
 
 	/**
 	 * Method to enqueue the chosen theme stylesheet, and the plugin's own chrome.
@@ -777,6 +845,49 @@ class Asset_Manager {
 		wp_add_inline_style( static::_handle( 'chrome' ), static::get_font_css( $font ) );
 
 	}    //end _enqueue_font()
+
+	/**
+	 * Method to enqueue the chosen webfont for the block editor.
+	 *
+	 * **The editor canvas is an iframe, and a font loaded by the page around it does
+	 * not exist inside it** — each document keeps its own fonts. So the stylesheet has
+	 * to be enqueued from `enqueue_block_assets`, which core fires again while it
+	 * builds the iframe's own markup, and not from `enqueue_block_editor_assets`,
+	 * which it does not.
+	 *
+	 * That is also why the inline rule is guarded and the enqueue is not: this runs
+	 * twice in an editor request, once for the page and once for the iframe, and the
+	 * two share the registered style objects but keep separate queues. Adding the rule
+	 * both times would print it twice.
+	 *
+	 * @param string $font Font setting value.
+	 *
+	 * @return void
+	 */
+	public function enqueue_for_editor( string $font ): void {
+
+		$font = static::_resolve_font( $font );
+
+		if ( static::FONT_NONE === $font ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			static::_handle( 'editor-font' ),
+			static::get_font_url( $font ),
+			[],
+			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Deliberate, for the reason `_enqueue_font()` gives.
+		);
+
+		if ( $this->_editor_font_styled ) {
+			return;
+		}
+
+		$this->_editor_font_styled = true;
+
+		wp_add_inline_style( static::_handle( 'editor-font' ), static::get_editor_font_css( $font ) );
+
+	}    //end enqueue_for_editor()
 
 	/**
 	 * Method to enqueue the highlighting engine and its language loader.
