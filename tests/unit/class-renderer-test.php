@@ -81,7 +81,7 @@ class Renderer_Test extends TestCase {
 
 		$this->assertSame(
 			'<div class="igsh-code-box"><span class="igsh-code-box__file">index.php</span>'
-			. '<pre id="ig-sh-1" class="language-php line-numbers" data-start="5" data-line="2,4-6" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>'
+			. '<pre id="ig-sh-1" class="language-php line-numbers" data-start="5" data-line-offset="4" data-line="2,4-6" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>'
 			. '</div>',
 			$markup
 		);
@@ -119,6 +119,7 @@ class Renderer_Test extends TestCase {
 		$this->assertStringNotContainsString( 'line-numbers', $markup );
 		$this->assertStringNotContainsString( 'data-start', $markup );
 		$this->assertStringNotContainsString( 'data-line=', $markup );
+		$this->assertStringNotContainsString( 'data-line-offset', $markup );
 		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
 
 		// The optimizer opt outs are not optional.
@@ -615,6 +616,71 @@ class Renderer_Test extends TestCase {
 		);
 
 		$this->assertSame( $from_shortcode, $from_block );
+
+	}
+
+	/**
+	 * A snippet numbered from anywhere but line 1 tells the highlighter so.
+	 *
+	 * **`data-line-offset` is not a second spelling of `data-start`.** They are read by
+	 * two different Prism plugins: the line numbers plugin reads `data-start` to label
+	 * the gutter, and the line highlight plugin reads this one to learn that the
+	 * numbers in `data-line` are the ones on screen rather than the code's own.
+	 *
+	 * Without it a range is measured against the number of lines the code physically
+	 * has. A snippet of 11 lines displayed as 5 to 15 had `11-13` clamped back to
+	 * `11-11`, so a three line range highlighted one line — and with line numbers
+	 * switched off the same plugin takes an arithmetic branch and draws the band
+	 * `first_line - 1` lines too low.
+	 *
+	 * This case is here because the attribute looks redundant beside `data-start` and
+	 * reads like something to tidy away.
+	 *
+	 * @return void
+	 */
+	public function test_a_snippet_starting_elsewhere_tells_the_highlighter_the_offset(): void {
+
+		$markup = $this->renderer->render_snippet(
+			new Snippet( 'echo 1;', 'php', true, 5, [ 11, 12, 13 ] )
+		);
+
+		$this->assertStringContainsString( 'data-start="5"', $markup );
+		$this->assertStringContainsString( 'data-line-offset="4"', $markup );
+		$this->assertStringContainsString( 'data-line="11-13"', $markup );
+
+	}
+
+	/**
+	 * The offset is never zero and never negative.
+	 *
+	 * It is `first_line - 1`, so it is only ever right because `first_line` cannot be
+	 * below 1. `Snippet` clamps it in the constructor, which is what covers every
+	 * caller — the block, the shortcode, WP-CLI, block markup written by hand, and an
+	 * attribute stored by an older version. A snippet clamped back to line 1 needs
+	 * neither attribute and gets neither.
+	 *
+	 * Asserted rather than left to a reading of the value object, because a second
+	 * attribute now rests on that clamp.
+	 *
+	 * @return void
+	 */
+	public function test_a_first_line_below_one_produces_no_offset(): void {
+
+		foreach ( [ 0, -7 ] as $first_line ) {
+
+			$markup = $this->renderer->render_snippet(
+				new Snippet( 'echo 1;', 'php', true, $first_line, [ 2 ] )
+			);
+
+			$this->assertStringNotContainsString(
+				'data-line-offset',
+				$markup,
+				sprintf( 'A first line of %d is clamped to 1, so there is no offset to state.', $first_line )
+			);
+
+			$this->assertStringNotContainsString( 'data-start', $markup );
+
+		}
 
 	}
 

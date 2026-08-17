@@ -117,7 +117,25 @@ class Renderer {
 		];
 
 		if ( 1 !== $snippet->first_line ) {
+
 			$attributes['data-start'] = (string) $snippet->first_line;
+
+			/*
+			 * The same fact told to the other plugin, and it is not redundant.
+			 * `data-start` is what the line numbers plugin reads; the line highlight
+			 * plugin reads this, and without it a highlight range is measured against
+			 * the number of lines the code physically has rather than the numbers on
+			 * screen. A snippet of 11 lines shown as 5 to 15 has `11-13` clamped back
+			 * to `11-11`, so a three line range highlights one line. With line numbers
+			 * switched off the same plugin takes an arithmetic branch instead and draws
+			 * the band `first_line - 1` lines too low.
+			 *
+			 * `first_line` cannot be below 1 — `Snippet` clamps it in the constructor,
+			 * so every caller is covered — which is what keeps this from ever being
+			 * zero or negative.
+			 */
+			$attributes['data-line-offset'] = (string) ( $snippet->first_line - 1 );
+
 		}
 
 		if ( ! empty( $snippet->highlight_lines ) ) {
