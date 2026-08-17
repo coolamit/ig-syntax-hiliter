@@ -47,16 +47,47 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	const MIN_WP_VERSION_REQUIRED = '6.9';
 
 	/**
-	 * Constructor.
+	 * PHP version this Gatekeeper judges. Untyped: typed properties are PHP 7.4
+	 * and up, and this file is parsed by whatever PHP the site is running.
+	 *
+	 * @var string
 	 */
-	public function __construct() {
+	private $_php_version;
 
-		if ( self::is_environment_supported() ) {
+	/**
+	 * WordPress version this Gatekeeper judges.
+	 *
+	 * @var string
+	 */
+	private $_wp_version;
 
-			$this->_load_plugin();
+	/**
+	 * Constructor.
+	 *
+	 * Reads the environment and does nothing else. **It must stay that way.** The
+	 * work is in run(), which is what lets a test build one of these and ask it
+	 * questions — including about a PHP or a WordPress the test suite is not
+	 * running on, which is the whole point of the class and cannot be arranged any
+	 * other way.
+	 *
+	 * The WordPress version is read straight off the global that WordPress sets in
+	 * `wp-includes/version.php`, so that no WordPress API needs to exist for the
+	 * check to work. An unreadable one is `0`, so an unknown WordPress is refused
+	 * rather than waved through.
+	 *
+	 * @param string $php_version Optional PHP version to judge instead of this one.
+	 * @param string $wp_version  Optional WordPress version to judge instead of this one.
+	 */
+	public function __construct( $php_version = null, $wp_version = null ) {
 
+		$this->_php_version = ( null === $php_version ) ? strval( phpversion() ) : strval( $php_version );
+
+		if ( null !== $wp_version ) {
+			$this->_wp_version = strval( $wp_version );
+		} elseif ( isset( $GLOBALS['wp_version'] ) ) {
+			$this->_wp_version = strval( $GLOBALS['wp_version'] );
 		} else {
-			add_action( 'admin_notices', [ $this, 'show_admin_notice' ] );
+			$this->_wp_version = '0';
 		}
 
 	}    //end __construct()
@@ -64,51 +95,64 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	/**
 	 * Factory method to initialize the class.
 	 *
+	 * The one static in this class, and the only one wanted: everything else is
+	 * asked of an object. `new self()` rather than late static binding, because
+	 * the class is final and so there is no other class it could ever resolve to.
+	 *
 	 * @return iG_Syntax_Hiliter_Gatekeeper
 	 */
 	public static function activate() {
 
-		$class = get_called_class();
+		$gatekeeper = new self();
 
-		return new $class();
+		$gatekeeper->run();
+
+		return $gatekeeper;
 
 	}    //end activate()
 
 	/**
-	 * Checks the environment the plugin has actually been loaded into.
+	 * Loads the plugin, or arranges to say why it was not loaded.
+	 *
+	 * Everything in this class which changes anything is here, and nothing else in
+	 * it changes anything. That is what makes the rest of it safe to call from a
+	 * test.
+	 *
+	 * @return void
+	 */
+	public function run() {
+
+		if ( $this->is_environment_supported() ) {
+
+			$this->_load_plugin();
+
+			return;
+
+		}
+
+		add_action( 'admin_notices', [ $this, 'show_admin_notice' ] );
+
+	}    //end run()
+
+	/**
+	 * Checks the versions this Gatekeeper was built with against the plugin's
+	 * minimum requirements.
 	 *
 	 * @return bool Returns TRUE if the minimum requirements are met, else FALSE.
 	 */
-	public static function is_environment_supported() {
+	public function is_environment_supported() {
 
-		return self::meets_requirements( self::get_php_version(), self::get_wp_version() );
-
-	}    //end is_environment_supported()
-
-	/**
-	 * Checks a pair of versions against the plugin's minimum requirements.
-	 *
-	 * Kept free of any environment lookup of its own so that the comparison can
-	 * be exercised directly by the test suite, which cannot change the PHP or
-	 * WordPress version it is running on.
-	 *
-	 * @param string $php_version PHP version to check.
-	 * @param string $wp_version  WordPress version to check.
-	 * @return bool Returns TRUE if both versions are supported, else FALSE.
-	 */
-	public static function meets_requirements( $php_version, $wp_version ) {
-
-		if ( ! self::is_version_at_least( $php_version, self::MIN_PHP_VERSION_REQUIRED ) ) {
+		if ( ! $this->_is_version_at_least( $this->_php_version, self::MIN_PHP_VERSION_REQUIRED ) ) {
 			return false;
 		}
 
-		if ( ! self::is_version_at_least( $wp_version, self::MIN_WP_VERSION_REQUIRED ) ) {
+		if ( ! $this->_is_version_at_least( $this->_wp_version, self::MIN_WP_VERSION_REQUIRED ) ) {
 			return false;
 		}
 
 		return true;
 
-	}    //end meets_requirements()
+	}    //end is_environment_supported()
 
 	/**
 	 * Compares two versions, ignoring any pre release suffix on either.
@@ -117,11 +161,11 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 * @param string $minimum Lowest acceptable version.
 	 * @return bool Returns TRUE if $version is at least $minimum, else FALSE.
 	 */
-	public static function is_version_at_least( $version, $minimum ) {
+	private function _is_version_at_least( $version, $minimum ) {
 
-		return version_compare( self::normalize_version( $version ), self::normalize_version( $minimum ), '>=' );
+		return version_compare( $this->_normalize_version( $version ), $this->_normalize_version( $minimum ), '>=' );
 
-	}    //end is_version_at_least()
+	}    //end _is_version_at_least()
 
 	/**
 	 * Reduces a version to three numeric components.
@@ -135,7 +179,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 * @param string $version Version to normalize.
 	 * @return string Version as three dot separated integers.
 	 */
-	public static function normalize_version( $version ) {
+	private function _normalize_version( $version ) {
 
 		$version = preg_replace( '/[^0-9.].*$/', '', trim( strval( $version ) ) );
 		$version = trim( strval( $version ), '.' );
@@ -148,36 +192,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		return implode( '.', array_map( 'intval', $parts ) );
 
-	}    //end normalize_version()
-
-	/**
-	 * Returns the PHP version in use.
-	 *
-	 * @return string
-	 */
-	public static function get_php_version() {
-
-		return strval( phpversion() );
-
-	}    //end get_php_version()
-
-	/**
-	 * Returns the WordPress version in use.
-	 *
-	 * Read straight off the global that WordPress sets in `wp-includes/version.php`,
-	 * so that no WordPress API needs to exist for the check to work.
-	 *
-	 * @return string
-	 */
-	public static function get_wp_version() {
-
-		if ( isset( $GLOBALS['wp_version'] ) ) {
-			return strval( $GLOBALS['wp_version'] );
-		}
-
-		return '0';
-
-	}    //end get_wp_version()
+	}    //end _normalize_version()
 
 	/**
 	 * Loads the plugin.
@@ -199,6 +214,10 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 * admin screens (on purpose) telling the administrator that the plugin's
 	 * minimum requirements are not met, and what the environment actually is.
 	 *
+	 * The versions named are the ones this Gatekeeper judged, not a fresh lookup,
+	 * so the message and the refusal it explains can never be about different
+	 * things.
+	 *
 	 * @return void
 	 */
 	public function show_admin_notice() {
@@ -212,8 +231,8 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 					self::PLUGIN_NAME,
 					self::MIN_PHP_VERSION_REQUIRED,
 					self::MIN_WP_VERSION_REQUIRED,
-					self::get_php_version(),
-					self::get_wp_version()
+					$this->_php_version,
+					$this->_wp_version
 				)
 			)
 		);
