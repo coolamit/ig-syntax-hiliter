@@ -201,25 +201,7 @@ class Gist_Embed {
 			static::TAG
 		);
 
-		$id   = $atts['id'];
-		$path = wp_parse_url( untrailingslashit( (string) $atts['gist'] ), PHP_URL_PATH );
-
-		if ( ! empty( $path ) ) {
-
-			// The `gist` attribute takes priority: the id is the last segment of its URL.
-			$segments = explode( '/', $path );
-			$gist_id  = array_pop( $segments );
-
-			if ( ! empty( $gist_id ) ) {
-				$id = $gist_id;
-			}
-		}
-
-		if ( empty( $id ) ) {
-			return '';
-		}
-
-		$id = $this->_sanitize_id( (string) $id );
+		$id = static::resolve_id( $atts );
 
 		if ( '' === $id ) {
 			return '';
@@ -244,6 +226,46 @@ class Gist_Embed {
 	}    //end render()
 
 	/**
+	 * Method to work out which Gist a set of attributes names.
+	 *
+	 * The one place `gist="<url>"` and `id="<id>"` are turned into a Gist id, so that
+	 * the embed and the revert tool cannot come to different answers about the same
+	 * block. A drift between the two would be a Gist rendering one way before the tool
+	 * runs and another way after it, which is precisely the failure the tool exists to
+	 * prevent.
+	 *
+	 * The `gist` attribute wins where it names anything at all: it is the form the
+	 * block writes and the form nearly every author types.
+	 *
+	 * @param array $atts Attributes, with `gist` and `id` keys as `self::render()` receives them.
+	 *
+	 * @return string The Gist id, or an empty string where the attributes name no Gist this plugin will print.
+	 */
+	public static function resolve_id( array $atts ): string {
+
+		$id   = $atts['id'] ?? 0;
+		$path = wp_parse_url( untrailingslashit( (string) ( $atts['gist'] ?? '' ) ), PHP_URL_PATH );
+
+		if ( ! empty( $path ) ) {
+
+			// The `gist` attribute takes priority: the id is the last segment of its URL.
+			$segments = explode( '/', $path );
+			$gist_id  = array_pop( $segments );
+
+			if ( ! empty( $gist_id ) ) {
+				$id = $gist_id;
+			}
+		}
+
+		if ( empty( $id ) ) {
+			return '';
+		}
+
+		return static::_sanitize_id( (string) $id );
+
+	}    //end resolve_id()
+
+	/**
 	 * Method to sanitize a Gist id.
 	 *
 	 * The id becomes one path segment of a URL this plugin prints, so it is held to
@@ -253,15 +275,15 @@ class Gist_Embed {
 	 * went into that path whole.
 	 *
 	 * Anything else is refused outright rather than stripped down to the characters
-	 * that would survive, because a stripped id names a different Gist, and both
-	 * callers already read an empty id as "print nothing". A failed match, including
+	 * that would survive, because a stripped id names a different Gist, and every
+	 * caller already reads an empty id as "print nothing". A failed match, including
 	 * the `false` PCRE returns on an error, lands on the same refusal.
 	 *
 	 * @param string $id Gist id to sanitize.
 	 *
 	 * @return string
 	 */
-	protected function _sanitize_id( string $id ): string {
+	protected static function _sanitize_id( string $id ): string {
 
 		if ( 1 !== preg_match( '/^[A-Za-z0-9]+$/', $id ) ) {
 			return '';

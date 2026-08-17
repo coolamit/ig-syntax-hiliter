@@ -503,7 +503,7 @@ class Admin extends Base {
 				'saveTimedOut'      => __( '%s — your site did not answer in time, so it has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
 				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
 				'revertConfirm'     => __(
-					"This will convert every iG:Syntax Hiliter block on this site back into a [sourcecode] shortcode, in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
+					"This will convert every iG:Syntax Hiliter block on this site back into a shortcode — a code block into [sourcecode] and a Gist block into [github] — in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
 					'igsyntax-hiliter'
 				),
 				'revertNone'        => __( 'There are no blocks to convert.', 'igsyntax-hiliter' ),

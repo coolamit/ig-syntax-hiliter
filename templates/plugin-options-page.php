@@ -90,11 +90,11 @@
 	<div class="igsh-revert">
 
 		<p>
-			<?php esc_html_e( 'A snippet stored as a Gutenberg block needs this plugin to be active in order to appear at all: switch the plugin off and the Gutenberg block renders as nothing and the code vanishes from the post. A snippet stored as a shortcode stays visible as text you can do something about.', 'igsyntax-hiliter' ); ?>
+			<?php esc_html_e( 'A snippet or a Gist stored as a Gutenberg block needs this plugin to be active in order to appear at all: switch the plugin off and the Gutenberg block renders as nothing and the code vanishes from the post. The same thing stored as a shortcode stays visible as text you can do something about.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p>
-			<?php esc_html_e( 'The button below rewrites every "iG:Syntax Hiliter" Gutenberg block on this site back into a [sourcecode] shortcode carrying the same code and the same settings. It covers every public post type having published, draft, pending, scheduled and private statuses alike. Content in the trash is left alone and nothing outside the blocks themselves is changed.', 'igsyntax-hiliter' ); ?>
+			<?php esc_html_e( 'The button below rewrites every Gutenberg block of this plugin on this site back into a shortcode: an "iG:Syntax Hiliter" block becomes a [sourcecode] shortcode carrying the same code and the same settings, and an "iG:Syntax Hiliter Gist" block becomes a [github] shortcode naming the same Gist. It covers every public post type having published, draft, pending, scheduled and private statuses alike. Content in the trash is left alone and nothing outside the blocks themselves is changed.', 'igsyntax-hiliter' ); ?>
 		</p>
 
 		<p class="igsh-revert__warning">
@@ -103,7 +103,7 @@
 		</p>
 
 		<p>
-			<button type="button" class="button button-secondary" id="igsh-revert-blocks"><?php esc_html_e( 'Convert code blocks back to shortcodes', 'igsyntax-hiliter' ); ?></button>
+			<button type="button" class="button button-secondary" id="igsh-revert-blocks"><?php esc_html_e( 'Convert blocks back to shortcodes', 'igsyntax-hiliter' ); ?></button>
 		</p>
 
 		<p class="igsh-revert__progress" id="igsh-revert-progress" hidden>

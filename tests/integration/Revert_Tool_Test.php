@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Block_Converter;
+use iG\Syntax_Hiliter\Gist_Embed;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
@@ -167,6 +168,27 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		return serialize_block(
 			[
 				'blockName'    => Block::NAME,
+				'attrs'        => $attributes,
+				'innerBlocks'  => [],
+				'innerHTML'    => '',
+				'innerContent' => [],
+			]
+		);
+
+	}
+
+	/**
+	 * Method to build the Gist block delimiter exactly as WordPress writes it.
+	 *
+	 * @param array $attributes Block attributes.
+	 *
+	 * @return string
+	 */
+	protected function _gist_block( array $attributes ): string {
+
+		return serialize_block(
+			[
+				'blockName'    => Block::GIST_NAME,
 				'attrs'        => $attributes,
 				'innerBlocks'  => [],
 				'innerHTML'    => '',
@@ -1181,6 +1203,181 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->assertSame( Legacy_Map::GENERIC_TAG, Block_Converter::SHORTCODE_TAG );
 		$this->assertStringStartsWith( '[sourcecode ', $shortcode );
 		$this->assertStringNotContainsString( '[php]', $shortcode );
+
+	}
+
+	/**
+	 * The Gist block vanishes on deactivation exactly as the code block does, so it
+	 * is converted too. The address it becomes is the one the embed already resolved
+	 * it to, and every other byte of the post is where it was.
+	 *
+	 * @return void
+	 */
+	public function test_a_gist_block_becomes_a_github_shortcode(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "<!-- wp:paragraph -->\n<p>Before the Gist.</p>\n<!-- /wp:paragraph -->\n\n";
+		$suffix = "\n\n<!-- wp:paragraph -->\n<p>After the Gist.</p>\n<!-- /wp:paragraph -->";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$prefix . $this->_gist_block( [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ] ) . $suffix
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+
+		$expected = $prefix . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]' . $suffix;
+
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+		/*
+		 * The shortcode carries no delimiter, so the post stops matching the marker
+		 * altogether: there is nothing left to count and nothing left for a second run
+		 * to be handed.
+		 */
+		$this->assertSame( 0, Block_Converter::count_remaining() );
+
+		$second = $this->_run_to_completion();
+
+		$this->assertSame( 0, $second['processed'] );
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * The shortcode the tool writes embeds the same Gist the block embedded. A revert
+	 * which changed what the reader sees would not be a revert.
+	 *
+	 * @return void
+	 */
+	public function test_the_github_shortcode_embeds_what_the_gist_block_embedded(): void {
+
+		$this->_become_administrator();
+
+		Gist_Embed::get_instance()->register_hooks();
+
+		$attributes = [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ];
+		$from_block = Block::get_instance()->render_gist( $attributes );
+
+		$this->assertNotSame( '', $from_block, 'The fixture has to render something for this to be measuring anything.' );
+
+		$post_id = self::factory()->post->create(
+			[ 'post_content' => wp_slash( $this->_gist_block( $attributes ) ) ]
+		);
+
+		$this->_run_to_completion();
+
+		$rendered = apply_filters( 'the_content', get_post_field( 'post_content', $post_id, 'raw' ) );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hook is what an integration test does.
+
+		$this->assertStringContainsString( $from_block, $rendered );
+
+	}
+
+	/**
+	 * A post holding one of each converts both, and it is still one post converted:
+	 * the buckets count posts and only the blocks inside them are of two kinds.
+	 *
+	 * @return void
+	 */
+	public function test_a_post_holding_both_blocks_converts_both(): void {
+
+		$this->_become_administrator();
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$this->_block(
+						[
+							'code'     => self::CODE,
+							'language' => 'php',
+						]
+					) . "\n\n" . $this->_gist_block( [ 'url' => 'https://gist.github.com/9a1b2c3d4e5f' ] )
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['processed'] );
+		$this->assertSame( 1, $totals['converted'] );
+
+		$this->assertSame(
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::CODE ) . "\n\n" . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]',
+			get_post_field( 'post_content', $post_id, 'raw' )
+		);
+
+		$this->assertSame( 0, Block_Converter::count_remaining() );
+
+	}
+
+	/**
+	 * A Gist block naming no Gist this plugin will print shows a reader nothing
+	 * today, so it is taken out rather than written into the post as a shortcode
+	 * that would show them nothing either.
+	 *
+	 * @return void
+	 */
+	public function test_a_gist_block_naming_no_gist_is_removed(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "Before.\n\n";
+		$suffix = "\n\nAfter.";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$prefix . $this->_gist_block( [ 'url' => 'https://example.com/not a gist/..' ] ) . $suffix
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( 0, Block_Converter::count_remaining() );
+
+	}
+
+	/**
+	 * A Gist delimiter written inside a snippet is somebody documenting this plugin,
+	 * not a block, so it is left exactly where it was found.
+	 *
+	 * @return void
+	 */
+	public function test_a_gist_delimiter_inside_a_snippet_is_left_alone(): void {
+
+		$content = sprintf(
+			"[sourcecode language=\"html\"]\n<!-- wp:%s {\"url\":\"https://gist.github.com/9a1b2c3d4e5f\"} /-->\n[/sourcecode]",
+			Block_Converter::GIST_BLOCK_NAME
+		);
+
+		$result = Block_Converter::convert_content( $content );
+
+		$this->assertSame( 0, $result['converted'] );
+		$this->assertSame( $content, $result['content'] );
+
+	}
+
+	/**
+	 * The Gist block's own name is what the tool looks for, so `Block` and
+	 * `Block_Converter` have to be naming the same block. They are two classes with
+	 * two reasons to be edited, and a rename in one that missed the other would
+	 * quietly stop the tool converting anything.
+	 *
+	 * @return void
+	 */
+	public function test_the_converter_and_the_block_name_the_same_gist_block(): void {
+
+		$this->assertSame( Block::GIST_NAME, Block_Converter::GIST_BLOCK_NAME );
+		$this->assertSame( Gist_Embed::TAG, Block_Converter::GIST_SHORTCODE_TAG );
 
 	}
 

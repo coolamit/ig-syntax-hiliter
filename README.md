@@ -37,7 +37,9 @@ A snippet whose *code* quotes block markup is handled too. The snippets are lift
 
 This is the trade-off for the block editor support and on this one point blocks are worse than shortcodes. A shortcode left behind by a deactivated plugin at least stays on screen as `[php]…[/php]` text, which you can see and act on. A block whose plugin is gone is not registered at all, renders as nothing and the snippet silently disappears from the post.
 
-To fix this issue, the settings page of the plugin has a **Before you deactivate** section containing a tool that converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. It always writes the `[sourcecode]` form, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed.
+The Gist block goes the same way for the same reason, and so does the Gist it names.
+
+To fix this issue, the settings page of the plugin has a **Before you deactivate** section containing a tool that converts this plugin's blocks back into shortcodes across the whole site — published, draft, pending, scheduled and private posts of public post types. Run it before you deactivate or delete the plugin. A code block becomes a `[sourcecode language="…"]` shortcode, so a snippet that started life as `[php]…[/php]` comes back as `[sourcecode language="php"]…[/sourcecode]`. That is the same thing semantically, but it is not a byte-for-byte round trip to what you originally typed. A Gist block becomes `[github gist="https://gist.github.com/…"]`, which is the address the block was already embedding.
 
 A snippet whose code quotes this plugin's own tags converts like any other, and it is worth knowing how. A shortcode ends at the first closing tag in its code, so the tool doubles the brackets of every one of this plugin's tags it finds there — `[[sourcecode language="php"]]` and `[[/sourcecode]]` — which is how a snippet says that a tag is text rather than a tag. A reader sees the tags you typed. With the plugin deactivated you see the doubled brackets in the code sample instead, which is the price of the snippet being on the page at all.
 
@@ -120,7 +122,7 @@ Deactivate plugin in WordPress admin, delete the `syntax_hilite.php` and `geshi.
 
 In the block editor, add the **iG:Syntax Hiliter** block, paste your code into it and pick a language in the sidebar. The code is stored as plain text in the block's attributes, so nothing in the editor or in WordPress' content filters can get at it — paste whatever you like, entities and all.
 
-To embed a GitHub Gist, add the **iG:Syntax Hiliter Gist** block and paste the address of the Gist into it. The `[github]` shortcode goes on working exactly as it always has, and is not converted.
+To embed a GitHub Gist, add the **iG:Syntax Hiliter Gist** block and paste the address of the Gist into it. The `[github]` shortcode goes on working exactly as it always has, and is not converted into the block. The **Before you deactivate** tool converts the block back the other way, because a Gist block vanishes on deactivation just as a code block does.
 
 In the classic editor's Code view, use the shortcodes. There is one tag and a handful of optional attributes. Here's how code is posted for it to be highlighted.
 
@@ -217,7 +219,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Enable GitHub Gist embed in comments? :** This option allows you to tell the plugin whether to embed Github Gist in comments or not. If disabled then a Gist posted in comments would just have a link to its page on Github.
 
-**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into `[sourcecode language="…"]` shortcodes across the entire site, so your snippets stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Every block converts: where the code holds one of this plugin's own tags, the tool doubles its brackets, which is how a snippet says a tag is text. See *Important changes in 6.0-beta-1* above for why you would want it.
+**Before you deactivate :** A section at the bottom of the settings page. Its one tool converts this plugin's blocks back into shortcodes across the entire site — a code block into `[sourcecode language="…"]` and a Gist block into `[github gist="…"]` — so your snippets and your Gists stay visible if the plugin is ever deactivated. It asks for confirmation first, because it rewrites post content and cannot be undone. Every block converts: where the code holds one of this plugin's own tags, the tool doubles its brackets, which is how a snippet says a tag is text. See *Important changes in 6.0-beta-1* above for why you would want it.
 
 *(Gone in 6.0-beta-1: **GeSHi Strict Mode?**, **Languages where GeSHi strict mode is disabled**, **Link keywords/function names to Manual?** — all three were GeSHi features with no Prism equivalent — and **Rebuild Shorthand Tags**, since there is no longer a directory of language files to scan.)*
 
@@ -234,7 +236,7 @@ When you click the `iG:Syntax Hiliter` configuration page, you are offered some 
 
 **Q:** *What happens to my code if I deactivate the plugin?*
 
-**A:** Snippets still stored as shortcodes stay visible as `[sourcecode]…[/sourcecode]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered. Before deactivating, use the tool in the **Before you deactivate** section of the settings page to turn those blocks back into `[sourcecode]` shortcodes. Every block converts, this plugin's own tags in the code included.
+**A:** Snippets still stored as shortcodes stay visible as `[sourcecode]…[/sourcecode]` text — ugly, but you can see them and do something about them. Snippets that have been converted to blocks render as nothing at all, because the block is no longer registered, and a Gist block goes the same way. Before deactivating, use the tool in the **Before you deactivate** section of the settings page to turn those blocks back into shortcodes — `[sourcecode]` for a code block and `[github]` for a Gist block. Every block converts, this plugin's own tags in the code included.
 
 **Q:** *I used to add languages by putting GeSHi language files in the plugin's or my theme's `geshi` directory. What now?*
 

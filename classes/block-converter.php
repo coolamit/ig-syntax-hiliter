@@ -24,7 +24,11 @@ use WP_REST_Server;
  * That is the whole reason this exists, and it is why the rewrite has to be
  * trustworthy rather than merely convenient.
  *
- * So the rewrite is surgical. Only the plugin's own block delimiter is matched and
+ * Both of this plugin's blocks are converted, because both vanish the same way: the
+ * code block becomes a `[sourcecode]` shortcode and the Gist block becomes a
+ * `[github]` one.
+ *
+ * So the rewrite is surgical. Only the plugin's own block delimiters are matched and
  * replaced; the post is never parsed into blocks and serialised back, because that
  * round trip is not byte identical and would quietly rewrite content this tool has
  * no business touching. Every byte outside a matched delimiter is left exactly as
@@ -41,27 +45,54 @@ class Block_Converter {
 	use Singleton;
 
 	/**
-	 * Name of the block which is converted.
+	 * Name of the code block.
 	 *
 	 * @var string
 	 */
 	const BLOCK_NAME = 'igsyntax-hiliter/code';
 
 	/**
-	 * The string a post's content must contain for it to be worth looking at.
+	 * The string a post's content must contain for it to hold a code block.
 	 *
 	 * @var string
 	 */
 	const BLOCK_MARKER = '<!-- wp:' . self::BLOCK_NAME;
 
 	/**
-	 * Shortcode tag every converted block is written as.
+	 * Name of the Gist block.
+	 *
+	 * Converted for the same reason the code block is: with the plugin switched off
+	 * the block type is gone and a self closing block has no inner content, so the
+	 * Gist renders as nothing and the post no longer says which Gist it meant. That
+	 * the Gist block is never created automatically from a `[github]` shortcode is a
+	 * decision about the way in, and says nothing about the way out.
+	 *
+	 * @var string
+	 */
+	const GIST_BLOCK_NAME = Block::GIST_NAME;
+
+	/**
+	 * The string a post's content must contain for it to hold a Gist block.
+	 *
+	 * @var string
+	 */
+	const GIST_BLOCK_MARKER = '<!-- wp:' . self::GIST_BLOCK_NAME;
+
+	/**
+	 * Shortcode tag every converted code block is written as.
 	 *
 	 * One output shape, whatever the language, so what comes out is unambiguous.
 	 *
 	 * @var string
 	 */
 	const SHORTCODE_TAG = Legacy_Map::GENERIC_TAG;
+
+	/**
+	 * Shortcode tag every converted Gist block is written as.
+	 *
+	 * @var string
+	 */
+	const GIST_SHORTCODE_TAG = Gist_Embed::TAG;
 
 	/**
 	 * Post statuses which are never touched.
@@ -317,9 +348,10 @@ class Block_Converter {
 	/**
 	 * Method to rewrite every one of this plugin's blocks in a piece of content.
 	 *
-	 * Nothing but the delimiters this plugin wrote is touched: the content is copied
-	 * across a byte at a time around them, so everything else arrives on the other
-	 * side exactly as it went in.
+	 * Both of them: a code block becomes a `[sourcecode]` shortcode and a Gist block
+	 * becomes a `[github]` one. Nothing but the delimiters this plugin wrote is
+	 * touched: the content is copied across a byte at a time around them, so
+	 * everything else arrives on the other side exactly as it went in.
 	 *
 	 * A delimiter which sits inside one of this plugin's shortcodes is not a block. It
 	 * is a snippet whose code is block markup — this plugin's own documentation, for
@@ -341,7 +373,7 @@ class Block_Converter {
 			'failed'    => 0,
 		];
 
-		if ( ! str_contains( $content, static::BLOCK_MARKER ) ) {
+		if ( ! str_contains( $content, static::BLOCK_MARKER ) && ! str_contains( $content, static::GIST_BLOCK_MARKER ) ) {
 			return $result;
 		}
 
@@ -373,7 +405,9 @@ class Block_Converter {
 
 			}
 
-			$shortcode = static::block_to_shortcode( $attributes );
+			$shortcode = ( static::GIST_BLOCK_NAME === $delimiter['block'] )
+				? static::gist_block_to_shortcode( $attributes )
+				: static::block_to_shortcode( $attributes );
 
 			if ( is_null( $shortcode ) ) {
 
@@ -404,7 +438,7 @@ class Block_Converter {
 	 *
 	 * @param string $content Content to scan.
 	 *
-	 * @return array List of delimiters, each with `open`, `attrs` and `end`, in the order they appear.
+	 * @return array List of delimiters, each with `block`, `open`, `attrs` and `end`, in the order they appear.
 	 */
 	protected static function _get_delimiters( string $content ): array {
 
@@ -549,24 +583,24 @@ class Block_Converter {
 	 * @param string $content Content being read.
 	 * @param int    $offset  Offset of the `<!--` which opens the comment.
 	 *
-	 * @return array|null Two keys, `attrs` and `end`, or NULL when this is not one of this plugin's self closing delimiters.
+	 * @return array|null Three keys, `block`, `attrs` and `end`, or NULL when this is not one of this plugin's self closing delimiters.
 	 */
 	protected static function _read_delimiter( string $content, int $offset ): ?array {
 
-		$name        = sprintf( 'wp:%s', static::BLOCK_NAME );
-		$name_length = strlen( $name );
-		$after       = $offset + 4;    //past the `<!--`
-		$gap         = strspn( $content, static::DELIMITER_WHITESPACE, $after );
+		$after = $offset + 4;    //past the `<!--`
+		$gap   = strspn( $content, static::DELIMITER_WHITESPACE, $after );
 
-		if ( 1 > $gap || strlen( $content ) < ( $after + $gap + $name_length ) ) {
+		if ( 1 > $gap ) {
 			return null;
 		}
 
-		if ( 0 !== substr_compare( $content, $name, $after + $gap, $name_length ) ) {
+		$block = static::_read_block_name( $content, $after + $gap );
+
+		if ( is_null( $block ) ) {
 			return null;
 		}
 
-		$body = $after + $gap + $name_length;
+		$body = $after + $gap + strlen( $block ) + 3;    //the name, plus the `wp:` in front of it
 		$gap  = strspn( $content, static::DELIMITER_WHITESPACE, $body );
 
 		if ( 1 > $gap ) {
@@ -578,6 +612,7 @@ class Block_Converter {
 		if ( '/-->' === substr( $content, $start, 4 ) ) {
 
 			return [
+				'block' => $block,
 				'attrs' => '',
 				'end'   => $start + 4,
 			];
@@ -623,6 +658,7 @@ class Block_Converter {
 			}
 
 			return [
+				'block' => $block,
 				'attrs' => substr( $content, $start, $end - $start ),
 				'end'   => $close + 3,
 			];
@@ -630,6 +666,39 @@ class Block_Converter {
 		}
 
 	}    //end _read_delimiter()
+
+	/**
+	 * Method to read which of this plugin's blocks a delimiter names.
+	 *
+	 * Neither name is a prefix of the other, so whichever matches is the block, and
+	 * the caller still has to see whitespace after it before the match means anything.
+	 *
+	 * @param string $content Content being read.
+	 * @param int    $offset  Offset of the `wp:` which opens the block name.
+	 *
+	 * @return string|null The block name, or NULL where the delimiter names some other block.
+	 */
+	protected static function _read_block_name( string $content, int $offset ): ?string {
+
+		$length = strlen( $content );
+
+		foreach ( [ static::BLOCK_NAME, static::GIST_BLOCK_NAME ] as $block ) {
+
+			$name        = sprintf( 'wp:%s', $block );
+			$name_length = strlen( $name );
+
+			if ( $length < ( $offset + $name_length ) ) {
+				continue;
+			}
+
+			if ( 0 === substr_compare( $content, $name, $offset, $name_length ) ) {
+				return $block;
+			}
+		}
+
+		return null;
+
+	}    //end _read_block_name()
 
 	/**
 	 * Method to write one block's attributes as a shortcode.
@@ -715,7 +784,47 @@ class Block_Converter {
 	}    //end block_to_shortcode()
 
 	/**
-	 * Method to count the posts whose content holds the block marker.
+	 * Method to write one Gist block's attributes as a shortcode.
+	 *
+	 * One output shape, always: `[github gist="https://gist.github.com/<id>"]`. That is
+	 * byte for byte the address the embed already resolves the block to, so the page a
+	 * reader sees is unchanged by the conversion, and with the plugin deactivated the
+	 * post is left a working Gist address rather than a bare id.
+	 *
+	 * The id comes back from `Gist_Embed::resolve_id()` — the same call the embed makes,
+	 * so the two cannot disagree about which Gist a block names — and it is letters and
+	 * digits by construction. So there is nothing here which could break out of the
+	 * attribute it is written into, and no sanitising step of this method's own.
+	 *
+	 * @param array $attributes Block attributes, as they were stored in the delimiter.
+	 *
+	 * @return string|null The shortcode, an empty string when there is no Gist to write one for, or NULL when one cannot be written.
+	 */
+	public static function gist_block_to_shortcode( array $attributes ): ?string {
+
+		$url = ( isset( $attributes['url'] ) && is_scalar( $attributes['url'] ) ) ? (string) $attributes['url'] : '';
+		$id  = Gist_Embed::resolve_id( [ 'gist' => trim( $url ) ] );
+
+		/*
+		 * A block naming no Gist this plugin will print shows a reader nothing today, so
+		 * there is nothing to write a shortcode around. It is dropped rather than replaced
+		 * by an empty shortcode, which would show a reader nothing either and would leave
+		 * noise behind in the post content.
+		 */
+		if ( '' === $id ) {
+			return '';
+		}
+
+		return sprintf(
+			'[%1$s gist="https://gist.github.com/%2$s"]',
+			static::GIST_SHORTCODE_TAG,
+			$id
+		);
+
+	}    //end gist_block_to_shortcode()
+
+	/**
+	 * Method to count the posts whose content holds either block's marker.
 	 *
 	 * The count is a `LIKE` over `post_content` and knows nothing about where in the
 	 * content the marker sits, so a post whose only marker is inside a snippet's code
@@ -814,8 +923,9 @@ class Block_Converter {
 	 * Method to build the condition which selects the posts in scope.
 	 *
 	 * Public post types, every status but the two which mean the content is gone,
-	 * and only rows whose content actually holds the block delimiter. Revisions are
-	 * excluded by the post type list, since `revision` is not a public post type.
+	 * and only rows whose content actually holds one of the two block delimiters.
+	 * Revisions are excluded by the post type list, since `revision` is not a public
+	 * post type.
 	 *
 	 * @return array|null Two keys, `sql` and `values`, or NULL when there is nothing that could match.
 	 */
@@ -834,12 +944,15 @@ class Block_Converter {
 
 		return [
 			'sql'    => sprintf(
-				'post_content LIKE %%s AND post_type IN ( %s ) AND post_status NOT IN ( %s )',
+				'( post_content LIKE %%s OR post_content LIKE %%s ) AND post_type IN ( %s ) AND post_status NOT IN ( %s )',
 				$types,
 				$statuses
 			),
 			'values' => array_merge(
-				[ '%' . $wpdb->esc_like( static::BLOCK_MARKER ) . '%' ],
+				[
+					'%' . $wpdb->esc_like( static::BLOCK_MARKER ) . '%',
+					'%' . $wpdb->esc_like( static::GIST_BLOCK_MARKER ) . '%',
+				],
 				$post_types,
 				static::EXCLUDED_STATUSES
 			),
