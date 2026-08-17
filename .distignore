@@ -2,8 +2,9 @@
 #
 # What ships is the runtime PHP, the compiled block assets in build/, the
 # compiled stylesheets and scripts in assets/build/, the vendored Prism library
-# in assets/lib/prism/, templates/, the readmes, the changelog and the licence
-# files.
+# in assets/lib/prism/, the vendored prism-themes collection in
+# assets/lib/prism-themes/, templates/, the readmes, the changelog and the
+# licence files.
 #
 # ---------------------------------------------------------------------------
 # HOW THIS FILE IS ACTUALLY READ — it is NOT a .gitignore

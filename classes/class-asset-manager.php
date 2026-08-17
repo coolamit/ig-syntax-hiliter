@@ -41,6 +41,18 @@ class Asset_Manager {
 	const LIBRARY_PATH = 'lib/prism';
 
 	/**
+	 * Path of the extra theme collection, relative to the assets directory.
+	 *
+	 * These are the themes from PrismJS/prism-themes, which is a project of its own
+	 * and not part of the Prism release. They live in a directory of their own
+	 * because assets/lib/prism/ is Prism's dist and is replaced whole the next time
+	 * Prism is upgraded, which would take every one of these with it.
+	 *
+	 * @var string
+	 */
+	const THEMES_PATH = 'lib/prism-themes';
+
+	/**
 	 * The theme used when the site has not chosen one.
 	 *
 	 * @var string
@@ -246,33 +258,126 @@ class Asset_Manager {
 	}    //end get_components_url()
 
 	/**
+	 * Method to get the themes the plugin ships, by the directory each one lives in.
+	 *
+	 * The keys are directories relative to the assets directory and the values are
+	 * slug to human readable title. Prism's own themes come first and the
+	 * PrismJS/prism-themes collection second, which is the order they are offered in.
+	 *
+	 * Every title is the name its own project gives it, so that a site owner reading
+	 * the dropdown and a site owner reading either project's documentation see the
+	 * same word.
+	 *
+	 * @return array Directory relative to the assets directory, to slug to title.
+	 */
+	protected static function _get_theme_titles(): array {
+
+		return [
+
+			static::LIBRARY_PATH . '/themes' => [
+				'prism'                => 'Prism',
+				'prism-coy'            => 'Coy',
+				'prism-dark'           => 'Dark',
+				'prism-funky'          => 'Funky',
+				'prism-okaidia'        => 'Okaidia',
+				'prism-solarizedlight' => 'Solarized Light',
+				'prism-tomorrow'       => 'Tomorrow Night',
+				'prism-twilight'       => 'Twilight',
+			],
+
+			static::THEMES_PATH              => [
+				'prism-a11y-dark'                       => 'a11y Dark',
+				'prism-atom-dark'                       => 'Atom Dark',
+				'prism-base16-ateliersulphurpool.light' => 'Ateliersulphurpool-light',
+				'prism-cb'                              => 'CB',
+				'prism-coldark-cold'                    => 'Coldark Cold',
+				'prism-coldark-dark'                    => 'Coldark Dark',
+				'prism-coy-without-shadows'             => 'Coy without shadows',
+				'prism-darcula'                         => 'Darcula',
+				'prism-dracula'                         => 'Dracula',
+				'prism-duotone-dark'                    => 'Duotone Dark',
+				'prism-duotone-earth'                   => 'Duotone Earth',
+				'prism-duotone-forest'                  => 'Duotone Forest',
+				'prism-duotone-light'                   => 'Duotone Light',
+				'prism-duotone-sea'                     => 'Duotone Sea',
+				'prism-duotone-space'                   => 'Duotone Space',
+				'prism-ghcolors'                        => 'GHColors',
+				'prism-gruvbox-dark'                    => 'Gruvbox Dark',
+				'prism-gruvbox-light'                   => 'Gruvbox Light',
+				'prism-holi-theme'                      => 'Holi Theme',
+				'prism-lucario'                         => 'Lucario',
+				'prism-material-dark'                   => 'Material Dark',
+				'prism-material-light'                  => 'Material Light',
+				'prism-material-oceanic'                => 'Material Oceanic',
+				'prism-night-owl'                       => 'Night Owl',
+				'prism-nord'                            => 'Nord',
+				'prism-one-dark'                        => 'One Dark',
+				'prism-one-light'                       => 'One Light',
+				'prism-pojoaque'                        => 'Pojoaque',
+				'prism-shades-of-purple'                => 'Shades of Purple',
+				'prism-solarized-dark-atom'             => 'Solarized Dark Atom',
+				'prism-synthwave84'                     => "Synthwave '84",
+				'prism-vs'                              => 'VS',
+				'prism-vsc-dark-plus'                   => 'VS Code Dark+',
+				'prism-xonokai'                         => 'Xonokai',
+				'prism-z-touch'                         => 'Z-Touch',
+			],
+
+		];
+
+	}    //end _get_theme_titles()
+
+	/**
+	 * Method to get the path of a theme stylesheet, relative to the assets directory.
+	 *
+	 * Themes come from two directories, so this is the one place which knows which
+	 * theme is in which. A slug in neither gets an empty string, never a path which
+	 * looks usable.
+	 *
+	 * @param string $slug Theme slug.
+	 *
+	 * @return string Path relative to the assets directory, or an empty string for a theme the plugin does not ship.
+	 */
+	public static function get_theme_file( string $slug ): string {
+
+		foreach ( static::_get_theme_titles() as $directory => $titles ) {
+
+			if ( ! isset( $titles[ $slug ] ) ) {
+				continue;
+			}
+
+			return sprintf( '%s/%s.min.css', $directory, $slug );
+
+		}
+
+		return '';
+
+	}    //end get_theme_file()
+
+	/**
 	 * Method to get the themes bundled with the plugin.
+	 *
+	 * A theme is only offered if its stylesheet is actually readable, so a slug
+	 * mistyped in the map above, or a file lost in an upgrade, drops out of the
+	 * dropdown instead of being offered and then 404ing.
 	 *
 	 * @return array Theme file base name to human readable title.
 	 */
 	public static function get_themes(): array {
 
-		$titles = [
-			'prism'                => 'Prism',
-			'prism-coy'            => 'Coy',
-			'prism-dark'           => 'Dark',
-			'prism-funky'          => 'Funky',
-			'prism-okaidia'        => 'Okaidia',
-			'prism-solarizedlight' => 'Solarized Light',
-			'prism-tomorrow'       => 'Tomorrow Night',
-			'prism-twilight'       => 'Twilight',
-		];
-
 		$themes = [];
 
-		foreach ( $titles as $slug => $title ) {
+		foreach ( static::_get_theme_titles() as $titles ) {
 
-			if ( ! is_readable( static::_get_library_path( sprintf( 'themes/%s.min.css', $slug ) ) ) ) {
-				continue;
+			foreach ( $titles as $slug => $title ) {
+
+				if ( ! is_readable( Helper::get_asset_path( static::get_theme_file( $slug ) ) ) ) {
+					continue;
+				}
+
+				$themes[ $slug ] = $title;
+
 			}
-
-			$themes[ $slug ] = $title;
-
 		}
 
 		return $themes;
@@ -295,7 +400,7 @@ class Asset_Manager {
 
 			wp_enqueue_style(
 				static::_handle( 'theme' ),
-				static::_get_library_url( sprintf( 'themes/%s.min.css', $theme ) ),
+				Helper::get_asset_url( static::get_theme_file( $theme ) ),
 				[],
 				static::_get_version()
 			);
@@ -497,24 +602,6 @@ class Asset_Manager {
 	protected static function _handle( string $name ): string {
 		return sprintf( '%s-%s', static::HANDLE_PREFIX, $name );
 	}    //end _handle()
-
-	/**
-	 * Method to get the absolute path of a file in the bundled library.
-	 *
-	 * @param string $path Path relative to the library directory.
-	 *
-	 * @return string
-	 */
-	protected static function _get_library_path( string $path ): string {
-
-		return sprintf(
-			'%s/assets/%s/%s',
-			dirname( __DIR__ ),
-			static::LIBRARY_PATH,
-			ltrim( $path, '/' )
-		);
-
-	}    //end _get_library_path()
 
 	/**
 	 * Method to get the URL of a file in the bundled library.

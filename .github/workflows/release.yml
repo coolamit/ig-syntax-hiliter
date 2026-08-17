@@ -367,8 +367,8 @@ jobs:
 
           # Matched by pattern rather than by exact name where the filenames
           # belong to the build tool or are still moving between milestones:
-          # the compiled block, the plugin's own PHP, a Prism component and
-          # the licence.
+          # the compiled block, the plugin's own PHP, a Prism component, a
+          # theme from the prism-themes collection and the licence.
           while IFS= read -r pattern; do
             [ -n "${pattern}" ] || continue
             if ! grep -Eq "${pattern}" "${entries}"; then
@@ -379,6 +379,7 @@ jobs:
           ^${PLUGIN_SLUG}/build/.+\.js\$
           ^${PLUGIN_SLUG}/classes/.+\.php\$
           ^${PLUGIN_SLUG}/assets/lib/prism/components/.+\.js\$
+          ^${PLUGIN_SLUG}/assets/lib/prism-themes/.+\.min\.css\$
           ^${PLUGIN_SLUG}/(COPYING|LICENSE|GNU GPL\.txt)\$
           PRESENT
 

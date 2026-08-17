@@ -10,7 +10,9 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
@@ -156,6 +158,47 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			],
 			$this->_plugin_asset_handles()
 		);
+
+	}
+
+	/**
+	 * A theme from the second theme directory is enqueued from that directory.
+	 *
+	 * The plugin ships themes from two places — Prism's own dist themes and the
+	 * separate PrismJS/prism-themes collection — and only the stylesheet's URL says
+	 * which of the two a theme was resolved out of. A page rendering a snippet is
+	 * where that resolution is used, so it is where it is measured.
+	 *
+	 * @return void
+	 */
+	public function test_a_theme_from_the_collection_is_enqueued_from_its_own_directory(): void {
+
+		$option = Option::get_instance();
+
+		$option->save( 'theme', 'prism-nord' );
+
+		try {
+
+			$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+			$style = wp_styles()->registered['ig-syntax-hiliter-theme'] ?? null;
+
+			$this->assertNotNull( $style, 'The theme stylesheet is registered.' );
+
+			$this->assertStringEndsWith(
+				'/assets/lib/prism-themes/prism-nord.min.css',
+				(string) $style->src
+			);
+
+		} finally {
+			/*
+			 * The options object reads the stored array once and holds it for the rest
+			 * of the request. The database is rolled back after this test, so the object
+			 * has to go with it or the next test reads a theme nobody saved.
+			 */
+			( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+
+		}
 
 	}
 

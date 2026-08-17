@@ -109,6 +109,25 @@ class Helper {
 	}
 
 	/**
+	 * Method to get the absolute path of an asset if relative path to asset is passed else the path of assets folder.
+	 *
+	 * This is the on disk counterpart of get_asset_url(). Both take the same relative
+	 * path, so a caller which has to check that a file exists before it enqueues it
+	 * says the path once.
+	 *
+	 * @param string $path Optional asset path relative from assets folder.
+	 *
+	 * @return string Absolute path of the asset or of the assets folder
+	 */
+	public static function get_asset_path( string $path = '' ): string {
+		return sprintf(
+			'%s/assets/%s',
+			dirname( __DIR__ ),
+			static::unleadingslashit( $path )
+		);
+	}
+
+	/**
 	 * Method to build the pattern which matches this plugin's shortcodes.
 	 *
 	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
