@@ -49,6 +49,27 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		$this->assertSame( $header['RequiresPHP'], iG_Syntax_Hiliter_Gatekeeper::MIN_PHP_VERSION_REQUIRED );
 		$this->assertSame( $header['RequiresWP'], iG_Syntax_Hiliter_Gatekeeper::MIN_WP_VERSION_REQUIRED );
 
+		/*
+		 * And so does the coding standard, which is what stops a sniff waving
+		 * through syntax the plugin's own floor forbids — or objecting to syntax it
+		 * allows. Asserted here so that moving a floor names every file that has to
+		 * move with it, rather than leaving one of them to be found later by
+		 * somebody wondering why the linter disagrees with the plugin header.
+		 */
+		$phpcs = (string) file_get_contents( IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/phpcs.xml.dist' );
+
+		$this->assertStringContainsString(
+			sprintf( '<config name="testVersion" value="%s-"/>', $header['RequiresPHP'] ),
+			$phpcs,
+			'phpcs.xml.dist checks a different PHP version than the plugin requires.'
+		);
+
+		$this->assertStringContainsString(
+			sprintf( '<config name="minimum_wp_version" value="%s"/>', $header['RequiresWP'] ),
+			$phpcs,
+			'phpcs.xml.dist checks a different WordPress version than the plugin requires.'
+		);
+
 		$readme = (string) file_get_contents( IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/readme.txt' );
 
 		/*

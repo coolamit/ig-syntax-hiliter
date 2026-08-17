@@ -8,6 +8,10 @@
 #   PHP 8.4   |    x     |     x
 #   PHP 8.5   |    x     |     x
 #
+# A second job, `compat`, covers the other half of the contract: that the plugin
+# REFUSES to load below its floors. Those legs run PHP 7.4 and 8.3, and a
+# supported PHP against an unsupported WordPress. See the comment above the job.
+#
 # This is the *test* workflow only. The release workflow is a separate file and
 # is not part of this one.
 #
@@ -340,3 +344,80 @@ jobs:
           WP_TESTS_DB_PASSWORD: wp
           WP_TESTS_DB_HOST: 127.0.0.1:3306
         run: composer run test:integration
+
+  #
+  # The other half of the contract: the plugin must REFUSE to load below its
+  # floors, and say why.
+  #
+  # The job above can never test that. Every leg of it runs a PHP and a
+  # WordPress the plugin supports, so it only ever exercises a plugin that
+  # loaded — and it could not be made to, either: composer.json requires PHP
+  # 8.4, the PHP lint step parse-checks classes/ which is PHP 8.1+ syntax, and
+  # the integration tier needs the plugin loaded. So this is a job of its own,
+  # with no Composer, no WordPress and no PHPUnit in it.
+  #
+  # ---------------------------------------------------------------------------
+  # WHEN THE MINIMUM VERSIONS CHANGE, this is what to do here
+  # ---------------------------------------------------------------------------
+  #
+  # `tests/compat/refusal-check.php` holds NO version numbers. It reads both
+  # floors from iG_Syntax_Hiliter_Gatekeeper, so it never needs editing.
+  #
+  # The `include` list below is the only thing that does, and only to ADD the
+  # version which has just become unsupported. A PHP raised from 8.4 to 8.5
+  # makes 8.4 a version that must now be refused, so add a leg for it. The
+  # existing legs stay correct as floors rise — 7.4 is below every floor this
+  # plugin will ever have — so nothing here needs deleting, ever.
+  #
+  # Getting it wrong fails loudly rather than silently: the script refuses to
+  # run on an environment that meets both floors, because a check which cannot
+  # fail is worse than no check.
+  #
+  compat:
+    # Reads as e.g. "Tests / Refuses on PHP 7.4" in the checks list.
+    name: Refuses on PHP ${{ matrix.php }}${{ matrix.wp && format(' + WP {0}', matrix.wp) || '' }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Below the PHP floor. The WordPress version is left to the script,
+          # which uses the plugin's own floor, so PHP is the only thing wrong.
+          - php: '7.4'
+            wp: ''
+          - php: '8.3'
+            wp: ''
+          # And the other floor: a PHP the plugin supports, with a WordPress it
+          # does not. No WordPress is installed to do this — the script sets the
+          # version WordPress would have set, which is all the Gatekeeper reads.
+          - php: '8.4'
+            wp: '6.8'
+
+    steps:
+
+      - name: Check out plugin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 (2.37.2)
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Parse-check the files an unsupported PHP still has to read
+        # Deliberately NOT `git ls-files` like the job above: the rest of the
+        # tree is PHP 8.4 syntax on purpose and would fail here, correctly and
+        # uselessly. These two are the whole of what a refused site parses.
+        run: |
+          php -l ig-syntax-hiliter.php
+          php -l classes/class-ig-syntax-hiliter-gatekeeper.php
+
+      - name: The plugin must refuse to load, and say why
+        env:
+          # Empty means "use the plugin's own floor", which is what the legs
+          # above want where PHP is the version under test.
+          IGSH_COMPAT_WP_VERSION: ${{ matrix.wp }}
+        run: php tests/compat/refusal-check.php
