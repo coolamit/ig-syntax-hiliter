@@ -431,6 +431,33 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 	}
 
+	/**
+	 * The plugin's own stylesheet says a code box does not wrap, on the `pre`.
+	 *
+	 * An odd thing to assert — it reads a build artefact for a string — and it earns
+	 * its place because this exact declaration was missing and nothing noticed. Prism's
+	 * line numbers plugin carries `white-space: inherit` on the `code` at the same
+	 * specificity as this plugin's rule and loads after it, so with line numbers on the
+	 * code takes its answer from the `pre`. With nothing said there, the last word
+	 * belonged to the theme at 0-1-1 and any site CSS touching `pre` took it away —
+	 * lines wrapped, and the line numbers stopped lining up with the code.
+	 *
+	 * No tier here can see a rendered box, so the rule itself is what is checked.
+	 *
+	 * @return void
+	 */
+	public function test_the_stylesheet_says_a_code_box_does_not_wrap(): void {
+
+		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
+
+		$this->assertMatchesRegularExpression(
+			'~pre\[id\^=["\']?ig-sh-["\']?\]\[class\*=[^\]]+\][^{}]*\{[^}]*white-space:\s*pre[;}]~',
+			$css,
+			'The pre carries no white-space of its own, so a wrapping site stylesheet wins.'
+		);
+
+	}
+
 }    //end of class
 
 

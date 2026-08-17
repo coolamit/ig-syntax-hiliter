@@ -72,12 +72,32 @@ pre[class*="language-"] > code.language-none {
  * positioned because the line highlight plugin hangs its overlay off it; the
  * line numbers and line highlight plugins each position the box themselves
  * when they are loaded, and this is the same value they use.
+ *
+ * A code box also scrolls sideways; it never wraps. Long lines are ordinary
+ * in source code, and a wrapped one puts the line numbers out of step with
+ * the code they are numbering, which is worse than a scrollbar.
+ *
+ * **That has to be said on the `pre` and not only on the `code`.** Prism's
+ * line numbers plugin carries `white-space: inherit` on the code at the same
+ * 0-2-2 as the rule below, and loads after it, so with line numbers on it
+ * wins and the code is sent back to its parent for an answer. Nothing here
+ * used to give it one, which left the last word with the theme's own 0-1-1 —
+ * and any site CSS touching `pre` took it away silently. `white-space` is
+ * inherited, so this one declaration covers the code with line numbers on
+ * and off alike.
+ *
+ * `[class*="language-"]` is on the selector to take it to 0-2-1, past every
+ * theme and past a `.wrap pre` of a site's own whatever order they load in.
+ * It is not a trick: the renderer writes the id and that class onto this
+ * very element.
  */
-pre[id^="ig-sh-"] {
+pre[id^="ig-sh-"][class*="language-"] {
 	position: relative;
 	overflow: auto;
 	max-width: 100%;
 	tab-size: 4;
+	white-space: pre;
+	word-wrap: normal;
 }
 
 pre[id^="ig-sh-"] > code {
