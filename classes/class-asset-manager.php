@@ -67,6 +67,39 @@ class Asset_Manager {
 	const THEME_NONE = 'none';
 
 	/**
+	 * Font setting value which means "load no webfont at all".
+	 *
+	 * This is the default, and it is the only value which costs a reader nothing: a
+	 * chosen font is fetched from another host, and a plugin which did that without
+	 * being asked would be making that decision on a site owner's behalf.
+	 *
+	 * @var string
+	 */
+	const FONT_NONE = 'none';
+
+	/**
+	 * Where the webfont stylesheets are fetched from.
+	 *
+	 * Bunny Fonts, which serves the same API shape as Google Fonts and states that it
+	 * stores no personal data and no logs. That is the whole reason it was chosen over
+	 * Google's own service.
+	 *
+	 * @var string
+	 */
+	const FONTS_URL = 'https://fonts.bunny.net/css';
+
+	/**
+	 * What a chosen font falls back to.
+	 *
+	 * The same stack `assets/src/scss/frontend-chrome.scss` sets on a code box, so a
+	 * font which fails to load leaves a reader exactly where they would have been with
+	 * no font chosen at all.
+	 *
+	 * @var string
+	 */
+	const FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
+
+	/**
 	 * `wp_footer` priority at which the assets are first decided.
 	 *
 	 * @var int
@@ -229,6 +262,7 @@ class Asset_Manager {
 		}
 
 		$this->_enqueue_theme();
+		$this->_enqueue_font( Shortcode_Handler::get_plugin_option( 'font', static::FONT_NONE ) );
 		$this->_enqueue_engine();
 		$this->_enqueue_plugins();
 		$this->_enqueue_setup();
@@ -251,10 +285,11 @@ class Asset_Manager {
 	 * in the browser.
 	 *
 	 * @param string $theme Slug of the theme to load, or the "no theme" value.
+	 * @param string $font  Slug of the font to load, or the "no font" value.
 	 *
 	 * @return void
 	 */
-	public function enqueue_for_preview( string $theme ): void {
+	public function enqueue_for_preview( string $theme, string $font = self::FONT_NONE ): void {
 
 		$theme = static::_resolve_theme( $theme );
 
@@ -275,6 +310,8 @@ class Asset_Manager {
 			[],
 			static::_get_version()
 		);
+
+		$this->_enqueue_font( $font );
 
 		$this->_enqueue_engine();
 
@@ -321,6 +358,36 @@ class Asset_Manager {
 	public static function get_theme_style_id(): string {
 		return sprintf( '%s-css', static::_handle( 'theme' ) );
 	}    //end get_theme_style_id()
+
+	/**
+	 * Method to settle which font is actually loaded for a stored setting value.
+	 *
+	 * **This falls back the other way from `_resolve_theme()`, deliberately.** A theme
+	 * this plugin does not ship falls back to the default theme, because a code box
+	 * with no colours at all looks broken. A font this plugin does not offer falls back
+	 * to loading nothing: the only thing worse than the wrong font is fetching a file
+	 * from another host that nobody asked for.
+	 *
+	 * @param string $font Font setting value.
+	 *
+	 * @return string A font slug this plugin offers, or the "no font" value.
+	 */
+	protected static function _resolve_font( string $font ): string {
+		return ( isset( static::_get_font_titles()[ $font ] ) ) ? $font : static::FONT_NONE;
+	}    //end _resolve_font()
+
+	/**
+	 * Method to get the element id of the webfont stylesheet's `link` tag.
+	 *
+	 * The counterpart of `get_theme_style_id()`, and there for the same reason: the
+	 * preview swaps that tag's `href` as the dropdown is changed, and the handle the id
+	 * is built from is this class's business.
+	 *
+	 * @return string
+	 */
+	public static function get_font_style_id(): string {
+		return sprintf( '%s-css', static::_handle( 'font' ) );
+	}    //end get_font_style_id()
 
 	/**
 	 * Method to get the URL the language files are fetched from at runtime.
@@ -472,6 +539,181 @@ class Asset_Manager {
 	}    //end get_themes()
 
 	/**
+	 * Method to get the fonts the plugin offers, keyed by the name Bunny Fonts knows.
+	 *
+	 * The single declaration of what a font is here. The title is the family's real
+	 * name, which is both what the dropdown shows **and** what the CSS asks for, so
+	 * there is one string and not two which could disagree.
+	 *
+	 * Every value below was read out of the font files Bunny actually serves rather
+	 * than from a catalogue page, and two of those readings matter:
+	 *
+	 * - `weight` is the one weight fetched. Bunny drops a weight a family does not
+	 *   have without complaining, so this can never fail a request — but a font asked
+	 *   for at a weight it does not have would be synthesised by the browser, which is
+	 *   why each one is the weight its own family really ships.
+	 * - `ligatures` says the family's `GSUB` table genuinely carries `liga` or `calt`
+	 *   lookups. Only three of the ten do. A browser may switch contextual alternates
+	 *   off for a face it treats as fixed pitch, so the fonts which have them ask for
+	 *   them by name; the rest say nothing, because a declaration which does nothing
+	 *   reads as though it does.
+	 *
+	 * @return array Font slug to title, weight and whether it carries code ligatures.
+	 */
+	protected static function _get_font_titles(): array {
+
+		return [
+			'azeret-mono'       => [
+				'title'     => 'Azeret Mono',
+				'weight'    => 300,
+				'ligatures' => true,
+			],
+			'fira-code'         => [
+				'title'     => 'Fira Code',
+				'weight'    => 400,
+				'ligatures' => true,
+			],
+			'fira-mono'         => [
+				'title'     => 'Fira Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'google-sans-code'  => [
+				'title'     => 'Google Sans Code',
+				'weight'    => 400,
+				'ligatures' => false,    //the name says otherwise; its GSUB has ccmp, locl and ss01 and nothing else
+			],
+			'jetbrains-mono'    => [
+				'title'     => 'JetBrains Mono',
+				'weight'    => 400,
+				'ligatures' => true,
+			],
+			'm-plus-code-latin' => [
+				'title'     => 'M PLUS Code Latin',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'nova-mono'         => [
+				'title'     => 'Nova Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'roboto-mono'       => [
+				'title'     => 'Roboto Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'source-code-pro'   => [
+				'title'     => 'Source Code Pro',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'ubuntu-mono'       => [
+				'title'     => 'Ubuntu Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+		];
+
+	}    //end _get_font_titles()
+
+	/**
+	 * Method to get the fonts the plugin offers.
+	 *
+	 * The counterpart of `get_themes()`, without its readability check: a theme is a
+	 * file on disk which an upgrade can lose, and a font is a name in the map above.
+	 *
+	 * @return array Font slug to human readable title.
+	 */
+	public static function get_fonts(): array {
+
+		return array_map(
+			static fn ( array $font ): string => $font['title'],
+			static::_get_font_titles()
+		);
+
+	}    //end get_fonts()
+
+	/**
+	 * Method to get the stylesheet URL for a font.
+	 *
+	 * Built by hand rather than with `add_query_arg()`, which would encode the colon
+	 * the family and its weight are joined with. Nothing here needs escaping: the slug
+	 * is a key of the map above and the weight is an integer from it, so a caller
+	 * cannot get a string of its own into this URL.
+	 *
+	 * @param string $slug Font slug.
+	 *
+	 * @return string URL, or an empty string where no font is to be loaded.
+	 */
+	public static function get_font_url( string $slug ): string {
+
+		$fonts = static::_get_font_titles();
+
+		if ( ! isset( $fonts[ $slug ] ) ) {
+			return '';
+		}
+
+		/*
+		 * `display=swap` so that a reader is shown the code in the fallback font while
+		 * the webfont is still on its way, rather than being shown nothing at all.
+		 */
+		return sprintf(
+			'%s?family=%s:%d&display=swap',
+			static::FONTS_URL,
+			$slug,
+			$fonts[ $slug ]['weight']
+		);
+
+	}    //end get_font_url()
+
+	/**
+	 * Method to get the CSS which puts a font on the code boxes.
+	 *
+	 * Three things about the rule this returns, and all three are load-bearing:
+	 *
+	 * - It is added inline against the chrome stylesheet rather than written into
+	 *   `frontend-chrome.scss`, because the family name is not known until a site owner
+	 *   picks one, and because the "no font" case has to leave that stylesheet's own
+	 *   rule exactly as it is. An inline style prints after the stylesheet it belongs
+	 *   to, so the same specificity is enough and nothing needs `!important`.
+	 * - It claims the descendants of the `code` element as well as the element itself,
+	 *   for one theme out of the 43. `prism-z-touch` carries
+	 *   `pre[class*="language-"] * { font-family: monospace }`, which otherwise wins on
+	 *   every coloured token inside the box and leaves a reader looking at two fonts.
+	 * - It asks for ligatures only where the family has them. See `_get_font_titles()`.
+	 *
+	 * @param string $slug Font slug.
+	 *
+	 * @return string CSS, or an empty string where no font is to be loaded.
+	 */
+	public static function get_font_css( string $slug ): string {
+
+		$fonts = static::_get_font_titles();
+
+		if ( ! isset( $fonts[ $slug ] ) ) {
+			return '';
+		}
+
+		$declarations = sprintf(
+			'font-family: "%s", %s;',
+			$fonts[ $slug ]['title'],
+			static::FONT_STACK
+		);
+
+		if ( ! empty( $fonts[ $slug ]['ligatures'] ) ) {
+			$declarations .= ' font-variant-ligatures: common-ligatures contextual;';
+		}
+
+		return sprintf(
+			'pre[id^="%1$s"] > code, pre[id^="%1$s"] > code * { %2$s }',
+			Renderer::ID_PREFIX,
+			$declarations
+		);
+
+	}    //end get_font_css()
+
+	/**
 	 * Method to enqueue the chosen theme stylesheet, and the plugin's own chrome.
 	 *
 	 * @return void
@@ -501,6 +743,40 @@ class Asset_Manager {
 		);
 
 	}    //end _enqueue_theme()
+
+	/**
+	 * Method to enqueue the chosen webfont, and the rule which applies it.
+	 *
+	 * Nothing at all happens where no font is chosen, which is the default: the page
+	 * makes no request to another host and the code boxes keep the font the chrome
+	 * stylesheet has always given them.
+	 *
+	 * @param string $font Font setting value.
+	 *
+	 * @return void
+	 */
+	protected function _enqueue_font( string $font ): void {
+
+		$font = static::_resolve_font( $font );
+
+		if ( static::FONT_NONE === $font ) {
+			return;
+		}
+
+		/*
+		 * No version. This URL belongs to somebody else and a `?ver=` of ours on the
+		 * end of it is both meaningless there and a second cache key for the same file.
+		 */
+		wp_enqueue_style(
+			static::_handle( 'font' ),
+			static::get_font_url( $font ),
+			[],
+			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Deliberate. This URL is not this plugin's, so a version of this plugin's on the end of it is meaningless there and a second cache key for the same file.
+		);
+
+		wp_add_inline_style( static::_handle( 'chrome' ), static::get_font_css( $font ) );
+
+	}    //end _enqueue_font()
 
 	/**
 	 * Method to enqueue the highlighting engine and its language loader.

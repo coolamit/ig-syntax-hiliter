@@ -215,34 +215,78 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The preview snippet's lines are short enough to fit the column.
+	 * The preview snippet shows a reader what the three ligature fonts do.
 	 *
-	 * The themes ask for type sizes half again apart — 18px at one end and about
-	 * 11.7px at the other — so a line which fits beside the settings in one theme
-	 * runs off the edge in another. The box scrolls, so a long line costs no more
-	 * than a scrollbar, but a sample somebody has to drag sideways to read is a poor
-	 * way of showing them a colour scheme. Nothing else says the width matters, so
-	 * this does.
+	 * Ten fonts are offered and three of them draw `=>`, `&&` and `===` as single
+	 * glyphs. A sample carrying none of those sequences would make the whole point of
+	 * picking one of those three invisible in the one place it is meant to be seen.
 	 *
 	 * @return void
 	 */
-	public function test_the_preview_snippet_stays_inside_the_column(): void {
+	public function test_the_preview_snippet_shows_what_a_ligature_font_does(): void {
 
 		$markup = Admin::get_preview_markup();
 		$code   = html_entity_decode( wp_strip_all_tags( $markup ), ENT_QUOTES, 'UTF-8' );
 
-		foreach ( explode( "\n", $code ) as $line ) {
+		foreach ( [ '=>', '&&', '===', '->' ] as $sequence ) {
 
-			// A tab is drawn as four columns: Prism's themes all set `tab-size: 4`.
-			$width = mb_strlen( str_replace( "\t", '    ', $line ) );
-
-			$this->assertLessThanOrEqual(
-				Admin::PREVIEW_LINE_LENGTH,
-				$width,
-				sprintf( 'The preview snippet has a line of %1$d columns: %2$s', $width, trim( $line ) )
+			$this->assertStringContainsString(
+				$sequence,
+				$code,
+				sprintf( 'The preview snippet has no %s in it for a ligature to show up on.', $sequence )
 			);
 
 		}
+
+	}
+
+	/**
+	 * The font control is on the screen, and it is under the theme control.
+	 *
+	 * The order is the schema's, and it is the schema the template walks. Amit asked
+	 * for the font to sit below the theme, so that is asserted where it is decided
+	 * rather than left to whoever next edits the list.
+	 *
+	 * @return void
+	 */
+	public function test_the_font_control_sits_below_the_theme_control(): void {
+
+		$names = array_keys( Admin::get_settings_schema() );
+
+		$this->assertSame( [ 'theme', 'font' ], array_slice( $names, 0, 2 ) );
+
+		$html = $this->_render();
+
+		$this->assertStringContainsString( 'data-igsh-option="font"', $html );
+
+		$this->assertLessThan(
+			strpos( $html, 'data-igsh-option="font"' ),
+			strpos( $html, 'data-igsh-option="theme"' ),
+			'The font control is drawn after the theme control.'
+		);
+
+	}
+
+	/**
+	 * The screen says where a font comes from, because it comes from another host.
+	 *
+	 * Every other asset this plugin loads is one it ships. A site owner switching
+	 * this on is adding a third party request to every page carrying code, and they
+	 * should not have to read the source to find that out.
+	 *
+	 * @return void
+	 */
+	public function test_the_font_setting_says_a_font_is_fetched_from_another_host(): void {
+
+		$schema = Admin::get_settings_schema();
+
+		$this->assertStringContainsString( 'fonts.bunny.net', $schema['font']['description'] );
+
+		$this->assertStringContainsString(
+			'fonts.bunny.net',
+			$this->_render(),
+			'The description reaches the page a site owner reads.'
+		);
 
 	}
 

@@ -32,6 +32,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 */
 	const V6_DEFAULTS = [
 		'theme'             => Asset_Manager::DEFAULT_THEME,
+		'font'              => Asset_Manager::FONT_NONE,
 		'toolbar'           => 'yes',
 		'copy_code'         => 'yes',
 		'show_line_numbers' => 'yes',

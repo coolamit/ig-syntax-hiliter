@@ -88,6 +88,22 @@ interface IgshAdminConfig {
 	 * the handle belongs to `Asset_Manager`.
 	 */
 	themeStyleId?: string | undefined;
+
+	/**
+	 * Every font the dropdown offers, to the stylesheet it fetches and the rule
+	 * which puts it on the code box. A font needs both: fetching a family does not
+	 * apply it to anything.
+	 *
+	 * `none` is in it carrying two empty strings, for the reason `none` is in
+	 * `themes`.
+	 */
+	fonts?: Record< string, { url: string; css: string } > | undefined;
+
+	/**
+	 * Id of the `link` tag carrying the webfont stylesheet, sent for the same
+	 * reason `themeStyleId` is.
+	 */
+	fontStyleId?: string | undefined;
 	i18n: IgshAdminStrings;
 }
 

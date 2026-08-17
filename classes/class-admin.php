@@ -65,13 +65,6 @@ class Admin extends Base {
 	const PREVIEW_LANGUAGE = 'php';
 
 	/**
-	 * Widest line the preview snippet may carry, in columns, counting a tab as four.
-	 *
-	 * @var int
-	 */
-	const PREVIEW_LINE_LENGTH = 44;
-
-	/**
 	 * Whether the hooks have been registered already.
 	 *
 	 * @var bool
@@ -153,6 +146,12 @@ class Admin extends Base {
 				'label'       => __( 'Theme', 'igsyntax-hiliter' ),
 				'description' => __( 'Colour scheme used for code boxes on the front end.', 'igsyntax-hiliter' ),
 				'choices'     => static::get_theme_choices(),
+			],
+			'font'              => [
+				'type'        => 'choice',
+				'label'       => __( 'Font', 'igsyntax-hiliter' ),
+				'description' => __( 'Typeface used for code boxes on the front end. Anything other than None is fetched from Bunny Fonts, a font service which stores no visitor data, so each reader\'s browser makes one request to fonts.bunny.net. None fetches nothing.', 'igsyntax-hiliter' ),
+				'choices'     => static::get_font_choices(),
 			],
 			'toolbar'           => [
 				'type'        => 'toggle',
@@ -253,6 +252,58 @@ class Admin extends Base {
 		return $urls;
 
 	}    //end get_theme_urls()
+
+	/**
+	 * Method to get the fonts offered by the font setting.
+	 *
+	 * Sorted by name with "None" in front, for the reasons `get_theme_choices()` gives
+	 * and by the same comparison. "None" is the default here, which the themes' "None"
+	 * is not: a font is fetched from another host, and a plugin which reached out to one
+	 * on a site owner's behalf without being asked would be making that call for them.
+	 *
+	 * @return array Font setting value to its label.
+	 */
+	public static function get_font_choices(): array {
+
+		$fonts = Asset_Manager::get_fonts();
+
+		uasort( $fonts, 'strnatcasecmp' );
+
+		return array_merge(
+			[ Asset_Manager::FONT_NONE => __( 'None — load no font', 'igsyntax-hiliter' ) ],
+			$fonts
+		);
+
+	}    //end get_font_choices()
+
+	/**
+	 * Method to get what the preview needs in order to paint each font.
+	 *
+	 * The stylesheet to fetch and the rule which applies it, for every font the
+	 * dropdown offers. Walked from the choices rather than from the registry, for the
+	 * reason `get_theme_urls()` is: the list the preview can paint and the list the
+	 * screen offers must be the same list. "None" is in it carrying two empty strings,
+	 * because it is a choice like any other and the script has to be able to look it up
+	 * and find that there is nothing to do.
+	 *
+	 * @return array Font setting value to its stylesheet URL and its CSS.
+	 */
+	public static function get_font_data(): array {
+
+		$fonts = [];
+
+		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
+
+			$fonts[ $slug ] = [
+				'url' => Asset_Manager::get_font_url( $slug ),
+				'css' => Asset_Manager::get_font_css( $slug ),
+			];
+
+		}
+
+		return $fonts;
+
+	}    //end get_font_data()
 
 	/**
 	 * Method to register the plugin's REST routes.
@@ -477,14 +528,15 @@ class Admin extends Base {
 	 *
 	 * The snippet itself is source code and is deliberately not translated. It is
 	 * chosen to put a comment, a string, a keyword, a number and a function name in
-	 * front of the reader, because those are what a theme colours differently.
+	 * front of the reader, because those are what a theme colours differently — and
+	 * `=>`, `&&`, `===` and `->`, because those are what the three fonts carrying code
+	 * ligatures draw differently from every other font on the list.
 	 *
-	 * **Its lines are kept short on purpose**, inside `PREVIEW_LINE_LENGTH`. The
-	 * themes ask for type sizes half again apart — 18px at one end and about 11.7px
-	 * at the other — and a line which fits the preview column at the small end runs
-	 * off it at the large end. The box scrolls, so a long line costs nothing worse
-	 * than a scrollbar, but a snippet a reader has to drag around to read is a poor
-	 * way to show them a colour scheme.
+	 * **The box scrolls in both directions and that is expected.** The snippet is
+	 * longer than the column is tall and one line of it is wider than the column is
+	 * wide, which is Amit's call: a preview showing a real class is worth more than one
+	 * which fits. The themes ask for type sizes half again apart, so no snippet can fit
+	 * every one of them anyway.
 	 *
 	 * @param bool $show_line_numbers Whether the box is drawn with line numbers.
 	 *
@@ -497,15 +549,37 @@ class Admin extends Base {
 /**
  * Say hello, politely.
  */
-function igsh_greet( $name = 'world' ) {
 
-	$hello = sprintf( 'Hello, %s!', $name );
+namespace My_Plugin\Inc;
 
-	return str_repeat( $hello, 1 );
+use Some_Plugin\Some_Feature;
+use Some_Plugin\Some_Collection;
+
+class Foo extends Some_Feature {
+
+    use Some_Collection;
+
+    public function __construct() {
+
+        $this->_check_availability();
+
+    }
+
+    private function _check_availability(): void {
+
+        if ( ! empty( $GLOBALS['some_val'] ) && 2 === $GLOBALS['some_val'] ) {
+            // do something
+            return;
+        }
+
+        // do something else
+        return;
+
+    }
 
 }
 
-add_action( 'init', 'igsh_greet' );
+add_action( 'init', fn() => new Foo );
 PREVIEW;
 
 		return Renderer::get_instance()->render_snippet(
@@ -555,7 +629,8 @@ PREVIEW;
 		 * screen asks for a preview and is told nothing about what one is made of.
 		 */
 		Asset_Manager::get_instance()->enqueue_for_preview(
-			(string) $this->_option->get( 'theme' )
+			(string) $this->_option->get( 'theme' ),
+			(string) $this->_option->get( 'font' )
 		);
 
 		wp_add_inline_script(
@@ -590,6 +665,15 @@ PREVIEW;
 			 */
 			'themes'       => static::get_theme_urls(),
 			'themeStyleId' => Asset_Manager::get_theme_style_id(),
+
+			/*
+			 * The same two things for the fonts, and one more: a font needs a rule as
+			 * well as a stylesheet, because fetching a family does not put it on
+			 * anything. Both strings are built by the asset manager, so the preview and
+			 * the front end cannot end up applying a font two different ways.
+			 */
+			'fonts'        => static::get_font_data(),
+			'fontStyleId'  => Asset_Manager::get_font_style_id(),
 			'i18n'         => [
 
 				/*

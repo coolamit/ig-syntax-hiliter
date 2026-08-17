@@ -49,6 +49,10 @@ class Validate {
 			'allowed' => null,    //the bundled themes readable on disk, plus `none`
 			'default' => Asset_Manager::DEFAULT_THEME,
 		],
+		'font'              => [
+			'allowed' => null,    //the fonts the plugin offers, plus `none`
+			'default' => Asset_Manager::FONT_NONE,    //load no webfont unless a site owner asks for one
+		],
 		'toolbar'           => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //show toolbar above hilited code by default
@@ -147,11 +151,16 @@ class Validate {
 			return $allowed;
 		}
 
-		//NULL means the list is not fixed, and `theme` is the only setting which says so:
-		//what it accepts is whatever is readable on disk, plus the choice to load no
-		//stylesheet at all
+		//NULL means the list is not fixed and is resolved here instead. `theme` accepts
+		//whatever is readable on disk and `font` whatever the plugin offers, each plus
+		//the choice to load nothing at all. Both are read from the asset manager rather
+		//than copied, so the list a value is checked against is the list it is offered from
 		if ( 'theme' === $name ) {
 			return array_merge( array_keys( Asset_Manager::get_themes() ), [ Asset_Manager::THEME_NONE ] );
+		}
+
+		if ( 'font' === $name ) {
+			return array_merge( array_keys( Asset_Manager::get_fonts() ), [ Asset_Manager::FONT_NONE ] );
 		}
 
 		return [];    //declared as unfixed with nothing here able to resolve it, so nothing is accepted

@@ -51,6 +51,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	const V6_DEFAULTS = [
 		'theme'             => Asset_Manager::DEFAULT_THEME,
+		'font'              => Asset_Manager::FONT_NONE,
 		'toolbar'           => 'yes',
 		'copy_code'         => 'yes',
 		'show_line_numbers' => 'yes',
@@ -121,6 +122,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		$this->assertSame(
 			[
 				'theme'             => 'none',    // fe-styles=no
+				'font'              => 'none',    // new, and off: a font is fetched from another host
 				'toolbar'           => 'no',      // carried
 				'copy_code'         => 'no',      // plain_text=no
 				'show_line_numbers' => 'no',      // carried

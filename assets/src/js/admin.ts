@@ -139,6 +139,13 @@
 	 */
 	const SAVE_TIMEOUT_MS = 15000;
 
+	/*
+	 * Id of the `style` tag the preview keeps its font rule in. It is the preview's
+	 * own and belongs to nothing PHP enqueued, which is why it is spelled out here
+	 * and the stylesheet link's id is not.
+	 */
+	const PREVIEW_FONT_STYLE_ID = 'igsh-preview-font';
+
 	/**
 	 * The name of a setting, as the screen already shows it.
 	 *
@@ -659,6 +666,59 @@
 	}
 
 	/**
+	 * Puts the font now chosen on the preview box.
+	 *
+	 * Two steps, because fetching a family does not put it on anything. The
+	 * stylesheet link works exactly as the theme's does above, including the empty
+	 * `href` for "None". The rule then goes into a `style` tag of the preview's own,
+	 * appended to the head so that it comes after everything wp-admin enqueued and
+	 * wins at the same specificity without `!important`.
+	 *
+	 * The rule itself is built by `Asset_Manager` and sent over, never assembled
+	 * here: the preview has to apply a font exactly as the front end does, and two
+	 * pieces of code building that rule would be two chances to disagree.
+	 *
+	 * @param font Value the font control now holds.
+	 */
+	function applyPreviewFont( font: string ): void {
+		const fonts = config?.fonts;
+		const id = config?.fontStyleId;
+
+		if ( ! fonts || ! id || ! ( font in fonts ) ) {
+			return;
+		}
+
+		const chosen = fonts[ font ];
+		const href = chosen?.url ?? '';
+		let link = document.getElementById( id ) as HTMLLinkElement | null;
+
+		if ( ! link ) {
+			if ( '' === href ) {
+				return;
+			}
+
+			link = document.createElement( 'link' );
+			link.id = id;
+			link.rel = 'stylesheet';
+
+			document.head.appendChild( link );
+		}
+
+		link.href = href;
+
+		let rule = document.getElementById( PREVIEW_FONT_STYLE_ID );
+
+		if ( ! rule ) {
+			rule = document.createElement( 'style' );
+			rule.id = PREVIEW_FONT_STYLE_ID;
+
+			document.head.appendChild( rule );
+		}
+
+		rule.textContent = chosen?.css ?? '';
+	}
+
+	/**
 	 * Draws the preview box with or without line numbers.
 	 *
 	 * Line numbers are markup, not styling: Prism's plugin builds a row of numbers
@@ -723,6 +783,12 @@
 
 		if ( null !== theme ) {
 			applyPreviewTheme( theme );
+		}
+
+		const font = controlValue( 'font' );
+
+		if ( null !== font ) {
+			applyPreviewFont( font );
 		}
 
 		preview.classList.toggle(
