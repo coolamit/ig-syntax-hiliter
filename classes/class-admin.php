@@ -65,6 +65,13 @@ class Admin extends Base {
 	const PREVIEW_LANGUAGE = 'php';
 
 	/**
+	 * Widest line the preview snippet may carry, in columns, counting a tab as four.
+	 *
+	 * @var int
+	 */
+	const PREVIEW_LINE_LENGTH = 44;
+
+	/**
 	 * Whether the hooks have been registered already.
 	 *
 	 * @var bool
@@ -472,6 +479,13 @@ class Admin extends Base {
 	 * chosen to put a comment, a string, a keyword, a number and a function name in
 	 * front of the reader, because those are what a theme colours differently.
 	 *
+	 * **Its lines are kept short on purpose**, inside `PREVIEW_LINE_LENGTH`. The
+	 * themes ask for type sizes half again apart — 18px at one end and about 11.7px
+	 * at the other — and a line which fits the preview column at the small end runs
+	 * off it at the large end. The box scrolls, so a long line costs nothing worse
+	 * than a scrollbar, but a snippet a reader has to drag around to read is a poor
+	 * way to show them a colour scheme.
+	 *
 	 * @param bool $show_line_numbers Whether the box is drawn with line numbers.
 	 *
 	 * @return string Markup for the code box.
@@ -481,13 +495,13 @@ class Admin extends Base {
 		$code = <<<'PREVIEW'
 <?php
 /**
- * Say hello, the long way round.
+ * Say hello, politely.
  */
-function igsh_greet( string $name = 'world' ): string {
+function igsh_greet( $name = 'world' ) {
 
-	$greeting = sprintf( 'Hello, %s!', ucfirst( $name ) );
+	$hello = sprintf( 'Hello, %s!', $name );
 
-	return str_repeat( $greeting, 1 );
+	return str_repeat( $hello, 1 );
 
 }
 

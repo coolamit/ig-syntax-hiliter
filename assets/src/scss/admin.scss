@@ -128,6 +128,14 @@ $igsh-radius: 3px;
 	max-width: 40rem;
 
 	/*
+	 * A flex item may not shrink below its own content unless it is told it may,
+	 * and the content here is a line of somebody's source code. Without this the
+	 * column refuses to narrow, the flex line overflows and the whole panel wraps
+	 * underneath the settings — which is what a 17px theme did to it.
+	 */
+	min-width: 0;
+
+	/*
 	 * Follows the settings down the page, so that the last toggle and the box it
 	 * changes are still together. `top` clears the admin bar, which is fixed on
 	 * screens wide enough for this layout to be two columns at all.
@@ -139,20 +147,58 @@ $igsh-radius: 3px;
 		margin-top: 0;
 	}
 
+	/*
+	 * A window of a fixed size, whatever is inside it.
+	 *
+	 * The themes disagree about type size by half again — Shades of Purple asks
+	 * for 17px and Z-Touch for 18px, VS and GHColors for .9em of wp-admin's 13px,
+	 * and most of the rest inherit. Each keeps its own size, because that is what
+	 * a reader's own pages will look like, so the box is what holds still: it is
+	 * the same size on every theme and the code scrolls inside it.
+	 */
 	&__box {
+		display: flex;
+		flex-direction: column;
+		height: 26rem;
+		overflow: hidden;
 
 		/*
-		 * The themes paint the `pre` itself, so the frame is only here to keep a
-		 * light theme from disappearing into the white of wp-admin.
+		 * The frame is only here to keep a light theme from disappearing into the
+		 * white of wp-admin. The `pre` fills the window, so it is the theme's own
+		 * background a reader sees inside it and not this one.
 		 */
 		padding: 12px;
 		border: 1px solid #dcdcde;
 		background: #f6f7f7;
 		border-radius: $igsh-radius;
 
+		/*
+		 * Whichever of the two is the direct child: the toolbar plugin wraps the
+		 * box in a `div.code-toolbar` when it is switched on and leaves the `pre`
+		 * where it is when it is off.
+		 */
+		> * {
+			flex: 1 1 auto;
+			min-width: 0;
+			min-height: 0;
+		}
+
+		.code-toolbar {
+			display: flex;
+			flex-direction: column;
+		}
+
+		/*
+		 * Beats the themes' own `pre[class*="language-"]` on specificity, so none
+		 * of this needs `!important`. `overflow` is set rather than relied on:
+		 * every vendored theme sets it except Coy without shadows.
+		 */
 		pre[class*="language-"] {
+			flex: 1 1 auto;
 			margin: 0;
-			max-height: 24rem;
+			max-width: 100%;
+			max-height: none;
+			overflow: auto;
 		}
 	}
 

@@ -215,6 +215,38 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The preview snippet's lines are short enough to fit the column.
+	 *
+	 * The themes ask for type sizes half again apart — 18px at one end and about
+	 * 11.7px at the other — so a line which fits beside the settings in one theme
+	 * runs off the edge in another. The box scrolls, so a long line costs no more
+	 * than a scrollbar, but a sample somebody has to drag sideways to read is a poor
+	 * way of showing them a colour scheme. Nothing else says the width matters, so
+	 * this does.
+	 *
+	 * @return void
+	 */
+	public function test_the_preview_snippet_stays_inside_the_column(): void {
+
+		$markup = Admin::get_preview_markup();
+		$code   = html_entity_decode( wp_strip_all_tags( $markup ), ENT_QUOTES, 'UTF-8' );
+
+		foreach ( explode( "\n", $code ) as $line ) {
+
+			// A tab is drawn as four columns: Prism's themes all set `tab-size: 4`.
+			$width = mb_strlen( str_replace( "\t", '    ', $line ) );
+
+			$this->assertLessThanOrEqual(
+				Admin::PREVIEW_LINE_LENGTH,
+				$width,
+				sprintf( 'The preview snippet has a line of %1$d columns: %2$s', $width, trim( $line ) )
+			);
+
+		}
+
+	}
+
+	/**
 	 * Every theme the dropdown offers has a stylesheet the preview can load.
 	 *
 	 * The preview repaints by pointing a `link` tag at another stylesheet, so it is
