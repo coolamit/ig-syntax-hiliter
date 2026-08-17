@@ -9,6 +9,7 @@
  *
  * @var string $plugin_name Plugin name, for display.
  * @var array  $settings    Settings to show: name, type, label, description, choices and current value.
+ * @var string $preview     Markup of the code box which previews the chosen theme.
  */
 
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Everything here is a template local. The file is only ever required from inside Helper::render_template(), which runs it in a method scope.
@@ -27,6 +28,10 @@
 	</h1>
 
 	<p class="igsh-settings__intro"><?php esc_html_e( 'These settings apply to the whole site. Each one saves by itself, as soon as you change it.', 'igsyntax-hiliter' ); ?></p>
+
+	<div class="igsh-settings__layout">
+
+	<div class="igsh-settings__controls">
 
 	<table class="form-table igsh-settings__table" role="presentation">
 		<tbody>
@@ -84,6 +89,33 @@
 		<?php endforeach; ?>
 		</tbody>
 	</table>
+
+	</div>
+
+	<?php
+	/*
+	 * The preview. Every setting above which changes how a code box looks changes
+	 * this box as it is switched, so that picking one of 43 themes does not mean
+	 * saving it, opening the front end and coming back.
+	 *
+	 * `$preview` is the plugin's own renderer's output — the same markup the front
+	 * end gets — so it is printed as it stands. The code inside it was escaped on its
+	 * way through the renderer, which is the one place snippet code is ever escaped.
+	 */
+	?>
+	<aside class="igsh-preview" id="igsh-preview" aria-labelledby="igsh-preview-heading">
+
+		<h2 class="igsh-preview__heading" id="igsh-preview-heading"><?php esc_html_e( 'Preview', 'igsyntax-hiliter' ); ?></h2>
+
+		<p class="description"><?php esc_html_e( 'How a code box looks with the settings on the left. It follows them as you change them, and nothing here is saved.', 'igsyntax-hiliter' ); ?></p>
+
+		<div class="igsh-preview__box" id="igsh-preview-box">
+			<?php echo $preview;    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Renderer output. It escapes the code itself, which is the only untrusted part, and escaping the markup again here would print the tags. ?>
+		</div>
+
+	</aside>
+
+	</div>
 
 	<h2 class="igsh-revert__heading"><?php esc_html_e( 'Before you deactivate', 'igsyntax-hiliter' ); ?></h2>
 

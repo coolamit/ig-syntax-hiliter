@@ -20,6 +20,26 @@ $igsh-radius: 3px;
 		max-width: 46rem;
 	}
 
+	/*
+	 * The settings keep the left column and the preview sits beside them, so
+	 * that a theme being picked and the box it repaints are both on screen at
+	 * once. Below the breakpoint the two stack and the preview goes underneath,
+	 * which is the only sensible order: the controls are what the page is for.
+	 */
+	&__layout {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 24px;
+		align-items: flex-start;
+	}
+
+	&__controls {
+		flex: 1 1 32rem;
+
+		/* A table will not shrink below its content unless it is told it may. */
+		min-width: 0;
+	}
+
 	&__table {
 
 		td .description {
@@ -97,6 +117,61 @@ $igsh-radius: 3px;
 
 	&:disabled &__track {
 		opacity: 0.6;
+	}
+}
+
+/*
+ * The preview box, in the right hand column of the layout above.
+ */
+.igsh-preview {
+	flex: 1 1 26rem;
+	max-width: 40rem;
+
+	/*
+	 * Follows the settings down the page, so that the last toggle and the box it
+	 * changes are still together. `top` clears the admin bar, which is fixed on
+	 * screens wide enough for this layout to be two columns at all.
+	 */
+	position: sticky;
+	top: 46px;
+
+	&__heading {
+		margin-top: 0;
+	}
+
+	&__box {
+
+		/*
+		 * The themes paint the `pre` itself, so the frame is only here to keep a
+		 * light theme from disappearing into the white of wp-admin.
+		 */
+		padding: 12px;
+		border: 1px solid #dcdcde;
+		background: #f6f7f7;
+		border-radius: $igsh-radius;
+
+		pre[class*="language-"] {
+			margin: 0;
+			max-height: 24rem;
+		}
+	}
+
+	/*
+	 * The copy button off. On the front end this button is simply not loaded when
+	 * the setting is off, but the preview has to be able to show it coming and
+	 * going without a reload, so every plugin is loaded there and this is what
+	 * "off" looks like. The language name beside it stays, exactly as it does on a
+	 * front end page whose copy setting alone is off.
+	 */
+	&--no-copy .copy-to-clipboard-button {
+		display: none;
+	}
+}
+
+@media screen and (max-width: 782px) {
+
+	.igsh-preview {
+		position: static;
 	}
 }
 

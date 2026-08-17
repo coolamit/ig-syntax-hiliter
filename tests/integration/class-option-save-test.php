@@ -347,6 +347,12 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * separately — `Admin` pairs values with labels, `Validate` holds the values — so
 	 * this is the seam where they could drift apart.
 	 *
+	 * The two are compared as **sets**, because only one of them has an order that
+	 * means anything. `Validate` answers a list to look a value up in; the screen
+	 * decides what a reader reads down, which for the themes is "None" first and then
+	 * by name. Asserting the two sequences match would be asserting that the dropdown
+	 * is ordered by whatever the allowlist happens to be built from.
+	 *
 	 * @return void
 	 */
 	public function test_the_settings_screen_offers_exactly_what_can_be_stored(): void {
@@ -355,7 +361,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 		foreach ( Admin::get_settings_schema() as $name => $setting ) {
 
-			$this->assertSame(
+			$this->assertEqualsCanonicalizing(
 				$validate->get_option_values( $name ),
 				array_keys( $setting['choices'] ),
 				sprintf( 'The %s setting offers a different set of values than it accepts.', $name )

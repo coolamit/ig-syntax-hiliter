@@ -39,6 +39,21 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	const NOTICES_HANDLE = 'ig-syntax-hiliter-notices';
 
 	/**
+	 * Scripts the preview code box needs.
+	 *
+	 * @var array
+	 */
+	const PREVIEW_SCRIPTS = [
+		'ig-syntax-hiliter-engine',
+		'ig-syntax-hiliter-autoloader',
+		'ig-syntax-hiliter-toolbar',
+		'ig-syntax-hiliter-show-language',
+		'ig-syntax-hiliter-copy-to-clipboard',
+		'ig-syntax-hiliter-line-numbers',
+		'ig-syntax-hiliter-setup',
+	];
+
+	/**
 	 * Method to render the settings page and capture what it printed.
 	 *
 	 * @return string
@@ -134,6 +149,98 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertArrayHasKey( Asset_Manager::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
 		$this->assertSame( 'prism-okaidia', Asset_Manager::DEFAULT_THEME );
 		$this->assertSame( 'Prism', $choices['prism'] ?? '', 'The Prism theme is named after itself, not after being the default.' );
+
+	}
+
+	/**
+	 * "None" heads the dropdown and every theme under it is in order by name.
+	 *
+	 * There are more than forty themes on that list. The registry hands them over
+	 * grouped by the directory they were vendored into, which is a fact about this
+	 * plugin's file layout and not one a site owner can be expected to know, so the
+	 * screen sorts them. "None" is not a theme at all and goes on top rather than at
+	 * the end of a list it is not part of.
+	 *
+	 * @return void
+	 */
+	public function test_the_theme_dropdown_puts_none_first_and_sorts_the_rest(): void {
+
+		$choices = Admin::get_theme_choices();
+		$slugs   = array_keys( $choices );
+
+		$this->assertSame( Asset_Manager::THEME_NONE, $slugs[0] ?? '', 'The "no theme" choice is not at the top of the dropdown.' );
+
+		// Nothing was dropped on the way through the sort.
+		$this->assertCount( count( Asset_Manager::get_themes() ) + 1, $choices );
+
+		$titles = array_values( $choices );
+
+		array_shift( $titles );    //"None" is placed rather than sorted, so it is not part of what is asserted below
+
+		$sorted = $titles;
+
+		usort( $sorted, 'strnatcasecmp' );
+
+		$this->assertSame( $sorted, $titles, 'The themes are not in order by name.' );
+
+	}
+
+	/**
+	 * The screen carries a preview code box, with its code escaped.
+	 *
+	 * The box is what makes a list of 43 themes usable: it is rendered by the
+	 * plugin's own renderer, so it is the same markup a reader gets, and the sample
+	 * is source code which has to arrive as text rather than as markup.
+	 *
+	 * @return void
+	 */
+	public function test_the_screen_shows_a_preview_code_box(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$html = $this->_render();
+
+		$this->assertStringContainsString( 'igsh-preview', $html );
+		$this->assertStringContainsString( 'id="igsh-preview-box"', $html );
+
+		$this->assertMatchesRegularExpression(
+			'#<pre[^>]*class="[^"]*language-php#',
+			$html,
+			'The preview box is not a code box in the preview language.'
+		);
+
+		$this->assertStringContainsString( '&lt;?php', $html, 'The preview code reached the page as markup rather than as text.' );
+		$this->assertStringNotContainsString( '<code class="language-php"><?php', $html );
+
+	}
+
+	/**
+	 * Every theme the dropdown offers has a stylesheet the preview can load.
+	 *
+	 * The preview repaints by pointing a `link` tag at another stylesheet, so it is
+	 * handed the URL of each one. This is what fails the day a theme is added to the
+	 * registry and that list is not — which would show a site owner a theme that does
+	 * nothing when they pick it.
+	 *
+	 * @return void
+	 */
+	public function test_every_offered_theme_has_a_stylesheet_for_the_preview(): void {
+
+		$urls = Admin::get_theme_urls();
+
+		$this->assertSame( array_keys( Admin::get_theme_choices() ), array_keys( $urls ) );
+
+		foreach ( $urls as $slug => $url ) {
+
+			if ( Asset_Manager::THEME_NONE === $slug ) {
+				$this->assertSame( '', $url, '"None" means no stylesheet, so it names none.' );
+
+				continue;
+			}
+
+			$this->assertStringEndsWith( sprintf( '/%s.min.css', $slug ), $url, sprintf( 'The %s theme has no stylesheet for the preview.', $slug ) );
+
+		}
 
 	}
 
@@ -250,6 +357,10 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertFalse( wp_script_is( self::HANDLE, 'enqueued' ), 'The settings assets loaded on somebody else\'s admin page.' );
 		$this->assertFalse( wp_script_is( self::NOTICES_HANDLE, 'enqueued' ), 'The notice stack loaded on somebody else\'s admin page.' );
 
+		foreach ( self::PREVIEW_SCRIPTS as $handle ) {
+			$this->assertFalse( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview\'s %s loaded on somebody else\'s admin page.', $handle ) );
+		}
+
 		$admin->enqueue_assets( Admin::PAGE_HOOK );
 
 		$this->assertTrue( wp_script_is( self::HANDLE, 'enqueued' ) );
@@ -265,6 +376,24 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertSame( [], wp_styles()->registered[ self::NOTICES_HANDLE ]->deps );
 
 		$this->assertFalse( wp_script_is( 'jquery', 'enqueued' ) );
+
+		/*
+		 * The preview box needs the engine and every plugin that changes how a code box
+		 * looks, whatever the settings currently say — the reader can switch any of them
+		 * while looking at it, and nothing can be fetched at that moment.
+		 */
+		foreach ( self::PREVIEW_SCRIPTS as $handle ) {
+			$this->assertTrue( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview did not load %s.', $handle ) );
+		}
+
+		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-theme', 'enqueued' ), 'The preview loaded no theme stylesheet.' );
+		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-chrome', 'enqueued' ) );
+
+		$this->assertSame(
+			'ig-syntax-hiliter-theme-css',
+			Asset_Manager::get_theme_style_id(),
+			'The script is told which tag to repaint, and that is the tag WordPress printed.'
+		);
 
 	}
 

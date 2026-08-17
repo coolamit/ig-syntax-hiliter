@@ -605,7 +605,164 @@
 			} )
 			.finally( function () {
 				setBusy( false );
+
+				/*
+				 * Whichever way the save went. On success the control may have come back
+				 * holding the stored value rather than the one sent, and on failure it has
+				 * been put back to what it was; the preview shows what the control shows
+				 * either way.
+				 */
+				syncPreview();
 			} );
+	}
+
+	/**
+	 * Points the theme stylesheet at the theme now chosen.
+	 *
+	 * The tag is the one `Asset_Manager` enqueued, found by the id PHP sent over. A
+	 * site whose theme setting is "None" has no such tag, because nothing was
+	 * enqueued to make one, so the first theme picked builds it — and picking "None"
+	 * again empties it rather than removing it, which keeps the id in the document
+	 * for the next change to find.
+	 *
+	 * @param theme Value the theme control now holds.
+	 */
+	function applyPreviewTheme( theme: string ): void {
+		const themes = config?.themes;
+		const id = config?.themeStyleId;
+
+		if ( ! themes || ! id || ! ( theme in themes ) ) {
+			return;
+		}
+
+		const href = themes[ theme ] ?? '';
+		let link = document.getElementById( id ) as HTMLLinkElement | null;
+
+		if ( ! link ) {
+			if ( '' === href ) {
+				return;
+			}
+
+			link = document.createElement( 'link' );
+			link.id = id;
+			link.rel = 'stylesheet';
+
+			document.head.appendChild( link );
+		}
+
+		/*
+		 * An empty `href` on a stylesheet link loads nothing, which is what "None"
+		 * means. Removing the attribute would make the browser resolve the page's own
+		 * URL and fetch the settings page as a stylesheet.
+		 */
+		link.href = href;
+	}
+
+	/**
+	 * Draws the preview box with or without line numbers.
+	 *
+	 * Line numbers are markup, not styling: Prism's plugin builds a row of numbers
+	 * when it highlights a box carrying the class. So switching them on means adding
+	 * the class and asking Prism to go over the box again, and switching them off
+	 * means taking the class off and taking the rows out.
+	 *
+	 * Verified against the vendored plugin rather than assumed: its `complete` hook
+	 * builds the rows only where the class is active and no rows are there already,
+	 * so a second pass over a box which has them cannot produce a second set. The
+	 * toolbar plugin guards the same way against wrapping a box twice.
+	 *
+	 * @param box  The `pre` element of the preview.
+	 * @param show Whether line numbers are wanted.
+	 */
+	function applyPreviewLineNumbers( box: HTMLElement, show: boolean ): void {
+		const LINE_NUMBERS = 'line-numbers';
+
+		if ( ! show ) {
+			box.classList.remove( LINE_NUMBERS );
+
+			box.querySelector( '.line-numbers-rows' )?.remove();
+
+			return;
+		}
+
+		if ( box.classList.contains( LINE_NUMBERS ) ) {
+			return;
+		}
+
+		box.classList.add( LINE_NUMBERS );
+
+		const code = box.querySelector( 'code' );
+		const prism = window.Prism;
+
+		if ( code && prism?.highlightElement ) {
+			prism.highlightElement( code );
+		}
+	}
+
+	/**
+	 * Puts the preview in step with every control which changes how a box looks.
+	 *
+	 * Called whenever one of those controls moves and again once a save has settled,
+	 * because a save which fails puts its control back and the preview has to go back
+	 * with it. It reads the controls rather than being told what changed, so there is
+	 * one description of what a code box looks like and not one per control.
+	 *
+	 * The toolbar and the copy button are hidden with a class instead of being
+	 * unloaded, which is the difference between the preview and a front end page: the
+	 * front end knows what it needs before it loads anything, and this page has to be
+	 * able to show both answers without a reload.
+	 */
+	function syncPreview(): void {
+		const preview = document.getElementById( 'igsh-preview' );
+
+		if ( ! preview ) {
+			return;
+		}
+
+		const theme = controlValue( 'theme' );
+
+		if ( null !== theme ) {
+			applyPreviewTheme( theme );
+		}
+
+		preview.classList.toggle(
+			'igsh-no-toolbar',
+			'yes' !== controlValue( 'toolbar' )
+		);
+
+		preview.classList.toggle(
+			'igsh-preview--no-copy',
+			'yes' !== controlValue( 'copy_code' )
+		);
+
+		const box = preview.querySelector< HTMLElement >(
+			'pre[class*="language-"]'
+		);
+
+		if ( box ) {
+			applyPreviewLineNumbers(
+				box,
+				'yes' === controlValue( 'show_line_numbers' )
+			);
+		}
+	}
+
+	/**
+	 * Reads what one of the settings controls is showing.
+	 *
+	 * The control is the answer, not the stored value: the preview is about what the
+	 * page is showing at this moment, which is what the reader is looking at.
+	 *
+	 * @param name Setting to read.
+	 *
+	 * @return Its value, or NULL when the screen has no such control.
+	 */
+	function controlValue( name: string ): string | null {
+		const control = document.querySelector< OptionControl >(
+			'[data-igsh-option="' + name + '"]'
+		);
+
+		return control ? readControl( control ) : null;
 	}
 
 	/**
@@ -862,6 +1019,14 @@
 						'yes' === readControl( control ) ? 'no' : 'yes'
 					);
 
+					/*
+					 * The preview follows the control and not the save: a reader who has
+					 * just clicked wants to see the result now, and the save may take as
+					 * long as the site takes to answer. A save which fails puts the control
+					 * back and `saveSetting()` syncs the preview again behind it.
+					 */
+					syncPreview();
+
 					saveSetting( control );
 				} );
 
@@ -869,9 +1034,13 @@
 			}
 
 			control.addEventListener( 'change', function () {
+				syncPreview();
+
 				saveSetting( control );
 			} );
 		} );
+
+		syncPreview();
 
 		const button = document.getElementById( 'igsh-revert-blocks' );
 		const progress = document.getElementById( 'igsh-revert-progress' );

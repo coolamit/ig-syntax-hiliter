@@ -58,6 +58,13 @@ class Admin extends Base {
 	const PAGE_HOOK = 'settings_page_' . self::PAGE_SLUG;
 
 	/**
+	 * Language the preview snippet is written in.
+	 *
+	 * @var string
+	 */
+	const PREVIEW_LANGUAGE = 'php';
+
+	/**
 	 * Whether the hooks have been registered already.
 	 *
 	 * @var bool
@@ -184,20 +191,61 @@ class Admin extends Base {
 	 * Method to get the themes offered by the theme setting.
 	 *
 	 * The bundled themes are those whose stylesheet is actually readable on disk, so
-	 * a theme which is not shipped is never offered. "None" is last, because picking
-	 * it means the code boxes are styled by the site's own CSS and nothing else.
+	 * a theme which is not shipped is never offered.
+	 *
+	 * Sorted by name, and "None" put in front of the lot. There are 43 themes to read
+	 * through, which is enough that the order has to be one a reader can predict: the
+	 * registry hands them over grouped by the directory they came from, and that is a
+	 * fact about this plugin's file layout rather than anything a site owner knows.
+	 * The comparison is case insensitive so that `a11y Dark` sorts among the A's, and
+	 * natural so that a digit in a name is read as a number. "None" is not a theme —
+	 * it means the code boxes are styled by the site's own CSS and nothing else — so
+	 * it goes at the top rather than at the end of a list it is not part of.
+	 *
+	 * The order here is a decision of this screen. `Asset_Manager::get_themes()` is
+	 * the registry, and `Validate` builds the setting's allowlist from it, where the
+	 * order means nothing at all.
 	 *
 	 * @return array Theme setting value to its label.
 	 */
 	public static function get_theme_choices(): array {
 
-		$choices = Asset_Manager::get_themes();
+		$themes = Asset_Manager::get_themes();
 
-		$choices[ Asset_Manager::THEME_NONE ] = __( 'None — load no theme stylesheet', 'igsyntax-hiliter' );
+		uasort( $themes, 'strnatcasecmp' );
 
-		return $choices;
+		return array_merge(
+			[ Asset_Manager::THEME_NONE => __( 'None — load no theme stylesheet', 'igsyntax-hiliter' ) ],
+			$themes
+		);
 
 	}    //end get_theme_choices()
+
+	/**
+	 * Method to get the stylesheet URL of every theme the dropdown offers.
+	 *
+	 * Built by walking the choices rather than the registry, so that the list the
+	 * preview can paint and the list the screen offers are the same list. "None" is
+	 * in it, carrying an empty string: it is a choice like any other and the script
+	 * has to be able to look it up and find that there is nothing to load.
+	 *
+	 * @return array Theme setting value to the URL of its stylesheet.
+	 */
+	public static function get_theme_urls(): array {
+
+		$urls = [];
+
+		foreach ( array_keys( static::get_theme_choices() ) as $slug ) {
+
+			$file = Asset_Manager::get_theme_file( $slug );
+
+			$urls[ $slug ] = ( '' === $file ) ? '' : Helper::get_asset_url( $file );
+
+		}
+
+		return $urls;
+
+	}    //end get_theme_urls()
 
 	/**
 	 * Method to register the plugin's REST routes.
@@ -401,11 +449,56 @@ class Admin extends Base {
 			[
 				'plugin_name' => static::PLUGIN_NAME,
 				'settings'    => $settings,
+				'preview'     => static::get_preview_markup( 'yes' === ( $settings['show_line_numbers']['value'] ?? 'yes' ) ),
 			],
 			true
 		);
 
 	}    //end render_page()
+
+	/**
+	 * Method to get the code box the settings page previews a theme with.
+	 *
+	 * Rendered by the plugin's own renderer, from a snippet like any other, so that
+	 * what a site owner is shown is produced by the same code the front end runs. A
+	 * preview built out of markup written here would be a second answer to "what does
+	 * a code box look like", and the two would drift.
+	 *
+	 * Calling the renderer in wp-admin is inert: it signals the asset manager that a
+	 * snippet was rendered, and the asset manager decides during `wp_footer`, which
+	 * no admin page fires.
+	 *
+	 * The snippet itself is source code and is deliberately not translated. It is
+	 * chosen to put a comment, a string, a keyword, a number and a function name in
+	 * front of the reader, because those are what a theme colours differently.
+	 *
+	 * @param bool $show_line_numbers Whether the box is drawn with line numbers.
+	 *
+	 * @return string Markup for the code box.
+	 */
+	public static function get_preview_markup( bool $show_line_numbers = true ): string {
+
+		$code = <<<'PREVIEW'
+<?php
+/**
+ * Say hello, the long way round.
+ */
+function igsh_greet( string $name = 'world' ): string {
+
+	$greeting = sprintf( 'Hello, %s!', ucfirst( $name ) );
+
+	return str_repeat( $greeting, 1 );
+
+}
+
+add_action( 'init', 'igsh_greet' );
+PREVIEW;
+
+		return Renderer::get_instance()->render_snippet(
+			new Snippet( $code, static::PREVIEW_LANGUAGE, $show_line_numbers )
+		);
+
+	}    //end get_preview_markup()
 
 	/**
 	 * Method to load the settings page assets.
@@ -443,6 +536,14 @@ class Admin extends Base {
 
 		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [ $notices ], $version, true );
 
+		/*
+		 * The engine, its plugins and the theme stylesheet, for the preview box. The
+		 * screen asks for a preview and is told nothing about what one is made of.
+		 */
+		Asset_Manager::get_instance()->enqueue_for_preview(
+			(string) $this->_option->get( 'theme' )
+		);
+
 		wp_add_inline_script(
 			$handle,
 			sprintf(
@@ -463,9 +564,19 @@ class Admin extends Base {
 	protected function _get_script_data(): array {
 
 		return [
-			'restUrl' => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
-			'nonce'   => wp_create_nonce( 'wp_rest' ),
-			'i18n'    => [
+			'restUrl'      => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
+			'nonce'        => wp_create_nonce( 'wp_rest' ),
+
+			/*
+			 * Where every theme's stylesheet is, and which tag on the page is showing
+			 * one. Between them they are the whole of what the preview needs to repaint
+			 * without a reload. The list is built from the same choices the dropdown is
+			 * drawn from, so a theme can never be offered without a stylesheet to go
+			 * with it.
+			 */
+			'themes'       => static::get_theme_urls(),
+			'themeStyleId' => Asset_Manager::get_theme_style_id(),
+			'i18n'         => [
 
 				/*
 				 * The first four name the setting they are about. More than one message

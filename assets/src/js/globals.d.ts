@@ -72,6 +72,22 @@ interface IgshAdminStrings {
 interface IgshAdminConfig {
 	restUrl: string;
 	nonce: string;
+
+	/**
+	 * Every theme the dropdown offers, to the stylesheet it loads.
+	 *
+	 * `none` is in it and carries an empty string, because it is a choice like any
+	 * other and the preview has to be able to look it up and find nothing to load.
+	 */
+	themes?: Record< string, string > | undefined;
+
+	/**
+	 * Id of the `link` tag carrying the theme stylesheet.
+	 *
+	 * Sent rather than spelled out here: WordPress builds it from the handle, and
+	 * the handle belongs to `Asset_Manager`.
+	 */
+	themeStyleId?: string | undefined;
 	i18n: IgshAdminStrings;
 }
 
@@ -107,6 +123,15 @@ interface IgshPrism {
 				autoloader?: IgshPrismAutoloader | undefined;
 		  }
 		| undefined;
+
+	/**
+	 * Highlights one element again.
+	 *
+	 * The settings page preview needs it: line numbers are drawn by a Prism plugin
+	 * when the box is highlighted, so switching them on means asking Prism to go
+	 * over the same box a second time.
+	 */
+	highlightElement?: ( ( element: Element ) => void ) | undefined;
 }
 
 interface Window {

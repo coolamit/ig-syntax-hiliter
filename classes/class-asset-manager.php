@@ -236,6 +236,93 @@ class Asset_Manager {
 	}    //end enqueue()
 
 	/**
+	 * Method to enqueue everything a live preview of a code box needs.
+	 *
+	 * The settings page shows one, so that a site owner picking from 43 themes can
+	 * see what they are picking. This method exists so that the screen can ask for a
+	 * code box without knowing that a code box is made of Prism — that is this
+	 * class's knowledge and the renderer's, and nowhere else's.
+	 *
+	 * **Every plugin is enqueued, whatever the settings say.** The front end loads
+	 * only what its page needs, because a reader cannot change the settings from it.
+	 * The preview's whole purpose is that the toolbar, the copy button and the line
+	 * numbers can be switched on and off in front of the reader without a reload, so
+	 * all of them have to be on the page already; which of them is *shown* is decided
+	 * in the browser.
+	 *
+	 * @param string $theme Slug of the theme to load, or the "no theme" value.
+	 *
+	 * @return void
+	 */
+	public function enqueue_for_preview( string $theme ): void {
+
+		$theme = static::_resolve_theme( $theme );
+
+		if ( static::THEME_NONE !== $theme ) {
+
+			wp_enqueue_style(
+				static::_handle( 'theme' ),
+				Helper::get_asset_url( static::get_theme_file( $theme ) ),
+				[],
+				static::_get_version()
+			);
+
+		}
+
+		wp_enqueue_style(
+			static::_handle( 'chrome' ),
+			Helper::get_asset_url( 'build/css/frontend-chrome.css' ),
+			[],
+			static::_get_version()
+		);
+
+		$this->_enqueue_engine();
+
+		static::_enqueue_toolbar();
+		static::_enqueue_copy_button();
+		static::_enqueue_line_numbers();
+
+		$this->_enqueue_setup();
+
+	}    //end enqueue_for_preview()
+
+	/**
+	 * Method to settle which theme is actually loaded for a stored setting value.
+	 *
+	 * A stored theme which is not on disk any more — one lost to an upgrade, or a
+	 * value written by something other than this plugin — falls back to the default
+	 * rather than to no stylesheet at all, because "no theme" is a choice a site owner
+	 * makes and not something an accident should look like.
+	 *
+	 * @param string $theme Theme setting value.
+	 *
+	 * @return string A theme slug which is on disk, or the "no theme" value.
+	 */
+	protected static function _resolve_theme( string $theme ): string {
+
+		if ( static::THEME_NONE === $theme ) {
+			return static::THEME_NONE;
+		}
+
+		return ( isset( static::get_themes()[ $theme ] ) ) ? $theme : static::DEFAULT_THEME;
+
+	}    //end _resolve_theme()
+
+	/**
+	 * Method to get the element id of the theme stylesheet's `link` tag.
+	 *
+	 * The preview swaps that tag's `href` as the dropdown is changed, so it has to be
+	 * able to find it. WordPress builds the id from the handle, and the handle is
+	 * this class's business, so the id is answered here rather than spelled out in
+	 * JavaScript where it could go stale without a word.
+	 *
+	 * @return string
+	 */
+	public static function get_theme_style_id(): string {
+		return sprintf( '%s-css', static::_handle( 'theme' ) );
+	}    //end get_theme_style_id()
+
+	/**
 	 * Method to get the URL the language files are fetched from at runtime.
 	 *
 	 * @return string URL with a trailing slash.
@@ -393,10 +480,9 @@ class Asset_Manager {
 
 		$theme = Shortcode_Handler::get_plugin_option( 'theme', static::DEFAULT_THEME );
 
-		if ( static::THEME_NONE !== $theme ) {
+		$theme = static::_resolve_theme( $theme );
 
-			$themes = static::get_themes();
-			$theme  = ( isset( $themes[ $theme ] ) ) ? $theme : static::DEFAULT_THEME;
+		if ( static::THEME_NONE !== $theme ) {
 
 			wp_enqueue_style(
 				static::_handle( 'theme' ),
@@ -449,47 +535,13 @@ class Asset_Manager {
 	protected function _enqueue_plugins(): void {
 
 		$version = static::_get_version();
-		$engine  = [ static::_handle( 'engine' ) ];
 
 		if ( static::_is_option_on( 'toolbar', 'yes' ) ) {
 
-			wp_enqueue_style(
-				static::_handle( 'toolbar' ),
-				static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.css' ),
-				[],
-				$version
-			);
-
-			wp_enqueue_script(
-				static::_handle( 'toolbar' ),
-				static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.js' ),
-				$engine,
-				$version,
-				true
-			);
-
-			/*
-			 * The language name is a toolbar item, so it shows on hover beside the copy
-			 * button and shows nothing at all when the toolbar is off. It carries its own
-			 * title for every language the library has, read from the same manifest the
-			 * language registry reads, and it needs no stylesheet of its own.
-			 */
-			wp_enqueue_script(
-				static::_handle( 'show-language' ),
-				static::_get_library_url( 'plugins/show-language/prism-show-language.min.js' ),
-				[ static::_handle( 'toolbar' ) ],
-				$version,
-				true
-			);
+			static::_enqueue_toolbar();
 
 			if ( static::_is_option_on( 'copy_code', 'yes' ) ) {
-				wp_enqueue_script(
-					static::_handle( 'copy-to-clipboard' ),
-					static::_get_library_url( 'plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js' ),
-					[ static::_handle( 'toolbar' ) ],
-					$version,
-					true
-				);
+				static::_enqueue_copy_button();
 			}
 		}
 
@@ -498,22 +550,7 @@ class Asset_Manager {
 		 * the two load together to keep the order deterministic.
 		 */
 		if ( $this->_needs_line_numbers || $this->_needs_line_highlight ) {
-
-			wp_enqueue_style(
-				static::_handle( 'line-numbers' ),
-				static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.css' ),
-				[],
-				$version
-			);
-
-			wp_enqueue_script(
-				static::_handle( 'line-numbers' ),
-				static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.js' ),
-				$engine,
-				$version,
-				true
-			);
-
+			static::_enqueue_line_numbers();
 		}
 
 		if ( $this->_needs_line_highlight ) {
@@ -536,6 +573,91 @@ class Asset_Manager {
 		}
 
 	}    //end _enqueue_plugins()
+
+	/**
+	 * Method to enqueue the toolbar plugin, and the language name it shows.
+	 *
+	 * The language name is a toolbar item, so it shows on hover beside the copy
+	 * button and shows nothing at all when the toolbar is off. It carries its own
+	 * title for every language the library has, read from the same manifest the
+	 * language registry reads, and it needs no stylesheet of its own.
+	 *
+	 * @return void
+	 */
+	protected static function _enqueue_toolbar(): void {
+
+		$version = static::_get_version();
+
+		wp_enqueue_style(
+			static::_handle( 'toolbar' ),
+			static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.css' ),
+			[],
+			$version
+		);
+
+		wp_enqueue_script(
+			static::_handle( 'toolbar' ),
+			static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.js' ),
+			[ static::_handle( 'engine' ) ],
+			$version,
+			true
+		);
+
+		wp_enqueue_script(
+			static::_handle( 'show-language' ),
+			static::_get_library_url( 'plugins/show-language/prism-show-language.min.js' ),
+			[ static::_handle( 'toolbar' ) ],
+			$version,
+			true
+		);
+
+	}    //end _enqueue_toolbar()
+
+	/**
+	 * Method to enqueue the copy to clipboard button.
+	 *
+	 * It is a toolbar item, so the toolbar has to be enqueued as well — which is
+	 * what the dependency below says rather than merely assumes.
+	 *
+	 * @return void
+	 */
+	protected static function _enqueue_copy_button(): void {
+
+		wp_enqueue_script(
+			static::_handle( 'copy-to-clipboard' ),
+			static::_get_library_url( 'plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js' ),
+			[ static::_handle( 'toolbar' ) ],
+			static::_get_version(),
+			true
+		);
+
+	}    //end _enqueue_copy_button()
+
+	/**
+	 * Method to enqueue the line numbers plugin.
+	 *
+	 * @return void
+	 */
+	protected static function _enqueue_line_numbers(): void {
+
+		$version = static::_get_version();
+
+		wp_enqueue_style(
+			static::_handle( 'line-numbers' ),
+			static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.css' ),
+			[],
+			$version
+		);
+
+		wp_enqueue_script(
+			static::_handle( 'line-numbers' ),
+			static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.js' ),
+			[ static::_handle( 'engine' ) ],
+			$version,
+			true
+		);
+
+	}    //end _enqueue_line_numbers()
 
 	/**
 	 * Method to enqueue the plugin's own front end script.
