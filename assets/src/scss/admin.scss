@@ -148,24 +148,24 @@ $igsh-radius: 3px;
 	}
 
 	/*
-	 * A window of a fixed size, whatever is inside it.
+	 * As tall as whatever is in it, and no taller.
 	 *
 	 * The themes disagree about type size by half again — Shades of Purple asks
 	 * for 17px and Z-Touch for 18px, VS and GHColors for .9em of wp-admin's 13px,
 	 * and most of the rest inherit. Each keeps its own size, because that is what
-	 * a reader's own pages will look like, so the box is what holds still: it is
-	 * the same size on every theme and the code scrolls inside it.
+	 * a reader's own pages will look like, so the box changes height as they are
+	 * switched. **It must not be given a height of its own to stop that.** A box
+	 * sized for the tallest theme leaves every smaller one painting a slab of its
+	 * own background under the last line, which reads as part of the code rather
+	 * than as empty space — and it costs nothing to let it hug the code instead,
+	 * because the settings column beside it is three times as tall and is what
+	 * decides the height of the page.
 	 */
 	&__box {
-		display: flex;
-		flex-direction: column;
-		height: 26rem;
-		overflow: hidden;
 
 		/*
 		 * The frame is only here to keep a light theme from disappearing into the
-		 * white of wp-admin. The `pre` fills the window, so it is the theme's own
-		 * background a reader sees inside it and not this one.
+		 * white of wp-admin.
 		 */
 		padding: 12px;
 		border: 1px solid #dcdcde;
@@ -173,31 +173,15 @@ $igsh-radius: 3px;
 		border-radius: $igsh-radius;
 
 		/*
-		 * Whichever of the two is the direct child: the toolbar plugin wraps the
-		 * box in a `div.code-toolbar` when it is switched on and leaves the `pre`
-		 * where it is when it is off.
-		 */
-		> * {
-			flex: 1 1 auto;
-			min-width: 0;
-			min-height: 0;
-		}
-
-		.code-toolbar {
-			display: flex;
-			flex-direction: column;
-		}
-
-		/*
 		 * Beats the themes' own `pre[class*="language-"]` on specificity, so none
 		 * of this needs `!important`. `overflow` is set rather than relied on:
-		 * every vendored theme sets it except Coy without shadows.
+		 * every vendored theme sets it except Coy without shadows. `max-height` is
+		 * a backstop and nothing more — the tallest theme needs about 360px of it.
 		 */
 		pre[class*="language-"] {
-			flex: 1 1 auto;
 			margin: 0;
 			max-width: 100%;
-			max-height: none;
+			max-height: 24rem;
 			overflow: auto;
 		}
 	}
