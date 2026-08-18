@@ -47,6 +47,37 @@ afterEach( () => {
 	delete window.igSyntaxHiliterEditor;
 } );
 
+describe( 'getEditorData', () => {
+	/*
+	 * The memo is keyed on the identity of what PHP localised, and that is the whole
+	 * of what makes it safe. A "have we run yet" flag would hand this suite's first
+	 * case's data to every case after it, and would hand a real editor stale data
+	 * after any code that replaced the global.
+	 */
+	it( 'hands back the same object while the source object is the same', () => {
+		expect( getEditorData() ).toBe( getEditorData() );
+	} );
+
+	it( 'rebuilds when the source object is replaced', () => {
+		const before = getEditorData();
+
+		window.igSyntaxHiliterEditor = { ...EDITOR_DATA };
+
+		const after = getEditorData();
+
+		expect( after ).not.toBe( before );
+		expect( after ).toEqual( before );
+	} );
+
+	it( 'rebuilds when the source object is taken away', () => {
+		expect( getEditorData().legacyTags ).toEqual( EDITOR_DATA.legacyTags );
+
+		delete window.igSyntaxHiliterEditor;
+
+		expect( getEditorData().legacyTags ).toEqual( [] );
+	} );
+} );
+
 describe( 'resolveLanguage', () => {
 	it( 'turns a legacy tag into the id the dropdown holds', () => {
 		expect( resolveLanguage( 'html' ) ).toBe( 'markup' );

@@ -7,6 +7,7 @@
  */
 
 import { __, sprintf } from '@wordpress/i18n';
+import { useMemo } from '@wordpress/element';
 import {
 	InspectorControls,
 	PlainText,
@@ -35,36 +36,46 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 
 	const { languages, defaultLineNumbers } = getEditorData();
 
-	const languageOptions = [
-		{ value: '', label: __( 'None (plain text)', 'igsyntax-hiliter' ) },
-		...languages.map( ( choice ) => ( {
-			value: choice.id,
-			label: choice.title,
-		} ) ),
-	];
-
 	/*
-	 * A language this site cannot currently load still gets an option of its own,
-	 * because a select whose value matches no option shows the first one instead —
-	 * and merely opening this panel would then write that back and destroy a
-	 * language which was highlighting perfectly well. It covers a language the
-	 * `ig_syntax_hiliter/languages` filter used to add and no longer does, a snippet
-	 * saved by an older version of the plugin, and a block written by hand or by
-	 * WP-CLI.
+	 * Memoised because this runs in a render body and `PlainText` below is
+	 * controlled: without it, every character typed into the snippet rebuilt an
+	 * array of close to three hundred freshly allocated objects, none of which can
+	 * change while the page is open.
 	 */
-	if (
-		language !== '' &&
-		! languageOptions.some( ( option ) => option.value === language )
-	) {
-		languageOptions.unshift( {
-			value: language,
-			label: sprintf(
-				/* translators: %s: language name as the author wrote it. */
-				__( '%s (not available on this site)', 'igsyntax-hiliter' ),
-				language
-			),
-		} );
-	}
+	const languageOptions = useMemo( () => {
+		const options = [
+			{ value: '', label: __( 'None (plain text)', 'igsyntax-hiliter' ) },
+			...languages.map( ( choice ) => ( {
+				value: choice.id,
+				label: choice.title,
+			} ) ),
+		];
+
+		/*
+		 * A language this site cannot currently load still gets an option of its own,
+		 * because a select whose value matches no option shows the first one instead —
+		 * and merely opening this panel would then write that back and destroy a
+		 * language which was highlighting perfectly well. It covers a language the
+		 * `ig_syntax_hiliter/languages` filter used to add and no longer does, a snippet
+		 * saved by an older version of the plugin, and a block written by hand or by
+		 * WP-CLI.
+		 */
+		if (
+			language !== '' &&
+			! options.some( ( option ) => option.value === language )
+		) {
+			options.unshift( {
+				value: language,
+				label: sprintf(
+					/* translators: %s: language name as the author wrote it. */
+					__( '%s (not available on this site)', 'igsyntax-hiliter' ),
+					language
+				),
+			} );
+		}
+
+		return options;
+	}, [ languages, language ] );
 
 	const blockProps = useBlockProps();
 

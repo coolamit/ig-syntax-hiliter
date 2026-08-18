@@ -81,16 +81,46 @@ function toStringMap( value: unknown ): Record< string, string > {
 }
 
 /**
+ * The last object PHP localised, and what was derived from it.
+ *
+ * Keyed on the source object's *identity*, not on a "have we run yet" flag. The
+ * test suite sets and deletes `window.igSyntaxHiliterEditor` between cases, and a
+ * plain memo would hand the first case's data to every case after it. Anything
+ * which replaces the global — including deleting it, which leaves `undefined` —
+ * is a different object and rebuilds. The one thing this no longer notices is a
+ * third party mutating the same object in place after it has been read once, and
+ * nothing in the plugin does that.
+ */
+let cachedSource: unknown;
+let cachedData: EditorData | null = null;
+
+/**
  * Reads the data PHP localised for the editor.
+ *
+ * The result is derived rather than returned as it stands — the alias map alone
+ * runs to over a hundred entries — and it is memoised because the two hot paths
+ * both call this far more often than the data can change. `edit.tsx` calls it in
+ * its render body, and `PlainText` is controlled, so every character typed into a
+ * code block used to rebuild the whole thing; `mapShortcodeAttributes()` reaches
+ * it three times for every snippet converted out of a Classic block.
  *
  * The tag list is never hardcoded here. When PHP has said nothing, the list is
  * empty and nothing is claimed — a tag this plugin has never shipped belongs to
  * somebody else and must be left alone.
  */
 export function getEditorData(): EditorData {
+	if (
+		cachedData !== null &&
+		cachedSource === window.igSyntaxHiliterEditor
+	) {
+		return cachedData;
+	}
+
 	const data = window.igSyntaxHiliterEditor ?? {};
 
-	return {
+	cachedSource = window.igSyntaxHiliterEditor;
+
+	cachedData = {
 		languages: Array.isArray( data.languages ) ? data.languages : [],
 		languageAliases: toStringMap( data.languageAliases ),
 		noLanguage:
@@ -104,6 +134,8 @@ export function getEditorData(): EditorData {
 				: DEFAULT_GENERIC_TAG,
 		defaultLineNumbers: data.defaultLineNumbers !== false,
 	};
+
+	return cachedData;
 }
 
 /**

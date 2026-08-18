@@ -157,13 +157,22 @@ class Gist_Embed {
 	 * Only this plugin's tag is registered for the duration of the call, so no other
 	 * plugin's shortcode is processed here by accident.
 	 *
+	 * The guard names the tag rather than looking for a bare `[`. This runs on
+	 * `the_content` and three excerpt filters for every post on every request, and a
+	 * `[` appears in most real writing — so the cheaper test was answering "maybe" on
+	 * nearly every page and paying for `do_shortcodes_in_html_tags()` to split the
+	 * whole body and the shortcode matcher to walk it, in order to find a tag that was
+	 * never there. Shortcode tags are case sensitive and core's matcher allows no
+	 * whitespace between `[` and the name, so `[github` is the only way this one can
+	 * begin; the escaped form `[[github …]]` contains it too.
+	 *
 	 * @param mixed $content Content being filtered.
 	 *
 	 * @return mixed
 	 */
 	public function parse( $content ) {
 
-		if ( ! is_string( $content ) || is_admin() || ! str_contains( $content, '[' ) ) {
+		if ( ! is_string( $content ) || is_admin() || ! str_contains( $content, '[' . static::TAG ) ) {
 			return $content;
 		}
 

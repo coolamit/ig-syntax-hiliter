@@ -290,6 +290,56 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Content with no `[github` in it is handed straight back.
+	 *
+	 * This runs on `the_content` and three excerpt filters for every post on every
+	 * request, and it borrows the whole shortcode registry to do its work. The guard
+	 * is what keeps it from doing any of that on the overwhelming majority of posts,
+	 * which have no Gist on them — and a bare `[` is not enough to tell, because most
+	 * real writing has one somewhere.
+	 *
+	 * Every string below contains a `[`, so each one would have gone the long way
+	 * round before. `&#91;` is the case that used to come back changed rather than
+	 * merely come back slowly: core's `do_shortcodes_in_html_tags()` decodes the
+	 * brackets inside an HTML tag and `unescape_invalid_shortcodes()` does not put
+	 * them back.
+	 *
+	 * The method is called directly rather than through `the_content`, because the
+	 * claim is that this method changes nothing — and the rest of the chain, texturize
+	 * and `wpautop` included, changes plenty.
+	 *
+	 * @return void
+	 */
+	public function test_content_without_the_tag_comes_back_untouched(): void {
+
+		$embed = Gist_Embed::get_instance();
+
+		$samples = [
+			'A footnote marker [1] and nothing else.',
+			'<a href="/x" title="&#91;see this&#93;">a link</a>',
+			'[gallery ids="1,2,3"]',
+			'[gist] is not this plugin\'s tag.',
+		];
+
+		foreach ( $samples as $content ) {
+
+			$this->assertSame(
+				$content,
+				$embed->parse( $content ),
+				'Content with no [github in it is returned byte for byte.'
+			);
+
+		}
+
+		//and the guard is not simply refusing everything
+		$this->assertStringContainsString(
+			$this->_expected_embed( 'abc123' ),
+			$embed->parse( 'before [github id="abc123"] after' )
+		);
+
+	}
+
+	/**
 	 * The stylesheet which boxes an embed loads only where there is one to box.
 	 *
 	 * A page carrying nothing but a Gist loads no stylesheet of this plugin's
