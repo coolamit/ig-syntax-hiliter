@@ -147,11 +147,21 @@
 	let pageBusy = false;
 
 	/*
-	 * How long a save is given before the page gives up on it. A save locks the
-	 * whole screen, so a server which answers nothing at all would otherwise
-	 * leave it locked until somebody thought to reload it.
+	 * How long a request is given before the page gives up on it. Every request
+	 * this page makes locks the whole screen, so a server which answers nothing at
+	 * all would otherwise leave it locked until somebody thought to reload it.
+	 * `request()` takes this as a required argument rather than an optional one,
+	 * so that a caller cannot leave the page with no way out of a silence.
 	 */
-	const SAVE_TIMEOUT_MS = 15000;
+	const REQUEST_TIMEOUT_MS = 15000;
+
+	/*
+	 * And what one batch of the revert is given. Longer, because a batch rewrites
+	 * the content of up to two hundred posts and the whole run is many batches —
+	 * but a batch which has genuinely stopped answering still has to end, or the
+	 * run sits there reporting "converting" for good.
+	 */
+	const REVERT_TIMEOUT_MS = 60000;
 
 	/*
 	 * Id of the `style` tag the preview keeps its font rule in. It is the preview's
@@ -257,11 +267,12 @@
 	/**
 	 * Calls one of the plugin's REST routes.
 	 *
-	 * A timeout is only worth having where the page is waiting on the answer with
-	 * everything locked, so only the save asks for one; the revert runs for as
-	 * long as its batches take and is given none. The clock is stopped whichever
-	 * way the request ends, success or failure, so that a request which answered
-	 * in time can never be aborted afterwards.
+	 * The timeout is required and has no default. The page is locked for the whole
+	 * of every request it makes, so a caller which forgot one would leave the screen
+	 * locked on a server which answered nothing at all — and that is a thing a
+	 * caller was able to forget, so it is now a thing a caller cannot express. The
+	 * clock is stopped whichever way the request ends, success or failure, so that a
+	 * request which answered in time can never be aborted afterwards.
 	 *
 	 * A browser with no AbortController simply gets no timeout. That is the older
 	 * behaviour and it is a safe one: the page still locks and still unlocks on
@@ -273,16 +284,16 @@
 	 *
 	 * @param method  Request method.
 	 * @param route   Route path, relative to the plugin's namespace.
+	 * @param timeout Milliseconds to wait before giving up.
 	 * @param body    Optional request body.
-	 * @param timeout Optional milliseconds to wait before giving up.
 	 *
 	 * @return The decoded response body.
 	 */
 	function request< T >(
 		method: string,
 		route: string,
-		body?: object,
-		timeout?: number
+		timeout: number,
+		body?: object
 	): Promise< T > {
 		const options: RequestInit = {
 			method,
@@ -555,6 +566,65 @@
 	}
 
 	/**
+	 * Runs one piece of work with the page locked, and unlocks it however it ends.
+	 *
+	 * The only caller of `setBusy()` there is. It exists because the lock and the
+	 * unlock were written out at each of the three places which make requests, and
+	 * a caller which performs a step is a caller which can leave it out — the theme
+	 * refresh did, and locked the settings screen with nothing left to unlock it.
+	 *
+	 * The unit is the interaction and not the request. The revert is one lock over
+	 * a `GET` and however many `POST` batches follow it, and unlocking between them
+	 * would hand the page back to the reader half way through a run.
+	 *
+	 * @param work What to do while the page is locked.
+	 *
+	 * @return Whatever the work resolved to.
+	 */
+	function locked< T >( work: () => Promise< T > ): Promise< T > {
+		setBusy( true );
+
+		return work().finally( function () {
+			setBusy( false );
+		} );
+	}
+
+	/**
+	 * Turns a failed request into something worth showing a reader.
+	 *
+	 * Two rules, and both are about the page rather than about what was being done,
+	 * which is why they are here and not written out at each caller:
+	 *
+	 * A nonce which is no longer accepted means the page has been open longer than
+	 * the nonce lives — 12 to 24 hours — and nothing it sends will be accepted until
+	 * it is reloaded. Core's own English for that arrives untranslated, so it is
+	 * replaced rather than appended to.
+	 *
+	 * A timeout carries the word `timeout` as its message, which is a marker for
+	 * this code and was never meant to be read by anybody, so the tail is dropped.
+	 *
+	 * @param error    The rejected request's error.
+	 * @param fallback What to say when neither rule applies.
+	 *
+	 * @return The message to show.
+	 */
+	function describeError( error: RequestError, fallback: string ): string {
+		if ( error.isTimeout ) {
+			return fallback;
+		}
+
+		if (
+			403 === error.status &&
+			'rest_cookie_invalid_nonce' === error.code
+		) {
+			// About the page rather than about what it was doing, so it names none.
+			return strings.reloadNeeded;
+		}
+
+		return fallback + ' ' + error.message;
+	}
+
+	/**
 	 * Sends one setting, and puts the control back if it does not save.
 	 *
 	 * @param control Control which changed.
@@ -565,8 +635,6 @@
 		const previous = control.dataset.igshPrevious;
 		const label = controlLabel( control );
 
-		setBusy( true );
-
 		/*
 		 * One message per save, which reports itself and then settles into what
 		 * became of it. Two settings changed one after the other therefore leave
@@ -575,12 +643,17 @@
 		 */
 		const notice = notices.notify( fill( strings.saving, label ), 'busy' );
 
-		request< OptionResponse >(
-			'POST',
-			'option',
-			{ name, value },
-			SAVE_TIMEOUT_MS
-		)
+		locked( function () {
+			return request< OptionResponse >(
+				'POST',
+				'option',
+				REQUEST_TIMEOUT_MS,
+				{
+					name,
+					value,
+				}
+			);
+		} )
 			.then( function ( payload ) {
 				control.dataset.igshPrevious =
 					payload && payload.value ? payload.value : value;
@@ -596,25 +669,18 @@
 				notice.settle( savedMessage( control, label ), 'success' );
 			} )
 			.catch( function ( error: RequestError ) {
-				let message =
-					fill( strings.saveFailed, label ) + ' ' + error.message;
-
 				/*
 				 * A save which timed out may still have been saved: the request was
 				 * abandoned, not cancelled, and the site may well have written it after
 				 * the page stopped listening. So the control goes back to what it showed
 				 * before, as it does for any other failure, and the message says that
-				 * what is on screen may no longer be what is stored.
+				 * what is on screen may no longer be what is stored. That is more than
+				 * `describeError()` can say for a timeout, which is why this one is
+				 * answered here and everything else is answered there.
 				 */
-				if ( error.isTimeout ) {
-					message = fill( strings.saveTimedOut, label );
-				} else if (
-					403 === error.status &&
-					'rest_cookie_invalid_nonce' === error.code
-				) {
-					// About the page rather than about this setting, so it names none.
-					message = strings.reloadNeeded;
-				}
+				const message = error.isTimeout
+					? fill( strings.saveTimedOut, label )
+					: describeError( error, fill( strings.saveFailed, label ) );
 
 				/*
 				 * `init()` records the value before anything can change it, so there is
@@ -629,8 +695,6 @@
 				notice.settle( message, 'error' );
 			} )
 			.finally( function () {
-				setBusy( false );
-
 				/*
 				 * Whichever way the save went. On success the control may have come back
 				 * holding the stored value rather than the one sent, and on failure it has
@@ -663,11 +727,15 @@
 	): void {
 		const notice = notices.notify( strings.themesRefreshing, 'busy' );
 
-		setBusy( true );
-
 		button.classList.add( 'is-busy' );
 
-		request< ThemesResponse >( 'POST', 'themes' )
+		locked( function () {
+			return request< ThemesResponse >(
+				'POST',
+				'themes',
+				REQUEST_TIMEOUT_MS
+			);
+		} )
 			.then( function ( payload ) {
 				const choices = payload ? payload.choices : undefined;
 				const urls = payload ? payload.urls : undefined;
@@ -718,13 +786,11 @@
 			} )
 			.catch( function ( error: RequestError ) {
 				notice.settle(
-					strings.themesRefreshFail + ' ' + error.message,
+					describeError( error, strings.themesRefreshFail ),
 					'error'
 				);
 			} )
 			.finally( function () {
-				setBusy( false );
-
 				button.classList.remove( 'is-busy' );
 
 				/*
@@ -1101,12 +1167,18 @@
 			partial: false,
 		};
 
-		setBusy( true );
-
 		status.textContent = strings.revertRunning;
 
-		request< RevertState >( 'GET', 'revert' )
-			.then( function ( state ) {
+		/*
+		 * One lock over the whole run, and not one per request: the reader must not
+		 * get the page back between two batches of a conversion which is still going.
+		 */
+		locked( function () {
+			return request< RevertState >(
+				'GET',
+				'revert',
+				REQUEST_TIMEOUT_MS
+			).then( function ( state ) {
 				const total = state && state.total ? state.total : 0;
 
 				if ( ! total ) {
@@ -1120,13 +1192,10 @@
 				progress.hidden = false;
 
 				return nextBatch( 0 );
-			} )
-			.catch( function ( error: RequestError ) {
-				status.textContent = strings.revertFailed + ' ' + error.message;
-			} )
-			.finally( function () {
-				setBusy( false );
 			} );
+		} ).catch( function ( error: RequestError ) {
+			status.textContent = describeError( error, strings.revertFailed );
+		} );
 
 		/**
 		 * Fetches and applies one batch, then the next.
@@ -1136,36 +1205,37 @@
 		 * @return Resolved once there is nothing left to do.
 		 */
 		function nextBatch( cursor: number ): Promise< null > {
-			return request< RevertBatch >( 'POST', 'revert', { cursor } ).then(
-				function ( batch ) {
-					const processed = readCount( batch.processed );
-
-					addCount( totals, 'processed', batch.processed );
-					addCount( totals, 'converted', batch.converted );
-					addCount( totals, 'skipped', batch.skipped );
-					addCount( totals, 'failed', batch.failed );
-					addCount(
-						totals,
-						'blocksLeftAlone',
-						batch.blocks_left_alone
-					);
-
-					meter.value = Math.min( totals.processed, meter.max );
-
-					status.textContent = strings.revertRunning;
-
-					// An answer which does not say how much it did is the end of the run: there is nothing to carry on from.
-					if ( batch.done || ! processed ) {
-						reportRevert( status, totals );
-
-						meter.value = meter.max;
-
-						return null;
-					}
-
-					return nextBatch( batch.cursor ?? 0 );
+			return request< RevertBatch >(
+				'POST',
+				'revert',
+				REVERT_TIMEOUT_MS,
+				{
+					cursor,
 				}
-			);
+			).then( function ( batch ) {
+				const processed = readCount( batch.processed );
+
+				addCount( totals, 'processed', batch.processed );
+				addCount( totals, 'converted', batch.converted );
+				addCount( totals, 'skipped', batch.skipped );
+				addCount( totals, 'failed', batch.failed );
+				addCount( totals, 'blocksLeftAlone', batch.blocks_left_alone );
+
+				meter.value = Math.min( totals.processed, meter.max );
+
+				status.textContent = strings.revertRunning;
+
+				// An answer which does not say how much it did is the end of the run: there is nothing to carry on from.
+				if ( batch.done || ! processed ) {
+					reportRevert( status, totals );
+
+					meter.value = meter.max;
+
+					return null;
+				}
+
+				return nextBatch( batch.cursor ?? 0 );
+			} );
 		}
 	}
 
