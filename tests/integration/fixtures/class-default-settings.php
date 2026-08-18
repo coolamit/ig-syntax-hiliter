@@ -9,8 +9,6 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration\Fixtures;
 
-use iG\Syntax_Hiliter\Asset_Manager;
-
 /**
  * What a fresh v6 install has in the database.
  *
@@ -33,8 +31,8 @@ class Default_Settings {
 	 * @var array
 	 */
 	const V6 = [
-		'theme'             => Asset_Manager::DEFAULT_THEME,
-		'font'              => Asset_Manager::FONT_NONE,
+		'theme'             => 'prism-okaidia',
+		'font'              => 'none',
 		'toolbar'           => 'yes',
 		'copy_code'         => 'yes',
 		'show_line_numbers' => 'yes',

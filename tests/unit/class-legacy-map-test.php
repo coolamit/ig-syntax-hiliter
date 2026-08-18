@@ -127,6 +127,14 @@ class Legacy_Map_Test extends TestCase {
 	 * @return void
 	 */
 	public function test_plain_tags_map_to_no_language(): void {
+		/*
+		 * The value and not only the constant. The editor mirrors this literal in
+		 * `src/block/attributes.ts`, where PHP sends the constant over precisely so
+		 * that the two cannot drift — and every other use of `NO_LANGUAGE` in either
+		 * PHP tier names the constant on both sides, so without this line changing it
+		 * would break the editor's fallback and fail no PHP test.
+		 */
+		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'text' ) );

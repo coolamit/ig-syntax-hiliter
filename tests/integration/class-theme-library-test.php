@@ -10,12 +10,11 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
-use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionMethod;
-use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
@@ -25,6 +24,8 @@ use WP_UnitTestCase;
  * map. These are the things that map has to keep true.
  */
 class Theme_Library_Test extends WP_UnitTestCase {
+
+	use Asset_Test_Helpers;
 
 	use Pipeline_Test_Helpers;
 
@@ -69,9 +70,7 @@ class Theme_Library_Test extends WP_UnitTestCase {
 
 		$this->_set_singleton( Option::class, $this->_original_option );
 
-		delete_option( Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY ) );
-
-		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
+		$this->_reset_theme_cache();
 
 		parent::tear_down();
 
@@ -209,57 +208,6 @@ class Theme_Library_Test extends WP_UnitTestCase {
 
 		$this->assertSame( '', Asset_Manager::get_theme_file( 'prism-not-a-theme' ) );
 		$this->assertSame( '', Asset_Manager::get_theme_file( '' ) );
-
-	}
-
-	/**
-	 * Method to name the option the built theme list is cached in.
-	 *
-	 * @return string
-	 */
-	protected function _cache_option_name(): string {
-
-		return Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
-
-	}
-
-	/**
-	 * Method to put a theme list of this test's own into the cache.
-	 *
-	 * Written straight into the option rather than through `Cache`, because what is
-	 * being proved is that the reader goes to the option at all — and a list built
-	 * by the same code that reads it could not tell a cache hit from a rebuild.
-	 *
-	 * @param array $themes Theme list to plant.
-	 *
-	 * @return void
-	 */
-	protected function _plant_cached_themes( array $themes ): void {
-
-		update_option(
-			$this->_cache_option_name(),
-			[
-				'expiry' => ( time() + HOUR_IN_SECONDS ),
-				'data'   => $themes,
-			],
-			false
-		);
-
-		$this->_forget_themes();
-
-	}
-
-	/**
-	 * Method to make the class forget what it read earlier in this request.
-	 *
-	 * The static memo sits in front of the option, so nothing planted in the option
-	 * is seen until it is cleared.
-	 *
-	 * @return void
-	 */
-	protected function _forget_themes(): void {
-
-		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
 
 	}
 

@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Block_Converter;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -24,6 +25,8 @@ use WP_UnitTestCase;
  * own cannot tell the two apart.
  */
 class Rest_Option_Security_Test extends WP_UnitTestCase {
+
+	use Asset_Test_Helpers;
 
 	/**
 	 * Route under test.
@@ -67,6 +70,26 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 		$GLOBALS['wp_rest_server'] = null;  // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Forcing a fresh REST server so the routes above are registered on it. The global is core's, not this plugin's.
 
 		rest_get_server();
+
+	}
+
+	/**
+	 * Throws away the theme list this file's refresh case warms.
+	 *
+	 * `Admin::refresh_themes()` calls `Asset_Manager::get_themes( 'yes' )`, which
+	 * rebuilds the cached option and repopulates a static in front of it. A static is
+	 * memory: the transaction this case runs in rolls the option row back and cannot
+	 * touch it, so without this the static would go on holding a real list while the
+	 * option it is supposed to be fronting had been rolled away — and the two would
+	 * disagree for every later suite in the same process.
+	 *
+	 * @return void
+	 */
+	public function tear_down(): void {
+
+		$this->_reset_theme_cache();
+
+		parent::tear_down();
 
 	}
 
@@ -291,16 +314,31 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * so an answer which does not carry the list cannot tell a site owner whether
 	 * the theme they went looking for is there now.
 	 *
+	 * A list of this test's own is planted in the cache first, and the assertion that
+	 * it is **gone** from the answer is what makes this a test of the rebuild. Without
+	 * it the case compared the route's answer against the very method the route calls,
+	 * moments later and over the same warmed cache — so a route which answered a stale
+	 * list would have passed, because the assertion would have read that same stale
+	 * list.
+	 *
 	 * @return void
 	 */
 	public function test_the_theme_refresh_answers_with_the_rebuilt_list(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
+		$this->_plant_cached_themes( [ 'prism-not-a-theme' => 'Planted' ] );
+
 		$response = $this->_refresh_themes();
 		$payload  = $response->get_data();
 
 		$this->assertSame( 200, $response->get_status() );
+
+		$this->assertArrayNotHasKey(
+			'prism-not-a-theme',
+			(array) ( $payload['choices'] ?? [] ),
+			'The planted list survived, so the route answered the cache instead of rereading the disk.'
+		);
 
 		$this->assertSame(
 			Admin::get_theme_choices(),

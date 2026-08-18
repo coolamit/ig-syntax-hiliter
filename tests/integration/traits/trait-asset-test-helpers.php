@@ -9,7 +9,9 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration\Traits;
 
+use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Cache;
 use ReflectionProperty;
 
 /**
@@ -26,6 +28,14 @@ trait Asset_Test_Helpers {
 	 * @return void
 	 */
 	protected function _reset_asset_state(): void {
+		/*
+		 * `Admin::$_settings_schema` goes with the theme list, because it embeds the
+		 * theme choices and is memoised for the request. They are a pair now: clear
+		 * one and not the other and the schema goes on describing a list which no
+		 * longer exists, which is the arrangement that produces a green suite over a
+		 * wrong answer.
+		 */
+		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
 
 		$manager = Asset_Manager::get_instance();
 
@@ -237,6 +247,76 @@ trait Asset_Test_Helpers {
 		}
 
 		return $urls;
+
+	}
+
+	/**
+	 * Method to name the option the built theme list is cached in.
+	 *
+	 * @return string
+	 */
+	protected function _cache_option_name(): string {
+
+		return Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+
+	}
+
+	/**
+	 * Method to make the class forget the theme list it read earlier in this request.
+	 *
+	 * The static memo sits in front of the option, so nothing planted in the option
+	 * is seen until it is cleared. `Admin::$_settings_schema` goes with it for the
+	 * reason given on `_reset_asset_state()` above.
+	 *
+	 * @return void
+	 */
+	protected function _forget_themes(): void {
+
+		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
+		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
+
+	}
+
+	/**
+	 * Method to put a theme list of the test's own into the cache.
+	 *
+	 * Written straight into the option rather than through `Cache`, because what is
+	 * being proved is that the reader goes to the option at all — and a list built
+	 * by the same code that reads it could not tell a cache hit from a rebuild.
+	 *
+	 * @param array $themes Theme list to plant.
+	 *
+	 * @return void
+	 */
+	protected function _plant_cached_themes( array $themes ): void {
+
+		update_option(
+			$this->_cache_option_name(),
+			[
+				'expiry' => ( time() + HOUR_IN_SECONDS ),
+				'data'   => $themes,
+			],
+			false
+		);
+
+		$this->_forget_themes();
+
+	}
+
+	/**
+	 * Method to throw the cached theme list away entirely, option and memo alike.
+	 *
+	 * What a test which warmed the list owes whatever runs after it. Neither half is
+	 * rolled back by the transaction a test case runs in: the memo is memory, and the
+	 * option is written before the assertions rather than by them.
+	 *
+	 * @return void
+	 */
+	protected function _reset_theme_cache(): void {
+
+		delete_option( $this->_cache_option_name() );
+
+		$this->_forget_themes();
 
 	}
 
