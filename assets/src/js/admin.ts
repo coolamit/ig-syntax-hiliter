@@ -786,13 +786,15 @@
 
 				const previous = control.value;
 				const values = Object.keys( choices );
-				let kept: HTMLOptionElement | null = null;
 
-				for ( let i = 0; i < control.options.length; i++ ) {
-					if ( control.options[ i ]?.value === previous ) {
-						kept = control.options[ i ] as HTMLOptionElement;
-					}
-				}
+				/*
+				 * The option showing the stored theme, so it can be kept where the
+				 * rebuilt list no longer offers it. Values are unique in a dropdown, so
+				 * asking the browser for it says in one line what a loop said in five.
+				 */
+				const kept = control.querySelector< HTMLOptionElement >(
+					'option[value="' + CSS.escape( previous ) + '"]'
+				);
 
 				while ( control.firstChild ) {
 					control.removeChild( control.firstChild );
@@ -835,6 +837,19 @@
 			} )
 			.finally( function () {
 				button.classList.remove( 'is-busy' );
+
+				/*
+				 * The page lock disabled this button, and a disabled element loses focus
+				 * to `<body>`. This is the button somebody is most likely to press twice,
+				 * so a keyboard user gets it back rather than having to tab to it again.
+				 * Guarded, because a reader who moved on to another control in the
+				 * meantime should not be dragged back here.
+				 */
+				const owner = button.ownerDocument;
+
+				if ( ! button.disabled && owner.body === owner.activeElement ) {
+					button.focus();
+				}
 
 				/*
 				 * The preview is painted from `config.themes`, which has just been
@@ -911,8 +926,8 @@
 	 * @param font Value the font control now holds.
 	 */
 	function applyPreviewFont( font: string ): void {
-		const fonts = config?.fonts;
-		const id = config?.fontStyleId;
+		const fonts = adminConfig.fonts;
+		const id = adminConfig.fontStyleId;
 
 		if ( ! fonts || ! id || ! ( font in fonts ) ) {
 			return;

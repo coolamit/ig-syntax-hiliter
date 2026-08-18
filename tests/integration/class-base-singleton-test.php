@@ -1,6 +1,6 @@
 <?php
 /**
- * Tests for the per class singleton slots on the Base class.
+ * Tests for the singleton wiring under the Base class and its children.
  *
  * @package iG_Syntax_Hiliter
  */

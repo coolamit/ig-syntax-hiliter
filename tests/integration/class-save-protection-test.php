@@ -9,7 +9,6 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
-use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;

@@ -315,4 +315,13 @@ $igsh-radius: 3px;
 	.igsh-toggle__track::after {
 		transition: none;
 	}
+
+	/*
+	 * The refresh spinner rotates for as long as the request takes, which is the
+	 * one animation in this plugin with no end of its own. The button still says
+	 * it is working, through being disabled and through the message beside it.
+	 */
+	.igsh-settings__refresh.is-busy .dashicons {
+		animation: none;
+	}
 }

@@ -177,8 +177,8 @@ class Language_Registry {
 		}
 
 		$registry = Cache::create( static::_get_cache_key() )
-						->expires_in( static::CACHE_EXPIRY )
 						->updates_with( [ static::class, 'build' ] )
+						->expires_in( static::CACHE_EXPIRY )
 						->get();
 
 		if ( ! is_array( $registry ) ) {
@@ -405,6 +405,7 @@ class Language_Registry {
 		$this->_load();
 
 		return isset( $this->_languages[ strtolower( trim( $id ) ) ] );
+
 	}    //end has()
 
 	/**
@@ -417,6 +418,7 @@ class Language_Registry {
 		$this->_load();
 
 		return $this->_languages;
+
 	}    //end get_languages()
 
 	/**
@@ -434,6 +436,7 @@ class Language_Registry {
 		$this->_load();
 
 		return $this->_aliases;
+
 	}    //end get_aliases()
 
 	/**
@@ -483,6 +486,5 @@ class Language_Registry {
 	}    //end _get_cache_key()
 
 }    //end of class
-
 
 //EOF

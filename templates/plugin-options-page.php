@@ -92,12 +92,21 @@
 							 */
 							?>
 							<?php if ( 'theme' === $setting['name'] ) : ?>
+								<?php
+								/*
+								 * One string, said once. The button carries no text of its
+								 * own, so it needs both a tooltip and an accessible name —
+								 * but writing the same words twice is two POT entries for
+								 * one idea and two chances to diverge in translation.
+								 */
+								$igsh_refresh_label = __( 'Refresh theme cache', 'igsyntax-hiliter' );
+								?>
 								<button
 									type="button"
 									class="button igsh-settings__refresh"
 									id="igsh-refresh-themes"
-									title="<?php esc_attr_e( 'Refresh theme cache', 'igsyntax-hiliter' ); ?>"
-									aria-label="<?php esc_attr_e( 'Refresh theme cache', 'igsyntax-hiliter' ); ?>"
+									title="<?php echo esc_attr( $igsh_refresh_label ); ?>"
+									aria-label="<?php echo esc_attr( $igsh_refresh_label ); ?>"
 								>
 									<span class="dashicons dashicons-update" aria-hidden="true"></span>
 								</button>
