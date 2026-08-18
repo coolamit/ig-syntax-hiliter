@@ -9,6 +9,7 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -28,6 +29,8 @@ use WP_REST_Server;
  * hooks is on an admin only hook and costs nothing elsewhere.
  */
 class Admin extends Base {
+
+	use Singleton;
 
 	/**
 	 * Namespace every one of the plugin's REST routes lives under.
@@ -77,6 +80,26 @@ class Admin extends Base {
 	 * @var array|null
 	 */
 	protected static ?array $_settings_schema = null;
+
+	/**
+	 * Class constructor.
+	 *
+	 * **Do not remove this as redundant. It is the opposite of redundant.**
+	 *
+	 * PHP resolves a constructor in a fixed order: one declared in the class beats
+	 * one a trait brings in, and a trait's beats one inherited from a parent. The
+	 * `Singleton` trait above declares an empty constructor — so without this method,
+	 * that empty one wins over `Base::__construct()`, `$this->_option` is never set
+	 * and `Migrate` never runs, because `Base`'s constructor is the only thing which
+	 * triggers a pending migration and this is the only class which reaches it.
+	 *
+	 * It would fail silently, and it would fail on upgrade.
+	 */
+	protected function __construct() {    // phpcs:ignore Generic.CodeAnalysis.UselessOverridingMethod.Found -- Anything but useless: without this the Singleton trait's empty constructor beats Base's.
+
+		parent::__construct();
+
+	}    //end __construct()
 
 	/**
 	 * Method to hook the settings screen and its route up to WordPress.

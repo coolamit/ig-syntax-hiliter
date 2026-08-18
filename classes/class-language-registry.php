@@ -7,14 +7,22 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+use Throwable;
+
 /**
  * Every language the highlighter can load, and every alias for it.
  *
  * `parse_manifest()` and `merge()` are pure and take their paths as arguments.
- * `get_instance()` is the only method which touches WordPress: it resolves the
- * paths, caches the result and applies the extension filter.
+ * `_load()` is the only method which touches WordPress: it resolves the paths,
+ * caches the result and applies the extension filter. Nothing calls it directly —
+ * it runs the first time anything asks this object a question, which is late
+ * enough that the shared instance has already been handed out. That timing is the
+ * whole design and the reason for it is written on `_load()` itself.
  */
 class Language_Registry {
+
+	use Singleton;
 
 	/**
 	 * Language id which means "show this as code but do not highlight it".
@@ -49,11 +57,15 @@ class Language_Registry {
 	const CACHE_EXPIRY = 86400;
 
 	/**
-	 * Singleton instance.
+	 * Whether the dataset has been loaded.
 	 *
-	 * @var \iG\Syntax_Hiliter\Language_Registry|null
+	 * An object built with a registry in hand is loaded already — that is the unit
+	 * tier, and it is what keeps the domain core free of WordPress. An object built
+	 * with nothing loads the first time it is asked a question.
+	 *
+	 * @var bool
 	 */
-	protected static ?self $_instance = null;
+	protected bool $_loaded = false;
 
 	/**
 	 * Canonical language id to language data.
@@ -72,21 +84,27 @@ class Language_Registry {
 	/**
 	 * Class constructor.
 	 *
-	 * @param array $registry Registry array in the shape `parse_manifest()` returns.
+	 * It sets properties and returns, and that is deliberate rather than minimal —
+	 * see `_load()`. A registry handed in is the whole dataset, so such an object is
+	 * loaded and never reads a cache or fires a filter; that is how the unit tier
+	 * builds one, and what keeps this class usable with no WordPress present.
+	 *
+	 * @param array $registry Registry array in the shape `parse_manifest()` returns. Loads itself on first use when this is empty.
 	 */
 	public function __construct( array $registry = [] ) {
 
 		$this->_ingest( $registry );
+
+		$this->_loaded = ( ! empty( $registry ) );
 
 	}    //end __construct()
 
 	/**
 	 * Method to read a registry array into this object, replacing whatever it held.
 	 *
-	 * Separate from the constructor so that `get_instance()` can publish an instance
-	 * before the extension filter runs and then update that same object afterwards,
-	 * rather than swapping it for a second one which anything holding a reference to
-	 * the first would never see.
+	 * Separate from the constructor so that `_load()` can fill this object in after
+	 * the extension filter has run, rather than swapping it for a second one which
+	 * anything holding a reference to the first would never see.
 	 *
 	 * @param array $registry Registry array in the shape `parse_manifest()` returns.
 	 *
@@ -131,14 +149,32 @@ class Language_Registry {
 	}    //end _ingest()
 
 	/**
-	 * Method to get the shared registry instance.
+	 * Method to fill the registry in, the first time it is asked anything.
 	 *
-	 * @return \iG\Syntax_Hiliter\Language_Registry
+	 * **The timing is the design, and it is not tidiness.** The extension filter has
+	 * to run somewhere, and a callback listening on it will very likely ask this
+	 * class what it currently holds before deciding what to change. If the filter ran
+	 * while the object was being built — in `get_instance()`, as it used to, or in
+	 * the constructor, which looks like the tidier answer — then `static::$_instance`
+	 * would not be assigned yet, because that assignment only happens once `new`
+	 * returns. The callback would build a second registry, fire the filter again, and
+	 * go round until the process died.
+	 *
+	 * Loading on first use dissolves that: by the time anything can ask a question,
+	 * the instance has been handed out, and a callback which asks gets the same
+	 * object back. The flag is set before the filter runs, so such a callback sees
+	 * the dataset as the cache produced it — which is exactly what it saw before —
+	 * rather than re-entering this method.
+	 *
+	 * `_ingest()` refills this same object in place rather than swapping in a second
+	 * one, so a reference a callback took ends up holding the filtered registry.
+	 *
+	 * @return void
 	 */
-	public static function get_instance(): self {
+	protected function _load(): void {
 
-		if ( ! is_null( static::$_instance ) ) {
-			return static::$_instance;
+		if ( $this->_loaded ) {
+			return;
 		}
 
 		$registry = Cache::create( static::_get_cache_key() )
@@ -156,20 +192,14 @@ class Language_Registry {
 			 */
 			try {
 				$registry = static::build();
-			} catch ( \Throwable $e ) {
+			} catch ( Throwable $e ) {
 				$registry = [];
 			}
 		}
 
-		/*
-		 * The instance is published before the filter runs. A callback which asks the
-		 * registry what it currently holds — the obvious thing to do when deciding what
-		 * to change — would otherwise re-enter this method with nothing memoised and
-		 * recurse until the process died. It is filled in again below, in place, so
-		 * that anything the callback took a reference to ends up holding the filtered
-		 * registry rather than the one it was shown.
-		 */
-		static::$_instance = new static( (array) $registry );
+		$this->_ingest( $registry );
+
+		$this->_loaded = true;
 
 		/**
 		 * Filters the finished language registry.
@@ -192,12 +222,10 @@ class Language_Registry {
 		 * a callback that plainly did not mean to replace anything.
 		 */
 		if ( $filtered !== $registry && is_array( $filtered ) ) {
-			static::$_instance->_ingest( $filtered );
+			$this->_ingest( $filtered );
 		}
 
-		return static::$_instance;
-
-	}    //end get_instance()
+	}    //end _load()
 
 	/**
 	 * Method to build the registry from the bundled library.
@@ -343,6 +371,8 @@ class Language_Registry {
 	 */
 	public function resolve( string $lang ): ?string {
 
+		$this->_load();
+
 		$lang = strtolower( trim( $lang ) );
 
 		if ( '' === $lang ) {
@@ -365,6 +395,9 @@ class Language_Registry {
 	 * @return bool
 	 */
 	public function has( string $id ): bool {
+
+		$this->_load();
+
 		return isset( $this->_languages[ strtolower( trim( $id ) ) ] );
 	}    //end has()
 
@@ -376,6 +409,9 @@ class Language_Registry {
 	 * @return string|null
 	 */
 	public function get_title( string $id ): ?string {
+
+		$this->_load();
+
 		return $this->_languages[ strtolower( trim( $id ) ) ]['title'] ?? null;
 	}    //end get_title()
 
@@ -387,6 +423,8 @@ class Language_Registry {
 	 * @return string|null
 	 */
 	public function get_file( string $id ): ?string {
+
+		$this->_load();
 
 		$file = $this->_languages[ strtolower( trim( $id ) ) ]['file'] ?? '';
 
@@ -400,6 +438,9 @@ class Language_Registry {
 	 * @return array Canonical language id to language data.
 	 */
 	public function get_languages(): array {
+
+		$this->_load();
+
 		return $this->_languages;
 	}    //end get_languages()
 
@@ -414,6 +455,9 @@ class Language_Registry {
 	 * @return array Alias to canonical language id.
 	 */
 	public function get_aliases(): array {
+
+		$this->_load();
+
 		return $this->_aliases;
 	}    //end get_aliases()
 
@@ -423,6 +467,8 @@ class Language_Registry {
 	 * @return array List of arrays with `id` and `title` keys, sorted by title.
 	 */
 	public function get_choices(): array {
+
+		$this->_load();
 
 		$choices = [];
 

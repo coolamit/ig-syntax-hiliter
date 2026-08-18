@@ -14,6 +14,14 @@ namespace iG\Syntax_Hiliter;
 
 /**
  * Common wiring shared by the plugin's WordPress facing classes.
+ *
+ * There is no singleton here, deliberately. A child which wants one uses the
+ * `Singleton` trait, which gives that child an instance slot of its own — that is
+ * what a per class singleton trait is for, and putting the store on this class
+ * instead was how it came to hold a map keyed by class name to work around being
+ * in the wrong place. A child using the trait **must declare a constructor calling
+ * `parent::__construct()`**, or it takes the trait's empty one and never runs the
+ * two lines below; `Admin` says so at greater length.
  */
 abstract class Base {
 
@@ -30,18 +38,6 @@ abstract class Base {
 	 * @var string
 	 */
 	const PLUGIN_NAME = 'iG:Syntax Hiliter';
-
-	/**
-	 * Singleton instances, keyed by class name.
-	 *
-	 * The Singleton trait is deliberately not used here: a static property
-	 * declared in a trait used by a parent is shared by every child of that
-	 * parent, so the first child instantiated would be handed back to all the
-	 * others.
-	 *
-	 * @var array<string, static>
-	 */
-	protected static array $_instances = [];
 
 	/**
 	 * Plugin options.
@@ -65,30 +61,6 @@ abstract class Base {
 		$this->_maybe_migrate_older_settings();
 
 	}    //end __construct()
-
-	/**
-	 * Prevents cloning of children.
-	 *
-	 * @return void
-	 */
-	final protected function __clone() {}
-
-	/**
-	 * Returns the singleton instance of the class this is called on.
-	 *
-	 * @return static
-	 */
-	final public static function get_instance(): static {
-
-		$class = static::class;
-
-		if ( ! isset( static::$_instances[ $class ] ) ) {
-			static::$_instances[ $class ] = new $class();
-		}
-
-		return static::$_instances[ $class ];
-
-	}    //end get_instance()
 
 	/**
 	 * Migrates the settings of older versions of the plugin to the current one.

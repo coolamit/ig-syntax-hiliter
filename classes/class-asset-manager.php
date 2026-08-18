@@ -7,6 +7,8 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+
 /**
  * Decides what the browser is asked to download, and whether it is asked at all.
  *
@@ -18,6 +20,8 @@ namespace iG\Syntax_Hiliter;
  * is Prism.
  */
 class Asset_Manager {
+
+	use Singleton;
 
 	/**
 	 * Prefix shared by every script and style handle the plugin registers.
@@ -141,13 +145,6 @@ class Asset_Manager {
 	const PRIORITY_DECIDE_AGAIN = 19;
 
 	/**
-	 * Singleton instance.
-	 *
-	 * @var \iG\Syntax_Hiliter\Asset_Manager|null
-	 */
-	protected static ?self $_instance = null;
-
-	/**
 	 * The theme map, once it has been built in this request.
 	 *
 	 * A compile-time constant which `get_theme_file()` used to rebuild on every call,
@@ -219,21 +216,6 @@ class Asset_Manager {
 	 * @var bool
 	 */
 	protected bool $_editor_font_styled = false;
-
-	/**
-	 * Method to get the shared asset manager.
-	 *
-	 * @return \iG\Syntax_Hiliter\Asset_Manager
-	 */
-	public static function get_instance(): self {
-
-		if ( is_null( static::$_instance ) ) {
-			static::$_instance = new static();
-		}
-
-		return static::$_instance;
-
-	}    //end get_instance()
 
 	/**
 	 * Method to hook the asset manager up to WordPress.

@@ -18,12 +18,12 @@ use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
- * `get_instance()` end to end — the extension filter running over a memoised
- * instance, and the cache the registry is built through.
+ * The registry's load end to end — the extension filter running over an instance
+ * which has already been handed out, and the cache it is built through.
  *
  * The unit tier covers `parse_manifest()` and `merge()`, neither of which goes
- * anywhere near `get_instance()`. Everything here does, because that is where the
- * ordering and the caching live.
+ * anywhere near a cache or a filter. Everything here does, because that is where
+ * the ordering and the caching live.
  */
 class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
@@ -116,6 +116,12 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * The callback counts its own entries and stops calling after the second, so
 	 * that a regression here reports a number instead of taking the process down.
 	 *
+	 * The registry is read after it is fetched, because the filter now runs the
+	 * first time the object is asked a question rather than while it is being built.
+	 * That is what put the recursion out of reach: the instance has been handed out
+	 * before any callback can run, so a callback asking for it gets the same object
+	 * back instead of starting a second build.
+	 *
 	 * @return void
 	 */
 	public function test_a_filter_callback_may_ask_the_registry_what_it_holds(): void {
@@ -141,10 +147,57 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
+		//the load, and with it the filter, runs on the first question asked of it
+		$registry->has( 'php' );
+
 		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
 
 		$this->assertSame( 1, $entries, 'A callback which reads the registry does not send the build round again.' );
 		$this->assertSame( $registry, $seen, 'What the callback was shown is the registry the request goes on to use.' );
+
+	}
+
+	/**
+	 * A filter callback may ask the registry a question, and not merely ask for it.
+	 *
+	 * The sharper half of the case above, and it is what makes this arrangement safe
+	 * to rearrange again. Fetching the object is now cheap and cannot recurse; the
+	 * load is what runs the filter, so a callback which *reads* is the one which
+	 * could re-enter it. It does not, because the loaded flag is set before the
+	 * filter is applied — which also means the callback is shown the dataset as the
+	 * cache produced it, unfiltered, exactly as it was shown before.
+	 *
+	 * @return void
+	 */
+	public function test_a_filter_callback_may_read_from_the_registry(): void {
+
+		$entries = 0;
+		$answer  = null;
+
+		$callback = static function ( array $registry ) use ( &$entries, &$answer ): array {
+
+			++$entries;
+
+			if ( 2 > $entries ) {
+				$answer = Language_Registry::get_instance()->has( 'php' );
+			}
+
+			return $registry;
+
+		};
+
+		add_filter( Language_Registry::FILTER_LANGUAGES, $callback );
+
+		$this->_remember_cache_key();
+
+		$registry = Language_Registry::get_instance();
+
+		$registry->has( 'php' );
+
+		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
+
+		$this->assertSame( 1, $entries, 'A callback which reads the registry re-entered the load.' );
+		$this->assertTrue( $answer, 'And what it read was the dataset, not an empty registry.' );
 
 	}
 
@@ -195,9 +248,10 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
-		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
-
+		//asking it anything is what loads it, and this assertion is the asking
 		$this->assertTrue( $registry->has( self::LANGUAGE ), 'The filter did add a language.' );
+
+		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
 
 		$renderer = Renderer::get_instance();
 		$held     = ( new ReflectionProperty( Renderer::class, '_registry' ) )->getValue( $renderer );

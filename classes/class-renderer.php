@@ -7,6 +7,8 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+
 /**
  * Turns a snippet into the markup the highlighter expects.
  *
@@ -16,6 +18,8 @@ namespace iG\Syntax_Hiliter;
  * which is what keeps the browser from asking for a file that is not there.
  */
 class Renderer {
+
+	use Singleton;
 
 	/**
 	 * Prefix of the DOM id given to each rendered code box.
@@ -42,13 +46,6 @@ class Renderer {
 	const FILE_LABEL_ELLIPSIS = '…';
 
 	/**
-	 * Singleton instance.
-	 *
-	 * @var \iG\Syntax_Hiliter\Renderer|null
-	 */
-	protected static ?self $_instance = null;
-
-	/**
 	 * The registry consulted to validate a language.
 	 *
 	 * @var \iG\Syntax_Hiliter\Language_Registry
@@ -65,26 +62,20 @@ class Renderer {
 	/**
 	 * Class constructor.
 	 *
-	 * @param \iG\Syntax_Hiliter\Language_Registry $registry Registry used to validate languages.
-	 */
-	public function __construct( Language_Registry $registry ) {
-		$this->_registry = $registry;
-	}    //end __construct()
-
-	/**
-	 * Method to get the shared renderer.
+	 * Public, and it stays public: a method declared in the class beats one the
+	 * `Singleton` trait brings in, and this is the one class of the plugin's domain
+	 * core which the unit tier builds by hand with a registry of its own.
 	 *
-	 * @return \iG\Syntax_Hiliter\Renderer
+	 * The registry defaults rather than being required, because `get_instance()` now
+	 * comes from the trait and calls the constructor with whatever it was handed —
+	 * which, at every call site there is, is nothing. This is where "the shared
+	 * registry" was decided before; it has only moved a few lines.
+	 *
+	 * @param \iG\Syntax_Hiliter\Language_Registry|null $registry Registry used to validate languages. The shared one when none is named.
 	 */
-	public static function get_instance(): self {
-
-		if ( is_null( static::$_instance ) ) {
-			static::$_instance = new static( Language_Registry::get_instance() );
-		}
-
-		return static::$_instance;
-
-	}    //end get_instance()
+	public function __construct( ?Language_Registry $registry = null ) {
+		$this->_registry = $registry ?? Language_Registry::get_instance();
+	}    //end __construct()
 
 	/**
 	 * Method to render a snippet as a code box.
