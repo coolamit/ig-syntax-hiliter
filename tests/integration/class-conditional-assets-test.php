@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use ReflectionProperty;
 use WP_UnitTestCase;
 

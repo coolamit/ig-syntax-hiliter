@@ -7,7 +7,7 @@
 
 declare( strict_types = 1 );
 
-namespace iG\Syntax_Hiliter\Tests\Integration;
+namespace iG\Syntax_Hiliter\Tests\Integration\Traits;
 
 use WP_Hook;
 

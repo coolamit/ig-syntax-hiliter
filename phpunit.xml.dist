@@ -12,9 +12,11 @@
 
 	Test case files follow WordPress file naming like every other file in the
 	plugin, so a case class lands in `class-<name>-test.php` and the suffix below
-	is what picks it out. The suffix also keeps the fixtures out of the suites:
-	`class-singleton-fixture-alpha.php` and `trait-asset-test-helpers.php` are
-	loaded by the cases that use them and are not test cases themselves.
+	is what picks it out. Everything a case leans on but which is not a case
+	itself lives beside them in `tests/integration/traits/` and
+	`tests/integration/fixtures/`, mirroring its namespace the way `classes/`
+	does. The suffix is what keeps those out of the suites; the directories are
+	so that a reader can tell at a glance which files are tests.
 -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

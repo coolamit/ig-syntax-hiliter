@@ -14,6 +14,7 @@ use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
 use ReflectionProperty;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;

@@ -9,6 +9,8 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Singleton_Fixture_Alpha;
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Singleton_Fixture_Beta;
 use WP_UnitTestCase;
 
 /**

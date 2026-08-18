@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use WP_UnitTestCase;
 
 /**

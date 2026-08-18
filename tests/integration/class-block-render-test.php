@@ -20,6 +20,7 @@ use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Plugin;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
