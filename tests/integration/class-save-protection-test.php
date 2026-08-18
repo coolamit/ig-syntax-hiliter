@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
@@ -20,6 +21,8 @@ use WP_UnitTestCase;
  * submitted.
  */
 class Save_Protection_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Content used by most of the tests here. Every part of it is something KSES
@@ -39,43 +42,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		parent::set_up();
 
 		Shortcode_Handler::get_instance()->register_hooks();
-
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
-	}
-
-	/**
-	 * Method to build the block delimiter an editor save would leave in the content.
-	 *
-	 * Core does the serializing, so the fixture carries the bytes the block editor
-	 * would really submit rather than a hand written approximation of them.
-	 *
-	 * @param string $block_name Block name.
-	 * @param array  $attributes Block attributes.
-	 *
-	 * @return string
-	 */
-	protected static function _block( string $block_name, array $attributes ): string {
-
-		return serialize_block(
-			[
-				'blockName'    => $block_name,
-				'attrs'        => $attributes,
-				'innerBlocks'  => [],
-				'innerHTML'    => '',
-				'innerContent' => [],
-			]
-		);
 
 	}
 
@@ -273,7 +239,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		$this->_become_contributor();
 
 		$content = static::_block(
-			Block::NAME,
 			[
 				'code'     => "<script src=\"https://evil.test/a.js\"></script>\nif (a < b) { echo 'a & b'; }",  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
 				'language' => 'php',
@@ -298,7 +263,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$this->_become_contributor();
 
-		$content = static::_block( 'acme/notice', [ 'text' => '<script>alert(1)</script>' ] );
+		$content = static::_block( [ 'text' => '<script>alert(1)</script>' ], 'acme/notice' );
 
 		$stored = $this->_store( $content );
 
@@ -372,7 +337,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		$content = sprintf(
 			"%s\n\n%s",
 			static::_block(
-				Block::NAME,
 				[
 					'code'     => "// wrap the snippet in [php] and close it after\n",
 					'language' => 'php',
@@ -398,7 +362,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 			"%s\n\n%s",
 			self::HOSTILE_CONTENT,
 			static::_block(
-				Block::NAME,
 				[
 					'code'     => "// wrap the snippet in [php] and close it after\n",
 					'language' => 'php',
@@ -432,7 +395,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		$content = sprintf(
 			"PREFIX\n\n%s\n\n[php]echo 2;[/php]\n\nSUFFIX",
 			static::_block(
-				Block::NAME,
 				[
 					'code'     => $code,
 					'language' => 'php',
@@ -583,7 +545,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$content = sprintf(
 			'[sourcecode language="html"]%s[/sourcecode]',
-			static::_block( Block::NAME, [ 'code' => 'echo 1;' ] )
+			static::_block( [ 'code' => 'echo 1;' ] )
 		);
 
 		$this->assertSame( $content, $this->_store( $content ) );

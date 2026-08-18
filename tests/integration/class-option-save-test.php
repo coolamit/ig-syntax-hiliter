@@ -14,8 +14,9 @@ use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use iG\Syntax_Hiliter\Validate;
-use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
@@ -25,21 +26,7 @@ use WP_UnitTestCase;
  */
 class Option_Save_Test extends WP_UnitTestCase {
 
-	/**
-	 * The option set v6 ships with.
-	 *
-	 * @var array
-	 */
-	const V6_DEFAULTS = [
-		'theme'             => Asset_Manager::DEFAULT_THEME,
-		'font'              => Asset_Manager::FONT_NONE,
-		'toolbar'           => 'yes',
-		'copy_code'         => 'yes',
-		'show_line_numbers' => 'yes',
-		'hilite_comments'   => 'yes',
-		'gist_in_comments'  => 'no',
-		'gist_limit_height' => 'yes',
-	];
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * The options object as the plugin booted it.
@@ -59,6 +46,13 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 		$this->_original_option = Option::get_instance();
 
+		/*
+		 * Every case starts from a site holding exactly what v6 ships with, because
+		 * what each of them is about is one setting moving off that. A case which needs
+		 * something else stored writes over this.
+		 */
+		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
+
 	}
 
 	/**
@@ -69,7 +63,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 */
 	public function tear_down(): void {
 
-		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, $this->_original_option );
+		$this->_set_singleton( Option::class, $this->_original_option );
 
 		parent::tear_down();
 
@@ -85,7 +79,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 */
 	protected function _new_reader(): Option {
 
-		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Option::class, null );
 
 		return Option::get_instance();
 
@@ -112,8 +106,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_two_overlapping_saves_do_not_discard_one_another(): void {
-
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
 
 		$first  = $this->_new_reader();
 		$second = $this->_new_reader();
@@ -143,7 +135,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 		update_option(
 			Base::PLUGIN_ID . '-options',
 			array_merge(
-				static::V6_DEFAULTS,
+				Default_Settings::V6,
 				[
 					'gist_in_comments' => 'yes',
 					'theme'            => 'okaidia',
@@ -171,7 +163,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
-			array_merge( static::V6_DEFAULTS, [ 'toolbar' => null ] )
+			array_merge( Default_Settings::V6, [ 'toolbar' => null ] )
 		);
 
 		$option = $this->_new_reader();
@@ -193,7 +185,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 		update_option(
 			Base::PLUGIN_ID . '-options',
 			array_merge(
-				static::V6_DEFAULTS,
+				Default_Settings::V6,
 				[
 					'hilite_comments'  => null,
 					'gist_in_comments' => null,
@@ -215,8 +207,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_a_name_this_plugin_does_not_own_is_neither_saved_nor_read(): void {
-
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
 
 		$option = $this->_new_reader();
 
@@ -243,8 +233,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_a_value_a_setting_does_not_accept_lands_on_its_default( $value, string $description ): void {
-
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
 
 		$option = $this->_new_reader();
 
@@ -286,8 +274,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 */
 	public function test_every_spelling_of_a_flag_is_stored_as_yes_or_no( $value, string $expected ): void {
 
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
-
 		$this->_new_reader()->save( 'gist_in_comments', $value );
 
 		$this->assertSame( $expected, $this->_get_stored_settings()['gist_in_comments'] ?? '' );
@@ -328,8 +314,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_a_theme_this_plugin_does_not_ship_lands_on_the_default_theme(): void {
-
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
 
 		$option = $this->_new_reader();
 
@@ -380,61 +364,75 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_the_shipped_defaults_are_what_they_have_always_been(): void {
-		$this->assertSame( static::V6_DEFAULTS, Validate::get_instance()->get_option_defaults() );
+		$this->assertSame( Default_Settings::V6, Validate::get_instance()->get_option_defaults() );
 	}
 
 	/**
-	 * A row already holding something unrecognised — hand edited, or written by a
-	 * version of this plugin from before values were checked on the way in — reads as
-	 * that setting's default. That is what makes the stored junk harmless without
-	 * anything having to rewrite the database, and it is the same answer
-	 * `Option::get()` gives for a setting stored as NULL.
+	 * Whatever a flag is stored as, both readers agree on what it means.
+	 *
+	 * `Validate::to_yesno()` is the one converter and `Shortcode_Handler` reaches it
+	 * on the read side, so `1`/`0`, `true`/`false`, `on`/`off` and `yes`/`no` all read
+	 * alike — versions up to 3.5 stored real booleans and 4.0 onwards stored the
+	 * words, and both are still out there. A value which is none of those is not a
+	 * flag at all and reads as the setting's default, which is the same answer
+	 * `Option::get()` gives for a NULL.
+	 *
+	 * Two settings on every row, with opposite defaults, so that a reader which
+	 * quietly answered the same thing for both would fail rather than pass half the
+	 * time.
+	 *
+	 * @dataProvider stored_flag_provider
+	 *
+	 * @param mixed  $hilite      What `hilite_comments`, whose default is `yes`, is stored as.
+	 * @param mixed  $gist        What `gist_in_comments`, whose default is `no`, is stored as.
+	 * @param bool   $expect_hilite What `hilite_comments` should read as.
+	 * @param bool   $expect_gist   What `gist_in_comments` should read as.
+	 * @param string $description What the row stands for, for the failure message.
 	 *
 	 * @return void
 	 */
-	public function test_a_setting_stored_as_something_unrecognised_reads_as_its_default(): void {
+	public function test_a_stored_flag_reads_as_what_it_means( $hilite, $gist, bool $expect_hilite, bool $expect_gist, string $description ): void {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
 			array_merge(
-				static::V6_DEFAULTS,
+				Default_Settings::V6,
 				[
-					'hilite_comments'  => 'perhaps',
-					'gist_in_comments' => 'perhaps',
+					'hilite_comments'  => $hilite,
+					'gist_in_comments' => $gist,
 				]
 			)
 		);
 
 		$this->_new_reader();
 
-		$this->assertTrue( Shortcode_Handler::is_plugin_option_on( 'hilite_comments', 'yes' ), 'A junk value did not read as the default this setting ships with.' );
-		$this->assertFalse( Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ), 'A junk value did not read as the default this setting ships with.' );
+		$this->assertSame(
+			$expect_hilite,
+			Shortcode_Handler::is_plugin_option_on( 'hilite_comments', 'yes' ),
+			sprintf( '%s did not read as expected for a setting which defaults to yes.', $description )
+		);
+
+		$this->assertSame(
+			$expect_gist,
+			Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ),
+			sprintf( '%s did not read as expected for a setting which defaults to no.', $description )
+		);
 
 	}
 
 	/**
-	 * And a flag stored the way versions up to 3.5 stored it still reads, without a
-	 * migration having had to touch the row.
+	 * Method to provide the ways a flag turns up in a real database.
 	 *
-	 * @return void
+	 * @return array
 	 */
-	public function test_a_setting_stored_as_a_boolean_reads_as_the_flag_it_is(): void {
+	public function stored_flag_provider(): array {
 
-		update_option(
-			Base::PLUGIN_ID . '-options',
-			array_merge(
-				static::V6_DEFAULTS,
-				[
-					'hilite_comments'  => '0',
-					'gist_in_comments' => '1',
-				]
-			)
-		);
-
-		$this->_new_reader();
-
-		$this->assertFalse( Shortcode_Handler::is_plugin_option_on( 'hilite_comments', 'yes' ) );
-		$this->assertTrue( Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ) );
+		return [
+			[ null, null, true, false, 'A setting stored as NULL' ],
+			[ 'perhaps', 'perhaps', true, false, 'A stored value which is not a flag at all' ],
+			[ '0', '1', false, true, 'The booleans versions up to 3.5 stored' ],
+			[ 'no', 'yes', false, true, 'The words 4.0 onwards stored' ],
+		];
 
 	}
 

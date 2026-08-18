@@ -13,6 +13,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Renderer;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionMethod;
 use ReflectionProperty;
 use WP_UnitTestCase;
@@ -26,6 +27,8 @@ use WP_UnitTestCase;
  * the ordering and the caching live.
  */
 class Language_Registry_Filter_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Id of the language these tests add through the filter.
@@ -85,8 +88,8 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 */
 	protected function _reset_registry(): void {
 
-		( new ReflectionProperty( Language_Registry::class, '_instance' ) )->setValue( null, null );
-		( new ReflectionProperty( Renderer::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Language_Registry::class, null );
+		$this->_set_singleton( Renderer::class, null );
 
 	}
 

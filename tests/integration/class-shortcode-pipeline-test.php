@@ -17,12 +17,15 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
  * The pipeline, and the immunity it exists to provide.
  */
 class Shortcode_Pipeline_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Content captured mid chain by the spy filter.
@@ -75,21 +78,6 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 		return $content;
 
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * Every test here goes through this one place, so the sniff which objects to a
-	 * plugin invoking a core hook name is answered once instead of on every line.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
 	}
 
 	/**

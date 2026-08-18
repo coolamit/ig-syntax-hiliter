@@ -14,7 +14,7 @@ use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
-use ReflectionProperty;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
@@ -24,6 +24,8 @@ use WP_UnitTestCase;
  * test case.
  */
 class Backward_Compatibility_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * The shortcode handler as the plugin booted it.
@@ -91,18 +93,6 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to replace a singleton instance.
-	 *
-	 * @param string      $class_name Fully qualified class name.
-	 * @param object|null $instance   Instance to install.
-	 *
-	 * @return void
-	 */
-	protected function _set_singleton( string $class_name, ?object $instance ): void {
-		( new ReflectionProperty( $class_name, '_instance' ) )->setValue( null, $instance );
-	}
-
-	/**
 	 * Method to rebuild the shortcode pipeline against a different option value.
 	 *
 	 * The handler reads `hilite_comments` once, when it registers, so the only way
@@ -135,18 +125,6 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 
 		Shortcode_Handler::get_instance()->register_hooks();
 
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
 	}
 
 	/**
@@ -302,34 +280,18 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An escaped shortcode comes out as the text it stands for.
-	 *
-	 * The outer pair of brackets comes off on the way to a reader, which is what
-	 * WordPress itself does with an escaped shortcode — `do_shortcode_tag()` and
-	 * `strip_shortcode_tag()` both hand back `substr( $m[0], 1, -1 )` — and what the
-	 * `strip_shortcodes()` call this plugin claims its tags in already does on the same
-	 * site. Nothing is highlighted, and no code box is built.
-	 *
-	 * @return void
-	 */
-	public function test_an_escaped_shortcode_renders_as_text(): void {
-
-		$output = $this->_filter( 'the_content', $this->_store( '[[php]echo 1;[/php]]' ) );
-
-		$this->assertStringContainsString( '[php]echo 1;[/php]', $output );
-		$this->assertStringNotContainsString( '[[php]', $output );
-		$this->assertStringNotContainsString( '[/php]]', $output );
-		$this->assertStringNotContainsString( '<pre', $output );
-
-	}
-
-	/**
 	 * Editing and saving a post over and over neither eats a bracket nor turns the
 	 * author's example into a snippet.
 	 *
 	 * Rendering between the saves is the point: what the reader is shown is not what
 	 * goes back to the database, and the two have to stay apart however many rounds
 	 * they are put through.
+	 *
+	 * Round one is also the whole of what an escaped shortcode has to do on its own —
+	 * stored as the author wrote it, shown as the text it stands for, and never a code
+	 * box — which is why there is no separate case saying so. This is WordPress's own
+	 * escape of a whole shortcode and not the plugin's doubled brackets; core's
+	 * `do_shortcode_tag()` is what unwraps it.
 	 *
 	 * @return void
 	 */
@@ -352,6 +314,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 
 			$this->assertStringContainsString( '[php]echo 1;[/php]', $output, sprintf( 'Round %d lost the text.', $round ) );
 			$this->assertStringNotContainsString( '[[php]', $output, sprintf( 'Round %d showed the reader the escape.', $round ) );
+			$this->assertStringNotContainsString( '[/php]]', $output, sprintf( 'Round %d showed the reader the closing escape.', $round ) );
 			$this->assertStringNotContainsString( '<pre', $output, sprintf( 'Round %d rendered a code box.', $round ) );
 
 			wp_update_post(

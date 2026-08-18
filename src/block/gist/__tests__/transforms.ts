@@ -13,51 +13,19 @@
  * PHPUnit tier can reach any of this.
  */
 
-import { createElement, RawHTML } from '@wordpress/element';
-import {
-	pasteHandler,
-	registerBlockType,
-	setFreeformContentHandlerName,
-	unregisterBlockType,
-} from '@wordpress/blocks';
+import { registerBlockType, unregisterBlockType } from '@wordpress/blocks';
 
 import metadata from '../block.json';
 import transforms from '../transforms';
-
-const FREEFORM_BLOCK = 'core/freeform';
-const MISSING_BLOCK = 'core/missing';
-const PARAGRAPH_BLOCK = 'core/paragraph';
+import {
+	PARAGRAPH_BLOCK,
+	paste,
+	registerParagraph,
+	registerRawBlocks,
+	unregisterRawBlocks,
+} from '../../__fixtures__/paste';
 
 const GIST_URL = 'https://gist.github.com/user/abc123';
-
-interface PastedBlock {
-	name: string;
-	attributes?: Record< string, unknown >;
-}
-
-/**
- * The blocks a plain text paste produces.
- *
- * `plainText` with no `HTML` is what a paste out of a plain text editor looks
- * like, and it is exactly the branch which sends the clipboard through the
- * markdown converter first.
- *
- * `pasteHandler()` logs what it was given and what it made of it whenever the
- * bundle is not a production build, which `@wordpress/jest-console` fails a test
- * for unless it is told to expect it.
- *
- * @param text Text on the clipboard.
- */
-function paste( text: string ): PastedBlock[] {
-	const blocks = pasteHandler( {
-		plainText: text,
-		mode: 'BLOCKS',
-	} ) as unknown as PastedBlock[];
-
-	expect( console ).toHaveLogged();
-
-	return blocks;
-}
 
 /**
  * The address the one pasted Gist block carries.
@@ -77,73 +45,8 @@ function pastedUrl( text: string ): string {
 }
 
 beforeAll( () => {
-	/*
-	 * Keeps whatever inner HTML it is given and saves it back verbatim, which is
-	 * the shape `core/freeform` itself has. `@wordpress/jest-console` fails a test
-	 * on any unexpected console output, and an invalid parse produces some.
-	 */
-	const rawBlock = {
-		apiVersion: 3,
-		category: 'text',
-		attributes: { content: { type: 'string', source: 'raw' } },
-		save: ( { attributes }: { attributes: { content: string } } ) =>
-			createElement( RawHTML, null, attributes.content ),
-	};
-
-	registerBlockType( FREEFORM_BLOCK, {
-		...rawBlock,
-		title: 'Classic',
-	} as never );
-
-	/*
-	 * `createBlock()` falls back to `core/missing` for a block this fixture has not
-	 * registered, and calls itself to do it — so with `core/missing` absent as well
-	 * it recurses until the stack runs out. Nothing here asserts on it; it is the
-	 * floor under the fallback.
-	 */
-	registerBlockType( MISSING_BLOCK, {
-		...rawBlock,
-		title: 'Missing',
-	} as never );
-
-	/*
-	 * `core/paragraph` has to be here, and with its raw transform, because the
-	 * schema `pasteHandler()` filters a paste against is built from the registered
-	 * blocks. Without it a `<p>` is not valid content, every paragraph of the paste
-	 * is unwrapped and then run back together into one — which is a paste this
-	 * plugin would never see, and a fixture that answers questions about itself
-	 * rather than about the editor.
-	 */
-	registerBlockType( PARAGRAPH_BLOCK, {
-		apiVersion: 3,
-		category: 'text',
-		title: 'Paragraph',
-		attributes: {
-			content: { type: 'string', source: 'html', selector: 'p' },
-		},
-		transforms: {
-			from: [
-				{
-					type: 'raw',
-					priority: 20,
-					selector: 'p',
-					schema: ( {
-						phrasingContentSchema,
-					}: {
-						phrasingContentSchema: unknown;
-					} ) => ( { p: { children: phrasingContentSchema } } ),
-				},
-			],
-		},
-		save: ( { attributes }: { attributes: { content: string } } ) =>
-			createElement(
-				'p',
-				null,
-				createElement( RawHTML, null, attributes.content )
-			),
-	} as never );
-
-	setFreeformContentHandlerName( FREEFORM_BLOCK );
+	registerRawBlocks();
+	registerParagraph();
 
 	registerBlockType(
 		metadata as never,
@@ -156,10 +59,7 @@ beforeAll( () => {
 
 afterAll( () => {
 	unregisterBlockType( metadata.name );
-	setFreeformContentHandlerName( '' );
-	unregisterBlockType( PARAGRAPH_BLOCK );
-	unregisterBlockType( MISSING_BLOCK );
-	unregisterBlockType( FREEFORM_BLOCK );
+	unregisterRawBlocks( true );
 } );
 
 describe( 'pasting a Gist shortcode', () => {

@@ -15,7 +15,8 @@ use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Migrate;
 use iG\Syntax_Hiliter\Option;
-use ReflectionProperty;
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
@@ -23,6 +24,8 @@ use WP_UnitTestCase;
  * lands on the defaults, and none of it happens twice.
  */
 class Migrate_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * The option array a v5.1 install holds.
@@ -42,22 +45,6 @@ class Migrate_Test extends WP_UnitTestCase {
 		'hilite_comments'   => 'no',
 		'link_to_manual'    => 'yes',
 		'gist_in_comments'  => 'yes',
-	];
-
-	/**
-	 * The option set v6 ships with.
-	 *
-	 * @var array
-	 */
-	const V6_DEFAULTS = [
-		'theme'             => Asset_Manager::DEFAULT_THEME,
-		'font'              => Asset_Manager::FONT_NONE,
-		'toolbar'           => 'yes',
-		'copy_code'         => 'yes',
-		'show_line_numbers' => 'yes',
-		'hilite_comments'   => 'yes',
-		'gist_in_comments'  => 'no',
-		'gist_limit_height' => 'yes',
 	];
 
 	/**
@@ -288,14 +275,14 @@ class Migrate_Test extends WP_UnitTestCase {
 	public function test_a_non_canonical_stored_version_is_rewritten_to_the_running_one(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
-		update_option( Base::PLUGIN_ID . '-options', static::V6_DEFAULTS );
+		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
 
 		$this->_migrate();
 
 		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 
 		//the install was already up to date, so nothing was migrated
-		$this->assertSame( static::V6_DEFAULTS, get_option( Base::PLUGIN_ID . '-options' ) );
+		$this->assertSame( Default_Settings::V6, get_option( Base::PLUGIN_ID . '-options' ) );
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
 
 	}
@@ -333,7 +320,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->_migrate();
 
-		$this->assertSame( static::V6_DEFAULTS, get_option( Base::PLUGIN_ID . '-options' ) );
+		$this->assertSame( Default_Settings::V6, get_option( Base::PLUGIN_ID . '-options' ) );
 		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
 
@@ -424,18 +411,6 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		Migrate::get_instance()->settings();
 
-	}
-
-	/**
-	 * Method to replace a singleton instance.
-	 *
-	 * @param string      $class_name Fully qualified class name.
-	 * @param object|null $instance   Instance to install.
-	 *
-	 * @return void
-	 */
-	protected function _set_singleton( string $class_name, ?object $instance ): void {
-		( new ReflectionProperty( $class_name, '_instance' ) )->setValue( null, $instance );
 	}
 
 }    //end of class

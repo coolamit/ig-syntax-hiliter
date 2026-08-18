@@ -13,6 +13,7 @@ use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionMethod;
 use ReflectionProperty;
 use WP_UnitTestCase;
@@ -24,6 +25,8 @@ use WP_UnitTestCase;
  * map. These are the things that map has to keep true.
  */
 class Theme_Library_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * The one theme with a dot in its slug.
@@ -64,7 +67,7 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 */
 	public function tear_down(): void {
 
-		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, $this->_original_option );
+		$this->_set_singleton( Option::class, $this->_original_option );
 
 		delete_option( Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY ) );
 

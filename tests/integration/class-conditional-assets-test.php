@@ -13,7 +13,7 @@ use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
-use ReflectionProperty;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
@@ -21,6 +21,8 @@ use WP_UnitTestCase;
  * which have no code on them.
  */
 class Conditional_Assets_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	use Asset_Test_Helpers;
 
@@ -49,35 +51,6 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 		$this->_reset_asset_state();
 
 		parent::tear_down();
-
-	}
-
-	/**
-	 * Method to render a post the way a single post view renders it, then run the
-	 * footer pass over what that left behind.
-	 *
-	 * @param string $content Post content.
-	 *
-	 * @return string Rendered markup.
-	 */
-	protected function _render_page( string $content ): string {
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => wp_slash( $content ),
-			]
-		);
-
-		$this->go_to( get_permalink( $post_id ) );
-		the_post();
-
-		ob_start();
-		the_content();
-		$output = (string) ob_get_clean();
-
-		$this->_fire_footer();
-
-		return $output;
 
 	}
 
@@ -197,7 +170,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			 * of the request. The database is rolled back after this test, so the object
 			 * has to go with it or the next test reads a theme nobody saved.
 			 */
-			( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+			$this->_set_singleton( Option::class, null );
 
 		}
 
@@ -298,33 +271,17 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 */
 	protected function _fire_footer_around( callable $render ): string {
 
-		$manager    = Asset_Manager::get_instance();
-		$priorities = $this->_manager_footer_priorities();
-		$print_at   = $this->_core_footer_print_priority();
-
-		$this->assertNotEmpty( $priorities, 'The asset manager decides during wp_footer.' );
-
-		remove_all_actions( 'wp_footer' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-
-		foreach ( $priorities as $priority ) {
-			add_action( 'wp_footer', [ $manager, 'enqueue' ], $priority );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-		}
-
-		add_action( 'wp_footer', $render, 10 );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-
-		add_action(  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-			'wp_footer',
-			function (): void {
-				$this->_print_plugin_assets();
-			},
-			$print_at
+		return $this->_fire_footer(
+			[
+				[ 10, $render ],
+				[
+					$this->_core_footer_print_priority(),
+					function (): void {
+						$this->_print_plugin_assets();
+					},
+				],
+			]
 		);
-
-		ob_start();
-
-		do_action( 'wp_footer' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
-
-		return (string) ob_get_clean();
 
 	}
 
@@ -513,7 +470,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			$this->assertCount( 1, $rules, 'The font values are added once, not once per footer pass.' );
 
 		} finally {
-			( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+			$this->_set_singleton( Option::class, null );
 		}
 
 	}

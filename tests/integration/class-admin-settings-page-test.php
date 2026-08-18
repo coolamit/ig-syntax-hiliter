@@ -147,7 +147,6 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$choices = Admin::get_theme_choices();
 
 		$this->assertArrayHasKey( Asset_Manager::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
-		$this->assertSame( 'prism-okaidia', Asset_Manager::DEFAULT_THEME );
 		$this->assertSame( 'Prism', $choices['prism'] ?? '', 'The Prism theme is named after itself, not after being the default.' );
 
 	}

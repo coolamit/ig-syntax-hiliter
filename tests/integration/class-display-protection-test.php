@@ -19,6 +19,7 @@ use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
@@ -26,6 +27,8 @@ use WP_UnitTestCase;
  * What a reader is served when the content is bigger than PCRE will look at.
  */
 class Display_Protection_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Registers the pipeline, and the block, once WordPress is up.
@@ -47,39 +50,6 @@ class Display_Protection_Test extends WP_UnitTestCase {
 		if ( ! WP_Block_Type_Registry::get_instance()->is_registered( Block::NAME ) ) {
 			Block::get_instance()->register_block();
 		}
-
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
-	}
-
-	/**
-	 * Method to build the block delimiter an editor save would leave in the content.
-	 *
-	 * @param array $attributes Block attributes.
-	 *
-	 * @return string
-	 */
-	protected static function _block( array $attributes ): string {
-
-		return serialize_block(
-			[
-				'blockName'    => Block::NAME,
-				'attrs'        => $attributes,
-				'innerBlocks'  => [],
-				'innerHTML'    => '',
-				'innerContent' => [],
-			]
-		);
 
 	}
 

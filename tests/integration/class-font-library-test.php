@@ -15,8 +15,8 @@ use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionMethod;
-use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
@@ -24,6 +24,8 @@ use WP_UnitTestCase;
  * That is what these cases are about: what a page asks for, and of whom.
  */
 class Font_Library_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	use Asset_Test_Helpers;
 
@@ -78,35 +80,9 @@ class Font_Library_Test extends WP_UnitTestCase {
 		 * the request. The database is rolled back after each test, so the object has
 		 * to go with it or the next test reads a font nobody saved.
 		 */
-		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Option::class, null );
 
 		parent::tear_down();
-
-	}
-
-	/**
-	 * Method to render a post carrying a snippet, then run the footer pass.
-	 *
-	 * @param string $content Post content.
-	 *
-	 * @return void
-	 */
-	protected function _render_page( string $content ): void {
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => wp_slash( $content ),
-			]
-		);
-
-		$this->go_to( get_permalink( $post_id ) );
-		the_post();
-
-		ob_start();
-		the_content();
-		ob_get_clean();
-
-		$this->_fire_footer();
 
 	}
 

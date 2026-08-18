@@ -15,6 +15,7 @@ use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionProperty;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
@@ -29,6 +30,8 @@ use WP_UnitTestCase;
  * with an empty language dropdown.
  */
 class Block_Editor_Assets_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	use Hook_Test_Helpers;
 
@@ -215,21 +218,6 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to put the asset state back and run the editor's asset hook.
-	 *
-	 * @param int $times How many times to fire the hook.
-	 *
-	 * @return void
-	 */
-	protected function _fire_block_assets( int $times = 1 ): void {
-
-		for ( $run = 0; $run < $times; $run++ ) {
-			Block::get_instance()->enqueue_editor_font();
-		}
-
-	}
-
-	/**
 	 * Method to read the rules added inline against the editor font stylesheet.
 	 *
 	 * @return string
@@ -259,7 +247,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		( new ReflectionProperty( Asset_Manager::class, '_editor_font_styled' ) )
 			->setValue( Asset_Manager::get_instance(), false );
 
-		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Option::class, null );
 
 	}
 
@@ -279,7 +267,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 		try {
 
-			$this->_fire_block_assets();
+			Block::get_instance()->enqueue_editor_font();
 
 			$this->assertArrayNotHasKey( 'ig-syntax-hiliter-editor-font', wp_styles()->registered );
 			$this->assertSame( '', $this->_editor_font_rules() );
@@ -312,7 +300,8 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 		try {
 
-			$this->_fire_block_assets( 2 );
+			Block::get_instance()->enqueue_editor_font();
+			Block::get_instance()->enqueue_editor_font();
 
 			$style = wp_styles()->registered['ig-syntax-hiliter-editor-font'] ?? null;
 
@@ -399,7 +388,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 		try {
 
-			$this->_fire_block_assets();
+			Block::get_instance()->enqueue_editor_font();
 
 			$this->assertArrayNotHasKey( 'ig-syntax-hiliter-editor-font', wp_styles()->registered );
 

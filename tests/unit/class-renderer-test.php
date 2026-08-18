@@ -131,6 +131,10 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Code is escaped exactly once, and is otherwise untouched.
 	 *
+	 * The exact string below is what says "once": ordinary source is encoded and not
+	 * re-encoded, so the fix which makes `&amp;` in an author's text come out as
+	 * `&amp;amp;` must not also turn their `<` into `&amp;amp;lt;`.
+	 *
 	 * @return void
 	 */
 	public function test_code_is_escaped_exactly_once(): void {
@@ -144,16 +148,6 @@ class Renderer_Test extends TestCase {
 			. '</code></pre>';
 
 		$this->assertSame( $expected, $markup );
-
-		// One decode gets the author's bytes back, which is what "once" means.
-		$this->assertSame(
-			$code,
-			html_entity_decode(
-				(string) preg_replace( '#^.*?<code[^>]*>(.*)</code></pre>$#s', '$1', $markup ),
-				ENT_QUOTES,
-				'UTF-8'
-			)
-		);
 
 	}
 
@@ -234,23 +228,6 @@ class Renderer_Test extends TestCase {
 			$this->assertStringNotContainsString( '<b>', $matches[1], sprintf( 'The %s path let a tag through.', $path ) );
 
 		}
-
-	}
-
-	/**
-	 * Ordinary code is encoded once and once only — the fix for the entities above
-	 * must not turn `<` into `&amp;lt;`.
-	 *
-	 * @return void
-	 */
-	public function test_ordinary_code_is_not_double_escaped(): void {
-
-		$markup = $this->renderer->render_snippet( new Snippet( 'if ( $a < $b && $c > $d )', 'php' ) );
-
-		$this->assertStringContainsString(
-			'<code class="language-php">if ( $a &lt; $b &amp;&amp; $c &gt; $d )</code>',
-			$markup
-		);
 
 	}
 

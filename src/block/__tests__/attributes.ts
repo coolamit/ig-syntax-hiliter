@@ -186,6 +186,26 @@ describe( 'mapShortcodeAttributes', () => {
 	 * still carried them would show the reader an escape they never typed — and would
 	 * gain another level every time the revert tool ran.
 	 */
+	/*
+	 * The guard on the paste transform, asserted here because it needs none of that
+	 * fixture: this is the pure function, called directly. `convert.ts` reads the
+	 * author's bytes out of the stored post, where no markdown converter has ever
+	 * been near them, and calls this the same way — so the decoding has to live in
+	 * the transform and nowhere lower down. A snippet whose code contains `&amp;`
+	 * and `<br>` must come out of here byte for byte.
+	 */
+	it( 'stores the code it is given without decoding it', () => {
+		const code = 'a &amp; b <br> c';
+
+		expect( mapShortcodeAttributes( 'php', {}, code ).code ).toBe( code );
+	} );
+
+	it( 'stores an attribute it is given without decoding it', () => {
+		expect(
+			mapShortcodeAttributes( 'php', { file: 'a&amp;b.java' }, '' ).file
+		).toBe( 'a&amp;b.java' );
+	} );
+
 	it( 'reads an escaped tag in the code back as the text it stands for', () => {
 		expect(
 			mapShortcodeAttributes(

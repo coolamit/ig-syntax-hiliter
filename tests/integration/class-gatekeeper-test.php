@@ -24,8 +24,10 @@ use iG_Syntax_Hiliter_Gatekeeper;
 use WP_UnitTestCase;
 
 /**
- * Checks the environment comparison, on both floors and on the version shapes
- * PHP and WordPress really ship.
+ * What is left here is the half which genuinely needs WordPress: the environment
+ * the suite is really running on, and the notice, which is built with `esc_html()`
+ * and `__()`. The version comparison itself needs none of it and is in the unit
+ * tier, in `Gatekeeper_Versions_Test`.
  */
 class Gatekeeper_Test extends WP_UnitTestCase {
 
@@ -41,68 +43,6 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	protected function _gate( string $php_version, string $wp_version ): iG_Syntax_Hiliter_Gatekeeper {
 
 		return new iG_Syntax_Hiliter_Gatekeeper( $php_version, $wp_version );
-
-	}
-
-	/**
-	 * Supported combinations are let through.
-	 *
-	 * @return void
-	 */
-	public function test_supported_environments_are_allowed(): void {
-
-		$this->assertTrue( $this->_gate( '8.4.0', '6.9.0' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '8.4.12', '6.9.3' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '8.5.0', '7.0.3' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '9.0.0', '8.0.0' )->is_environment_supported() );
-
-	}
-
-	/**
-	 * Too old a PHP is refused, whatever the WordPress version is.
-	 *
-	 * @return void
-	 */
-	public function test_php_below_the_floor_is_refused(): void {
-
-		$this->assertFalse( $this->_gate( '8.3.99', '7.0.3' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '8.0.0', '6.9.0' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '7.4.33', '6.9.0' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '5.6.40', '6.9.0' )->is_environment_supported() );
-
-	}
-
-	/**
-	 * Too old a WordPress is refused, whatever the PHP version is.
-	 *
-	 * @return void
-	 */
-	public function test_wordpress_below_the_floor_is_refused(): void {
-
-		$this->assertFalse( $this->_gate( '8.5.0', '6.8.3' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '8.4.0', '6.8.0' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '8.4.0', '5.9.0' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '8.4.0', '4.1' )->is_environment_supported() );
-
-	}
-
-	/**
-	 * The version shapes PHP and WordPress really ship compare sanely: WordPress
-	 * publishes the first release of a branch as `6.9`, PHP ships `8.5.0RC1` and
-	 * `8.4.0-dev`, and an unreadable version is refused rather than waved through.
-	 *
-	 * @return void
-	 */
-	public function test_real_world_version_shapes_compare_sanely(): void {
-
-		$this->assertTrue( $this->_gate( '8.4', '6.9' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '8.5.0RC1', '6.9-beta1' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '8.4.0-dev', '7.0-RC2' )->is_environment_supported() );
-		$this->assertTrue( $this->_gate( '8.4.0', '7.0.3.4' )->is_environment_supported() );
-
-		$this->assertFalse( $this->_gate( '8.3-dev', '6.9' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( 'unknown', '6.9' )->is_environment_supported() );
-		$this->assertFalse( $this->_gate( '8.4.0', '' )->is_environment_supported() );
 
 	}
 

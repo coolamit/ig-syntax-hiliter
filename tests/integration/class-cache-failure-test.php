@@ -12,9 +12,9 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Language_Registry;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use Error;
 use ReflectionMethod;
-use ReflectionProperty;
 use RuntimeException;
 use WP_UnitTestCase;
 
@@ -25,6 +25,8 @@ use WP_UnitTestCase;
  * rather than left to whichever caller happens to notice.
  */
 class Cache_Failure_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Cache key these tests store under.
@@ -57,7 +59,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 
 		}
 
-		( new ReflectionProperty( Language_Registry::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Language_Registry::class, null );
 
 		parent::tear_down();
 
@@ -194,7 +196,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_registry_cache_entry_which_is_not_a_registry_is_rebuilt(): void {
 
-		( new ReflectionProperty( Language_Registry::class, '_instance' ) )->setValue( null, null );
+		$this->_set_singleton( Language_Registry::class, null );
 
 		$this->_registry_cache_key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
 

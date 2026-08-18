@@ -17,6 +17,7 @@ use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Snippet;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -28,6 +29,8 @@ use WP_UnitTestCase;
  * Everything here is about one of those two.
  */
 class Revert_Tool_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	/**
 	 * Route the batches are fetched from.
@@ -157,48 +160,6 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to build the block delimiter exactly as WordPress writes it.
-	 *
-	 * @param array $attributes Block attributes.
-	 *
-	 * @return string
-	 */
-	protected function _block( array $attributes ): string {
-
-		return serialize_block(
-			[
-				'blockName'    => Block::NAME,
-				'attrs'        => $attributes,
-				'innerBlocks'  => [],
-				'innerHTML'    => '',
-				'innerContent' => [],
-			]
-		);
-
-	}
-
-	/**
-	 * Method to build the Gist block delimiter exactly as WordPress writes it.
-	 *
-	 * @param array $attributes Block attributes.
-	 *
-	 * @return string
-	 */
-	protected function _gist_block( array $attributes ): string {
-
-		return serialize_block(
-			[
-				'blockName'    => Block::GIST_NAME,
-				'attrs'        => $attributes,
-				'innerBlocks'  => [],
-				'innerHTML'    => '',
-				'innerContent' => [],
-			]
-		);
-
-	}
-
-	/**
 	 * Method to become somebody who is allowed to run the tool.
 	 *
 	 * @return void
@@ -278,7 +239,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$prefix . $this->_block(
+					$prefix . static::_block(
 						[
 							'code'     => self::CODE,
 							'language' => 'php',
@@ -324,7 +285,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		);
 
 		$post_id = self::factory()->post->create(
-			[ 'post_content' => wp_slash( $this->_block( $attributes ) ) ]
+			[ 'post_content' => wp_slash( static::_block( $attributes ) ) ]
 		);
 
 		$this->_run_to_completion();
@@ -488,7 +449,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$this->_block(
+					static::_block(
 						[
 							'code'     => $code,
 							'language' => 'php',
@@ -523,7 +484,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
 
 		$result = Block_Converter::convert_content(
-			$this->_block(
+			static::_block(
 				[
 					'code'     => $code,
 					'language' => 'php',
@@ -606,7 +567,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			'The fixture is not big enough to be the test it says it is.'
 		);
 
-		$content = "Before.\n\n" . $this->_block(
+		$content = "Before.\n\n" . static::_block(
 			[
 				'code'     => $code,
 				'language' => 'php',
@@ -651,7 +612,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		);
 
 		$result = Block_Converter::convert_content(
-			$this->_block(
+			static::_block(
 				[
 					'code'     => $code,
 					'language' => 'php',
@@ -690,7 +651,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$this->_block(
+					static::_block(
 						[
 							'code'     => $code,
 							'language' => 'php',
@@ -741,7 +702,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$content = sprintf(
 			"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]\n\n",
 			Block_Converter::BLOCK_NAME
-		) . $this->_block(
+		) . static::_block(
 			[
 				'code'     => self::CODE,
 				'language' => 'php',
@@ -781,7 +742,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$quoted . "\n\n" . $this->_block(
+					$quoted . "\n\n" . static::_block(
 						[
 							'code'     => self::CODE,
 							'language' => 'php',
@@ -816,7 +777,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->_become_administrator();
 
-		$content = $this->_block(
+		$content = static::_block(
 			[
 				'code'     => self::CODE,
 				'language' => 'php',
@@ -854,7 +815,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$this->_block(
+					static::_block(
 						[
 							'code'     => self::CODE,
 							'language' => 'php',
@@ -969,7 +930,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$suffix = "\n\nAfter.";
 
 		$post_id = self::factory()->post->create(
-			[ 'post_content' => wp_slash( $prefix . $this->_block( [] ) . $suffix ) ]
+			[ 'post_content' => wp_slash( $prefix . static::_block( [] ) . $suffix ) ]
 		);
 
 		$totals = $this->_run_to_completion();
@@ -998,7 +959,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			$post_ids[] = self::factory()->post->create(
 				[
 					'post_content' => wp_slash(
-						sprintf( 'Post %d.', $i ) . "\n\n" . $this->_block(
+						sprintf( 'Post %d.', $i ) . "\n\n" . static::_block(
 							[
 								'code'     => sprintf( 'echo %d;', $i ),
 								'language' => 'php',
@@ -1043,7 +1004,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			self::factory()->post->create(
 				[
 					'post_content' => wp_slash(
-						$this->_block(
+						static::_block(
 							[
 								'code'     => sprintf( 'echo %d;', $i ),
 								'language' => 'php',
@@ -1100,7 +1061,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->_batch_size = 20;
 
-		$content = $this->_block(
+		$content = static::_block(
 			[
 				'code'     => 'echo 1;',
 				'language' => 'php',
@@ -1162,7 +1123,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 */
 	public function test_the_revert_route_refuses_anybody_who_may_not_manage_options(): void {
 
-		$content = $this->_block(
+		$content = static::_block(
 			[
 				'code'     => 'echo 1;',
 				'language' => 'php',
@@ -1223,7 +1184,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$prefix . $this->_gist_block( [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ] ) . $suffix
+					$prefix . static::_gist_block( [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ] ) . $suffix
 				),
 			]
 		);
@@ -1268,7 +1229,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->assertNotSame( '', $from_block, 'The fixture has to render something for this to be measuring anything.' );
 
 		$post_id = self::factory()->post->create(
-			[ 'post_content' => wp_slash( $this->_gist_block( $attributes ) ) ]
+			[ 'post_content' => wp_slash( static::_gist_block( $attributes ) ) ]
 		);
 
 		$this->_run_to_completion();
@@ -1292,12 +1253,12 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$this->_block(
+					static::_block(
 						[
 							'code'     => self::CODE,
 							'language' => 'php',
 						]
-					) . "\n\n" . $this->_gist_block( [ 'url' => 'https://gist.github.com/9a1b2c3d4e5f' ] )
+					) . "\n\n" . static::_gist_block( [ 'url' => 'https://gist.github.com/9a1b2c3d4e5f' ] )
 				),
 			]
 		);
@@ -1333,7 +1294,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$post_id = self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
-					$prefix . $this->_gist_block( [ 'url' => 'https://example.com/not a gist/..' ] ) . $suffix
+					$prefix . static::_gist_block( [ 'url' => 'https://example.com/not a gist/..' ] ) . $suffix
 				),
 			]
 		);

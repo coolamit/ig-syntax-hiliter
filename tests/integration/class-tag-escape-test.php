@@ -145,21 +145,13 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 
 	}
 
-	/**
-	 * WordPress's own escape of a whole shortcode is a different construct and is
-	 * untouched by any of this: it prints the shortcode as the author wrote it, and
-	 * renders nothing.
-	 *
-	 * @return void
+	/*
+	 * WordPress's own escape of a whole shortcode, `[[php]…[/php]]`, is a different
+	 * construct from the one this file is about and is untouched by any of it. It is
+	 * asserted in `Backward_Compatibility_Test`, which drives the same string through
+	 * a real save as well as through rendering, and so says everything a case here
+	 * could and more.
 	 */
-	public function test_wordpresss_own_escape_is_untouched(): void {
-
-		$rendered = (string) apply_filters( 'the_content', '[[php]echo 1;[/php]]' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- As above.
-
-		$this->assertStringNotContainsString( '<pre ', $rendered );
-		$this->assertStringContainsString( '[php]echo 1;[/php]', $rendered );
-
-	}
 
 }    //end of class
 

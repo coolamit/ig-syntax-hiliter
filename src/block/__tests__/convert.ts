@@ -10,11 +10,9 @@
  * itself rather than through a description of what it does.
  */
 
-import { createElement, RawHTML } from '@wordpress/element';
 import {
 	parse,
 	registerBlockType,
-	setFreeformContentHandlerName,
 	unregisterBlockType,
 } from '@wordpress/blocks';
 
@@ -22,8 +20,13 @@ import { BLOCK_NAME } from '../attributes';
 import { planConversion } from '../convert';
 
 import metadata from '../block.json';
+import {
+	FREEFORM_BLOCK,
+	rawBlock,
+	registerRawBlocks,
+	unregisterRawBlocks,
+} from '../__fixtures__/paste';
 
-const FREEFORM_BLOCK = 'core/freeform';
 const MARKER_BLOCK = 'test/marker';
 
 const TAGS = [ 'php', 'css', 'sourcecode' ];
@@ -113,31 +116,10 @@ beforeAll( () => {
 		defaultLineNumbers: true,
 	};
 
-	/*
-	 * Both of these keep whatever inner HTML they are given and save it back
-	 * verbatim, which is the shape `core/freeform` itself has. It means every
-	 * fixture below — including the ones where the grammar swallows half the post
-	 * into a block — parses to something valid, so the only console output a run
-	 * produces is output worth reading.
-	 */
-	const rawBlock = {
-		category: 'text',
-		attributes: { content: { type: 'string', source: 'raw' } },
-		save: ( { attributes }: { attributes: { content: string } } ) =>
-			createElement( RawHTML, null, attributes.content ),
-	};
-
-	registerBlockType( FREEFORM_BLOCK, {
-		...rawBlock,
-		apiVersion: 3,
-		title: 'Classic',
-	} as never );
-
-	setFreeformContentHandlerName( FREEFORM_BLOCK );
+	registerRawBlocks();
 
 	registerBlockType( MARKER_BLOCK, {
 		...rawBlock,
-		apiVersion: 3,
 		title: 'Marker',
 	} as never );
 
@@ -147,8 +129,7 @@ beforeAll( () => {
 afterAll( () => {
 	unregisterBlockType( BLOCK_NAME );
 	unregisterBlockType( MARKER_BLOCK );
-	setFreeformContentHandlerName( '' );
-	unregisterBlockType( FREEFORM_BLOCK );
+	unregisterRawBlocks();
 
 	delete window.igSyntaxHiliterEditor;
 } );

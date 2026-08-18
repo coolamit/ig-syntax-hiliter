@@ -16,51 +16,20 @@
  * line as anything rich text can see. Neither PHPUnit tier can reach any of this.
  */
 
-import { createElement, RawHTML } from '@wordpress/element';
-import {
-	pasteHandler,
-	registerBlockType,
-	setFreeformContentHandlerName,
-	unregisterBlockType,
-} from '@wordpress/blocks';
+import { registerBlockType, unregisterBlockType } from '@wordpress/blocks';
 
-import { BLOCK_NAME, mapShortcodeAttributes } from '../attributes';
+import {
+	paste,
+	registerRawBlocks,
+	unregisterRawBlocks,
+} from '../__fixtures__/paste';
+
+import { BLOCK_NAME } from '../attributes';
 
 import metadata from '../block.json';
-
-const FREEFORM_BLOCK = 'core/freeform';
-const MISSING_BLOCK = 'core/missing';
+import type { PastedBlock } from '../__fixtures__/paste';
 
 const TAGS = [ 'php', 'html', 'sourcecode' ];
-
-interface PastedBlock {
-	name: string;
-	attributes?: Record< string, unknown >;
-}
-
-/**
- * The blocks a plain text paste produces.
- *
- * `plainText` with no `HTML` is what a paste out of a plain text editor or an
- * HTML source view looks like, and it is exactly the branch which sends the
- * clipboard through the markdown converter first.
- *
- * `pasteHandler()` logs what it was given and what it made of it whenever the
- * bundle is not a production build, which `@wordpress/jest-console` fails a test
- * for unless it is told to expect it.
- *
- * @param text Text on the clipboard.
- */
-function paste( text: string ): PastedBlock[] {
-	const blocks = pasteHandler( {
-		plainText: text,
-		mode: 'BLOCKS',
-	} ) as unknown as PastedBlock[];
-
-	expect( console ).toHaveLogged();
-
-	return blocks;
-}
 
 /**
  * The one snippet block a paste produced.
@@ -101,36 +70,7 @@ beforeAll( () => {
 		defaultLineNumbers: true,
 	};
 
-	/*
-	 * Keeps whatever inner HTML it is given and saves it back verbatim, which is
-	 * the shape `core/freeform` itself has. `@wordpress/jest-console` fails a test
-	 * on any unexpected console output, and an invalid parse produces some.
-	 */
-	const rawBlock = {
-		apiVersion: 3,
-		category: 'text',
-		attributes: { content: { type: 'string', source: 'raw' } },
-		save: ( { attributes }: { attributes: { content: string } } ) =>
-			createElement( RawHTML, null, attributes.content ),
-	};
-
-	registerBlockType( FREEFORM_BLOCK, {
-		...rawBlock,
-		title: 'Classic',
-	} as never );
-
-	/*
-	 * `createBlock()` falls back to `core/missing` for a block this fixture has not
-	 * registered, and calls itself to do it — so with `core/missing` absent as well
-	 * it recurses until the stack runs out. Nothing here asserts on it; it is the
-	 * floor under the fallback.
-	 */
-	registerBlockType( MISSING_BLOCK, {
-		...rawBlock,
-		title: 'Missing',
-	} as never );
-
-	setFreeformContentHandlerName( FREEFORM_BLOCK );
+	registerRawBlocks();
 
 	/*
 	 * `transforms.ts` reads the claimed tag list at module scope, the way the
@@ -152,9 +92,7 @@ beforeAll( () => {
 
 afterAll( () => {
 	unregisterBlockType( BLOCK_NAME );
-	setFreeformContentHandlerName( '' );
-	unregisterBlockType( MISSING_BLOCK );
-	unregisterBlockType( FREEFORM_BLOCK );
+	unregisterRawBlocks();
 
 	delete window.igSyntaxHiliterEditor;
 } );
@@ -237,26 +175,5 @@ describe( 'pasting a legacy shortcode', () => {
 		expect(
 			pastedSnippet( '[html]\n<p>x</p>\n[/html]' ).attributes?.language
 		).toBe( 'markup' );
-	} );
-} );
-
-describe( 'mapShortcodeAttributes, which the paste transform and the automatic conversion share', () => {
-	/*
-	 * The guard on all of the above. `convert.ts` reads the author's bytes out of
-	 * the stored post, where no markdown converter has ever been near them, and
-	 * calls this directly — so the decoding has to live in the transform and
-	 * nowhere lower down. A snippet whose code contains `&amp;` and `<br>` must
-	 * come out of here byte for byte.
-	 */
-	it( 'stores the code it is given without decoding it', () => {
-		const code = 'a &amp; b <br> c';
-
-		expect( mapShortcodeAttributes( 'php', {}, code ).code ).toBe( code );
-	} );
-
-	it( 'stores an attribute it is given without decoding it', () => {
-		expect(
-			mapShortcodeAttributes( 'php', { file: 'a&amp;b.java' }, '' ).file
-		).toBe( 'a&amp;b.java' );
 	} );
 } );

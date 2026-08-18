@@ -21,6 +21,7 @@ use iG\Syntax_Hiliter\Content_Protector;
 use iG\Syntax_Hiliter\Plugin;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
@@ -28,6 +29,8 @@ use WP_UnitTestCase;
  * What the block renders, and what the rest of the request is allowed to do to it.
  */
 class Block_Render_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	use Asset_Test_Helpers;
 
@@ -125,45 +128,6 @@ class Block_Render_Test extends WP_UnitTestCase {
 		}
 
 		return $content;
-
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * Every test here goes through this one place, so the sniff which objects to a
-	 * plugin invoking a core hook name is answered once instead of on every line.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
-	}
-
-	/**
-	 * Method to build the block delimiter an editor save would leave in the content.
-	 *
-	 * Core does the serializing, so what the tests are handed is what the block
-	 * parser is built to read back.
-	 *
-	 * @param array $attributes Block attributes.
-	 *
-	 * @return string
-	 */
-	protected static function _block( array $attributes ): string {
-
-		return serialize_block(
-			[
-				'blockName'    => Block::NAME,
-				'attrs'        => $attributes,
-				'innerBlocks'  => [],
-				'innerHTML'    => '',
-				'innerContent' => [],
-			]
-		);
 
 	}
 

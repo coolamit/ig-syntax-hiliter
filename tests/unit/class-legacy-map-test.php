@@ -87,7 +87,6 @@ class Legacy_Map_Test extends TestCase {
 		sort( $actual );
 
 		$this->assertSame( $expected, $actual );
-		$this->assertCount( 41, $actual );
 
 	}
 
@@ -131,7 +130,6 @@ class Legacy_Map_Test extends TestCase {
 
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'text' ) );
-		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
 	}
 

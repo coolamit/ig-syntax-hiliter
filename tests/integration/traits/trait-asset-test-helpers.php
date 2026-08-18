@@ -102,6 +102,39 @@ trait Asset_Test_Helpers {
 	}
 
 	/**
+	 * Method to render a post the way a single post view renders it, then run the
+	 * footer pass over what that left behind.
+	 *
+	 * The two halves belong together: the assets are decided during `wp_footer`, and
+	 * they are decided from a signal only rendering the content can raise. Rendering
+	 * without the footer pass asserts nothing about what the page loads.
+	 *
+	 * @param string $content Post content.
+	 *
+	 * @return string The rendered markup, for a caller which has something to say about it.
+	 */
+	protected function _render_page( string $content ): string {
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash( $content ),
+			]
+		);
+
+		$this->go_to( get_permalink( $post_id ) );
+		the_post();
+
+		ob_start();
+		the_content();
+		$output = (string) ob_get_clean();
+
+		$this->_fire_footer();
+
+		return $output;
+
+	}
+
+	/**
 	 * Method to run the asset manager's footer passes.
 	 *
 	 * Everything else on `wp_footer` is taken off first: the WordPress install under
@@ -113,9 +146,16 @@ trait Asset_Test_Helpers {
 	 * more than once during a footer, and a helper which restored one of those passes
 	 * would quietly stop the tests using it from seeing what the other one does.
 	 *
-	 * @return void
+	 * Callbacks of the caller's own can be wired in beside the manager's, which is how
+	 * a test puts something on the hook that renders content from the footer, or
+	 * prints at the moment core prints. Anything they print is in the return, so a
+	 * caller can tell "enqueued" from "enqueued in time".
+	 *
+	 * @param array $extra Optional. Callbacks to add, each a `[ priority, callable ]` pair.
+	 *
+	 * @return string Everything the footer printed.
 	 */
-	protected function _fire_footer(): void {
+	protected function _fire_footer( array $extra = [] ): string {
 
 		$manager    = Asset_Manager::get_instance();
 		$priorities = $this->_manager_footer_priorities();
@@ -128,7 +168,15 @@ trait Asset_Test_Helpers {
 			add_action( 'wp_footer', [ $manager, 'enqueue' ], $priority );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
 		}
 
+		foreach ( $extra as $callback ) {
+			add_action( 'wp_footer', $callback[1], (int) $callback[0] );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
+		}
+
+		ob_start();
+
 		do_action( 'wp_footer' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook the plugin registers on.
+
+		return (string) ob_get_clean();
 
 	}
 

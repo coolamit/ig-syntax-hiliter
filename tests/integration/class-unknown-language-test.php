@@ -17,12 +17,15 @@ use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
  * The enqueue state a snippet with an unresolvable language leaves behind.
  */
 class Unknown_Language_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
 
 	use Asset_Test_Helpers;
 
@@ -74,18 +77,6 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 
 		return $tags;
 
-	}
-
-	/**
-	 * Method to run content through one of WordPress' own filters.
-	 *
-	 * @param string $filter  Filter name.
-	 * @param string $content Content to filter.
-	 *
-	 * @return string
-	 */
-	protected function _filter( string $filter, string $content ): string {
-		return (string) apply_filters( $filter, $content );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound, WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Running content through core's own hooks is what an integration test does.
 	}
 
 	/**
