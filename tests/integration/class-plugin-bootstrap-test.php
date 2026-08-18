@@ -88,9 +88,12 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Paths and URLs are derived from the plugin's own location, so nothing breaks
-	 * if the plugin directory is not named after the repository (the repo is
+	 * Paths are derived from the plugin's own location, so nothing breaks if the
+	 * plugin directory is not named after the repository (the repo is
 	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
+	 *
+	 * The version is asserted here as well, because `Plugin::get_version()` is the
+	 * one place the constant is read now — four classes open coded it before.
 	 *
 	 * @return void
 	 */
@@ -102,12 +105,7 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', $plugin->get_path( 'assets/build/css/admin.css' ) );
 		$this->assertFileExists( $plugin->get_path( 'assets/build/css/admin.css' ) );
 
-		$folder = basename( IG_SYNTAX_HILITER_ROOT );
-
-		$this->assertStringEndsWith( $folder . '/assets/build/css/admin.css', $plugin->get_url( 'assets/build/css/admin.css' ) );
-		$this->assertStringStartsWith( 'http', $plugin->get_url() );
-
-		$this->assertSame( IG_SYNTAX_HILITER_VERSION, $plugin->get_version() );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, Plugin::get_version() );
 
 	}
 

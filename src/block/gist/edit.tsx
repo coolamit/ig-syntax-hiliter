@@ -11,7 +11,7 @@ import { __ } from '@wordpress/i18n';
 import { useBlockProps } from '@wordpress/block-editor';
 import { Placeholder, TextControl } from '@wordpress/components';
 
-export interface GistBlockAttributes {
+interface GistBlockAttributes {
 	url: string;
 }
 

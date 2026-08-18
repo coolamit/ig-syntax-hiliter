@@ -98,7 +98,6 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function test_tag_matching_is_forgiving(): void {
 
-		$this->assertTrue( Legacy_Map::is_our_tag( ' PHP ' ) );
 		$this->assertSame( 'php', Legacy_Map::to_language_id( '  PhP ' ) );
 
 	}

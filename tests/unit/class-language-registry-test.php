@@ -311,9 +311,6 @@ class Language_Registry_Test extends TestCase {
 		$this->assertFalse( $registry->has( 'js' ) );
 		$this->assertFalse( $registry->has( 'madeuplang' ) );
 
-		$this->assertSame( 'JavaScript', $registry->get_title( 'javascript' ) );
-		$this->assertNull( $registry->get_title( 'madeuplang' ) );
-
 		$this->assertSame(
 			[
 				[

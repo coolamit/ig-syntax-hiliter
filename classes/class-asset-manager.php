@@ -1035,11 +1035,11 @@ class Asset_Manager {
 
 		$version = static::_get_version();
 
-		if ( static::_is_option_on( 'toolbar', 'yes' ) ) {
+		if ( Shortcode_Handler::is_plugin_option_on( 'toolbar', 'yes' ) ) {
 
 			static::_enqueue_toolbar();
 
-			if ( static::_is_option_on( 'copy_code', 'yes' ) ) {
+			if ( Shortcode_Handler::is_plugin_option_on( 'copy_code', 'yes' ) ) {
 				static::_enqueue_copy_button();
 			}
 		}
@@ -1202,18 +1202,6 @@ class Asset_Manager {
 	}    //end _enqueue_setup()
 
 	/**
-	 * Method to check whether a yes/no option is on.
-	 *
-	 * @param string $name     Option name.
-	 * @param string $fallback Value to use when the option is missing, `yes` or `no`.
-	 *
-	 * @return bool
-	 */
-	protected static function _is_option_on( string $name, string $fallback ): bool {
-		return Shortcode_Handler::is_plugin_option_on( $name, $fallback );
-	}    //end _is_option_on()
-
-	/**
 	 * Method to build a script or style handle.
 	 *
 	 * @param string $name Handle suffix.
@@ -1245,7 +1233,7 @@ class Asset_Manager {
 	 * @return string
 	 */
 	protected static function _get_version(): string {
-		return ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0';
+		return Plugin::get_version( '0' );
 	}    //end _get_version()
 
 }    //end of class

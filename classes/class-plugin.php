@@ -63,28 +63,30 @@ final class Plugin {
 	}    //end get_path()
 
 	/**
-	 * Returns the URL of a file inside the plugin directory.
-	 *
-	 * @param string $path Optional. Path relative to the plugin directory.
-	 * @return string
-	 */
-	public function get_url( string $path = '' ): string {
-
-		return plugins_url( ltrim( $path, '/' ), __DIR__ );
-
-	}    //end get_url()
-
-	/**
 	 * Returns the plugin version.
+	 *
+	 * The one place the version constant is read. Four classes each open coded this
+	 * `defined()` check before, and their fallbacks had quietly drifted apart: three
+	 * answered `0`, which is a cache busting string an asset URL can carry, and
+	 * `Migrate` answered an empty string, which is load bearing there because it is
+	 * what tells a fresh install from an upgrade. Both are still wanted, so the
+	 * fallback is the caller's to name and the difference is stated at each call
+	 * rather than buried in four copies of the same check.
+	 *
+	 * Static, and it has to be: `Plugin::__construct()` boots every service the
+	 * plugin has, so reaching this through `get_instance()` from a class which merely
+	 * wanted to know the version would boot the plugin to answer.
 	 *
 	 * The plugin spells its version `Major.Minor`, eg. `6.0`. Compare it with
 	 * `version_compare()` after normalising it, never numerically.
 	 *
+	 * @param string $fallback Optional. What to answer where the constant is not defined.
+	 *
 	 * @return string Version string, eg. `6.0`.
 	 */
-	public function get_version(): string {
+	public static function get_version( string $fallback = '' ): string {
 
-		return (string) IG_SYNTAX_HILITER_VERSION;
+		return ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : $fallback;
 
 	}    //end get_version()
 

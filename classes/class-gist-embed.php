@@ -146,7 +146,7 @@ class Gist_Embed {
 			static::STYLE_HANDLE,
 			Helper::get_asset_url( 'build/css/gist.css' ),
 			[],
-			( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0'
+			Plugin::get_version( '0' )
 		);
 
 	}    //end enqueue()

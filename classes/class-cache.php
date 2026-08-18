@@ -75,16 +75,6 @@ class Cache {
 	protected $_cache;
 
 	/**
-	 * Shape of a stored cache entry. Merged in before the entry is saved.
-	 *
-	 * @var array
-	 */
-	protected $_default_storage_format = [
-		'expiry' => 0,
-		'data'   => '',
-	];
-
-	/**
 	 * Class constructor
 	 *
 	 * @param string $cache_key A string for use as unique identifier for current dataset stored in cache.
@@ -289,13 +279,10 @@ class Cache {
 
 		}
 
-		$this->_cache = wp_parse_args(
-			[
-				'expiry' => ( time() + $this->_expiry ),
-				'data'   => $data,
-			],
-			$this->_default_storage_format
-		);
+		$this->_cache = [
+			'expiry' => ( time() + $this->_expiry ),
+			'data'   => $data,
+		];
 
 		$this->_set_cache();
 

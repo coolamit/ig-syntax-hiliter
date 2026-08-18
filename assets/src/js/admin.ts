@@ -17,11 +17,6 @@
 	type OptionControl = HTMLButtonElement | HTMLSelectElement;
 
 	/**
-	 * Anything the page switches off while it is working.
-	 */
-	type LockableElement = OptionControl | HTMLButtonElement;
-
-	/**
 	 * An error carrying what this code knows about a failed request.
 	 *
 	 * Every member is optional: a network failure produces a plain `Error` with
@@ -148,7 +143,7 @@
 		},
 	};
 
-	let busyElements: LockableElement[] = [];
+	let busyElements: OptionControl[] = [];
 	let pageBusy = false;
 
 	/*
@@ -533,7 +528,7 @@
 
 		pageBusy = true;
 
-		const elements: LockableElement[] = Array.from(
+		const elements: OptionControl[] = Array.from(
 			document.querySelectorAll< OptionControl >( '[data-igsh-option]' )
 		);
 		const buttons = [ 'igsh-revert-blocks', 'igsh-refresh-themes' ];

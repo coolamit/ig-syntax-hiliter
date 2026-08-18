@@ -49,7 +49,7 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const BLOCK_NAME = 'igsyntax-hiliter/code';
+	const BLOCK_NAME = Block::NAME;
 
 	/**
 	 * The string a post's content must contain for it to hold a code block.

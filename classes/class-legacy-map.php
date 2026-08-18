@@ -145,17 +145,6 @@ class Legacy_Map {
 	}    //end get_tags()
 
 	/**
-	 * Method to check whether a shortcode tag belongs to this plugin.
-	 *
-	 * @param string $tag Shortcode tag name.
-	 *
-	 * @return bool
-	 */
-	public static function is_our_tag( string $tag ): bool {
-		return in_array( strtolower( trim( $tag ) ), static::get_tags(), true );
-	}    //end is_our_tag()
-
-	/**
 	 * Method to write one of this plugin's tags inside a snippet as text.
 	 *
 	 * A snippet ends at its own closing tag, so a snippet whose code quotes one used

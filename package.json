@@ -19,7 +19,7 @@
 	"scripts": {
 		"build": "npm run build:blocks && npm run build:css && npm run build:js",
 		"build:blocks": "wp-scripts build",
-		"build:css": "sass --no-source-map --style=compressed --load-path=assets/src/scss assets/src/scss:assets/build/css",
+		"build:css": "sass --no-source-map --style=compressed assets/src/scss:assets/build/css",
 		"build:js": "npm run build:js:compile && npm run build:js:minify",
 		"build:js:compile": "tsc -p tsconfig.assets.json",
 		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",

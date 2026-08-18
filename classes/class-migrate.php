@@ -190,7 +190,7 @@ class Migrate {
 	 * @return string
 	 */
 	protected function _get_plugin_version(): string {
-		return ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '';
+		return Plugin::get_version();
 	}    //end _get_plugin_version()
 
 	/**
@@ -229,15 +229,7 @@ class Migrate {
 	 * @return bool Returns TRUE if plugin's last version in use was v3.5.x else FALSE
 	 */
 	protected function _is_updating_from_35(): bool {
-
-		$old_options = get_option( static::V35_OPTION_NAME, false );
-
-		if ( false === $old_options || ! is_array( $old_options ) ) {
-			return false;
-		}
-
-		return true;
-
+		return is_array( get_option( static::V35_OPTION_NAME, false ) );
 	}    //end _is_updating_from_35()
 
 	/**
@@ -284,8 +276,6 @@ class Migrate {
 
 		delete_option( static::V35_OPTION_NAME );    //delete old options from DB
 
-		unset( $old_options );
-
 	}    //end _settings_from_35()
 
 	/**
@@ -327,8 +317,6 @@ class Migrate {
 		 * removed ones from the DB.
 		 */
 		$this->_option->commit();
-
-		unset( $old_options );
 
 	}    //end _settings_from_5x()
 

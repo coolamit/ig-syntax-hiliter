@@ -408,20 +408,6 @@ class Language_Registry {
 	}    //end has()
 
 	/**
-	 * Method to get the human readable title of a language.
-	 *
-	 * @param string $id Canonical language id.
-	 *
-	 * @return string|null
-	 */
-	public function get_title( string $id ): ?string {
-
-		$this->_load();
-
-		return $this->_languages[ strtolower( trim( $id ) ) ]['title'] ?? null;
-	}    //end get_title()
-
-	/**
 	 * Method to get every language in the registry.
 	 *
 	 * @return array Canonical language id to language data.
@@ -490,7 +476,7 @@ class Language_Registry {
 	 */
 	protected static function _get_cache_key(): string {
 
-		$version = ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : '0';
+		$version = Plugin::get_version( '0' );
 
 		return sprintf( 'ig-syntax-hiliter-languages-%s', $version );
 

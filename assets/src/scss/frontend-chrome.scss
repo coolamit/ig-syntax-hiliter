@@ -58,6 +58,12 @@ $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
  * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` itself or on anything
  * wrapping it; the toolbar plugin wraps each `pre` in a `.code-toolbar` div and
  * appends the toolbar beside it, so both shapes need covering.
+ *
+ * Nothing this plugin ships writes the class onto a `pre` — `admin.ts` puts it
+ * on the preview's wrapper, which the second selector covers. The first is kept
+ * deliberately, as the hook for a theme or a site's own CSS to switch a single
+ * code box's toolbar off. It is undocumented and unofficial, exactly as the
+ * plugin's four filters are.
  */
 pre.igsh-no-toolbar ~ .toolbar,
 .igsh-no-toolbar .code-toolbar > .toolbar {
