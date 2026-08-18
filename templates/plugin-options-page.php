@@ -69,17 +69,41 @@
 
 					<?php else : ?>
 
-						<select
-							class="igsh-settings__select"
-							id="<?php echo esc_attr( $setting['name'] ); ?>"
-							data-igsh-option="<?php echo esc_attr( $setting['name'] ); ?>"
-							title="<?php echo esc_attr( $setting['description'] ); ?>"
-							aria-describedby="<?php echo esc_attr( $setting['name'] ); ?>-description"
-						>
-							<?php foreach ( $setting['choices'] as $choice_value => $choice_label ) : ?>
-								<option value="<?php echo esc_attr( $choice_value ); ?>" <?php selected( $setting['value'], $choice_value ); ?>><?php echo esc_html( $choice_label ); ?></option>
-							<?php endforeach; ?>
-						</select>
+						<span class="igsh-settings__control">
+
+							<select
+								class="igsh-settings__select"
+								id="<?php echo esc_attr( $setting['name'] ); ?>"
+								data-igsh-option="<?php echo esc_attr( $setting['name'] ); ?>"
+								title="<?php echo esc_attr( $setting['description'] ); ?>"
+								aria-describedby="<?php echo esc_attr( $setting['name'] ); ?>-description"
+							>
+								<?php foreach ( $setting['choices'] as $choice_value => $choice_label ) : ?>
+									<option value="<?php echo esc_attr( $choice_value ); ?>" <?php selected( $setting['value'], $choice_value ); ?>><?php echo esc_html( $choice_label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+
+							<?php
+							/*
+							 * The theme list is a reading of what is on disk and is cached for a
+							 * week, so this is how a site owner who has just put a theme there
+							 * sees it without waiting. It belongs to the theme control alone;
+							 * the font list is a literal in PHP and has nothing to reread.
+							 */
+							?>
+							<?php if ( 'theme' === $setting['name'] ) : ?>
+								<button
+									type="button"
+									class="button igsh-settings__refresh"
+									id="igsh-refresh-themes"
+									title="<?php esc_attr_e( 'Refresh theme cache', 'igsyntax-hiliter' ); ?>"
+									aria-label="<?php esc_attr_e( 'Refresh theme cache', 'igsyntax-hiliter' ); ?>"
+								>
+									<span class="dashicons dashicons-update" aria-hidden="true"></span>
+								</button>
+							<?php endif; ?>
+
+						</span>
 
 					<?php endif; ?>
 

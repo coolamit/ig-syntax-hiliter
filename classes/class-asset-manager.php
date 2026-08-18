@@ -67,6 +67,30 @@ class Asset_Manager {
 	const THEME_NONE = 'none';
 
 	/**
+	 * Cache key the built theme list is stored under.
+	 *
+	 * Fixed rather than keyed on the plugin version, which is what the language
+	 * registry does. Nothing accumulates either way: `Migrate::_clean_up()` deletes
+	 * every option named `igsh-cache-%` when the stored version changes, and a plugin
+	 * update is the only thing which can change what is on disk here.
+	 *
+	 * @var string
+	 */
+	const THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
+
+	/**
+	 * How long the built theme list is cached for, in seconds. Seven days.
+	 *
+	 * Long, because the answer can only change when the plugin's own files change,
+	 * and a site owner who has just put a theme there by hand has the refresh button
+	 * on the settings page rather than a wait. The expiry is the backstop under that
+	 * button, not the mechanism.
+	 *
+	 * @var int
+	 */
+	const THEMES_CACHE_LIFE = 604800;
+
+	/**
 	 * Font setting value which means "load no webfont at all".
 	 *
 	 * This is the default, and it is the only value which costs a reader nothing: a
@@ -122,6 +146,26 @@ class Asset_Manager {
 	 * @var \iG\Syntax_Hiliter\Asset_Manager|null
 	 */
 	protected static ?self $_instance = null;
+
+	/**
+	 * The theme map, once it has been built in this request.
+	 *
+	 * A compile-time constant which `get_theme_file()` used to rebuild on every call,
+	 * so one `get_themes()` built it forty-four times.
+	 *
+	 * @var array|null
+	 */
+	protected static ?array $_theme_titles = null;
+
+	/**
+	 * The themes on disk, once they have been read in this request.
+	 *
+	 * The persistent cache below is an option read, and this is called several times
+	 * in one request — by the enqueue, by the settings screen and by the validator.
+	 *
+	 * @var array|null
+	 */
+	protected static ?array $_themes = null;
 
 	/**
 	 * Whether a code box has been rendered on this page.
@@ -444,7 +488,11 @@ class Asset_Manager {
 	 */
 	protected static function _get_theme_titles(): array {
 
-		return [
+		if ( is_array( static::$_theme_titles ) ) {
+			return static::$_theme_titles;
+		}
+
+		static::$_theme_titles = [
 
 			static::LIBRARY_PATH . '/themes' => [
 				'prism'                => 'Prism',
@@ -497,6 +545,8 @@ class Asset_Manager {
 
 		];
 
+		return static::$_theme_titles;
+
 	}    //end _get_theme_titles()
 
 	/**
@@ -527,15 +577,19 @@ class Asset_Manager {
 	}    //end get_theme_file()
 
 	/**
-	 * Method to get the themes bundled with the plugin.
+	 * Method to read the themes bundled with the plugin off the disk.
 	 *
 	 * A theme is only offered if its stylesheet is actually readable, so a slug
 	 * mistyped in the map above, or a file lost in an upgrade, drops out of the
 	 * dropdown instead of being offered and then 404ing.
 	 *
+	 * Public because it is the callback the cache in `get_themes()` refills from, and
+	 * a callback has to be reachable. Call `get_themes()` rather than this: forty-odd
+	 * `is_readable()` calls is what the cache exists to stop happening on every page.
+	 *
 	 * @return array Theme file base name to human readable title.
 	 */
-	public static function get_themes(): array {
+	public static function build_themes(): array {
 
 		$themes = [];
 
@@ -553,6 +607,62 @@ class Asset_Manager {
 		}
 
 		return $themes;
+
+	}    //end build_themes()
+
+	/**
+	 * Method to get the themes bundled with the plugin.
+	 *
+	 * The answer is a directory listing in all but name, and it is asked for several
+	 * times in a request — twice by the front end's enqueue, by the settings screen,
+	 * and by the validator on every REST request — so it is cached rather than read
+	 * each time. Two layers: a static for the rest of this request, and an option for
+	 * a week after that.
+	 *
+	 * `$force_rebuild` is what the refresh button on the settings page sends. It is a
+	 * yes/no string rather than a boolean because that is what this plugin's settings
+	 * have always been and what arrives over REST; anything which is not the word
+	 * `yes` or the word `no` is read as `no`, so a rebuild is never triggered by
+	 * accident.
+	 *
+	 * A cache which cannot produce a list falls back to reading the disk. An empty
+	 * dropdown would be indistinguishable from a plugin with no themes in it, and the
+	 * files are right there.
+	 *
+	 * @param string $force_rebuild `yes` to throw the cached list away and read the disk again.
+	 *
+	 * @return array Theme file base name to human readable title.
+	 */
+	public static function get_themes( string $force_rebuild = 'no' ): array {
+
+		$validate      = Validate::get_instance();
+		$force_rebuild = ( $validate->is_yesno( $force_rebuild ) ) ? strtolower( trim( $force_rebuild ) ) : 'no';
+
+		if ( 'yes' === $force_rebuild ) {
+			static::$_themes = null;
+		}
+
+		if ( is_array( static::$_themes ) ) {
+			return static::$_themes;
+		}
+
+		$cache = Cache::create( static::THEMES_CACHE_KEY );
+
+		if ( 'yes' === $force_rebuild ) {
+			$cache->delete();
+		}
+
+		$themes = $cache->updates_with( [ static::class, 'build_themes' ] )
+						->expires_in( static::THEMES_CACHE_LIFE )
+						->get();
+
+		if ( ! is_array( $themes ) ) {
+			$themes = static::build_themes();
+		}
+
+		static::$_themes = $themes;
+
+		return static::$_themes;
 
 	}    //end get_themes()
 

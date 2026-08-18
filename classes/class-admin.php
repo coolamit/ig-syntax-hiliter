@@ -72,6 +72,13 @@ class Admin extends Base {
 	protected bool $_hooked = false;
 
 	/**
+	 * The settings schema, once it has been built in this request.
+	 *
+	 * @var array|null
+	 */
+	protected static ?array $_settings_schema = null;
+
+	/**
 	 * Method to hook the settings screen and its route up to WordPress.
 	 *
 	 * @return void
@@ -131,16 +138,25 @@ class Admin extends Base {
 	 * here is rejected by the route, so the route can never be used to write an
 	 * arbitrary option.
 	 *
+	 * Built once per request. `register_rest_routes()` reads it for the route's `enum`
+	 * and so pays for it on every `rest_api_init` the site serves — the editor's
+	 * requests included — and a single `POST /option` reached it four times. Each
+	 * build is sixteen `__()` calls and both choice lists.
+	 *
 	 * @return array Setting name to its type, label, description and permitted values.
 	 */
 	public static function get_settings_schema(): array {
+
+		if ( is_array( static::$_settings_schema ) ) {
+			return static::$_settings_schema;
+		}
 
 		$yes_no = [
 			'yes' => __( 'Yes', 'igsyntax-hiliter' ),
 			'no'  => __( 'No', 'igsyntax-hiliter' ),
 		];
 
-		return [
+		static::$_settings_schema = [
 			'theme'             => [
 				'type'        => 'choice',
 				'label'       => __( 'Theme', 'igsyntax-hiliter' ),
@@ -190,6 +206,8 @@ class Admin extends Base {
 				'choices'     => $yes_no,
 			],
 		];
+
+		return static::$_settings_schema;
 
 	}    //end get_settings_schema()
 
@@ -339,7 +357,51 @@ class Admin extends Base {
 			]
 		);
 
+		register_rest_route(
+			static::REST_NAMESPACE,
+			'/themes',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'refresh_themes' ],
+				'permission_callback' => [ static::class, 'rest_permission_check' ],
+			]
+		);
+
 	}    //end register_rest_routes()
+
+	/**
+	 * Method to read the theme list off the disk again and answer with it.
+	 *
+	 * The list is cached for a week, because it is a directory listing which can only
+	 * change when the plugin's files change. This is the way to change it sooner —
+	 * for a theme dropped in by hand, or one lost to a bad upload.
+	 *
+	 * It answers with the rebuilt list rather than with "done", because the whole
+	 * point of the button is the case where what is on disk is not what was cached,
+	 * and a message saying the cache was rebuilt would tell a site owner nothing about
+	 * whether their theme is now there. The URLs go with it so that the live preview
+	 * can paint a theme which has only just appeared.
+	 *
+	 * `POST` and not `GET`: this writes.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	public function refresh_themes(): WP_REST_Response {
+
+		Asset_Manager::get_themes( 'yes' );
+
+		//the schema was built for this request before the list changed under it
+		static::$_settings_schema = null;
+
+		return new WP_REST_Response(
+			[
+				'choices' => static::get_theme_choices(),
+				'urls'    => static::get_theme_urls(),
+			],
+			200
+		);
+
+	}    //end refresh_themes()
 
 	/**
 	 * Method to check that a setting name is one this plugin owns.
@@ -711,6 +773,18 @@ PREVIEW;
 				/* translators: %s: name of the setting that could not be saved. */
 				'saveTimedOut'      => __( '%s — your site did not answer in time, so it has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
 				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
+
+				/*
+				 * The theme list is a reading of what is on disk, cached for a week, and
+				 * these three are the refresh button. The middle one reports the count
+				 * because that is the only thing a site owner can check the answer
+				 * against — the list either has the theme they are looking for in it or
+				 * it does not, and the number is what says something changed at all.
+				 */
+				'themesRefreshing'  => __( 'Rereading the themes on disk…', 'igsyntax-hiliter' ),
+				/* translators: %d: number of themes now offered. */
+				'themesRefreshed'   => __( 'Themes reread. %d are available.', 'igsyntax-hiliter' ),
+				'themesRefreshFail' => __( 'The themes could not be reread, so the list is unchanged.', 'igsyntax-hiliter' ),
 				'revertConfirm'     => __(
 					"This will convert every iG:Syntax Hiliter block on this site back into a shortcode — a code block into [sourcecode] and a Gist block into [github] — in published, draft, pending, scheduled and private content.\n\nIt rewrites your content and it cannot be undone.\n\nContinue?",
 					'igsyntax-hiliter'

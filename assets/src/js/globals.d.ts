@@ -55,6 +55,9 @@ interface IgshAdminStrings {
 	saveFailed: string;
 	saveTimedOut: string;
 	reloadNeeded: string;
+	themesRefreshing: string;
+	themesRefreshed: string;
+	themesRefreshFail: string;
 	revertConfirm: string;
 	revertNone: string;
 	revertRunning: string;

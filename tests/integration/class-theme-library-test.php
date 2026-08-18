@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
 use ReflectionMethod;
@@ -54,11 +55,20 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	/**
 	 * Puts the singleton back, so that a saved theme cannot leak into the next test.
 	 *
+	 * The theme list outlives a test in two places now — a static in front of an
+	 * option — and the tests below plant one of their own in both. Neither is rolled
+	 * back by the transaction the test case runs in: the static is memory, and the
+	 * option was written before the assertions rather than by them.
+	 *
 	 * @return void
 	 */
 	public function tear_down(): void {
 
 		( new ReflectionProperty( Option::class, '_instance' ) )->setValue( null, $this->_original_option );
+
+		delete_option( Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY ) );
+
+		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
 
 		parent::tear_down();
 
@@ -196,6 +206,122 @@ class Theme_Library_Test extends WP_UnitTestCase {
 
 		$this->assertSame( '', Asset_Manager::get_theme_file( 'prism-not-a-theme' ) );
 		$this->assertSame( '', Asset_Manager::get_theme_file( '' ) );
+
+	}
+
+	/**
+	 * Method to name the option the built theme list is cached in.
+	 *
+	 * @return string
+	 */
+	protected function _cache_option_name(): string {
+
+		return Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+
+	}
+
+	/**
+	 * Method to put a theme list of this test's own into the cache.
+	 *
+	 * Written straight into the option rather than through `Cache`, because what is
+	 * being proved is that the reader goes to the option at all — and a list built
+	 * by the same code that reads it could not tell a cache hit from a rebuild.
+	 *
+	 * @param array $themes Theme list to plant.
+	 *
+	 * @return void
+	 */
+	protected function _plant_cached_themes( array $themes ): void {
+
+		update_option(
+			$this->_cache_option_name(),
+			[
+				'expiry' => ( time() + HOUR_IN_SECONDS ),
+				'data'   => $themes,
+			],
+			false
+		);
+
+		$this->_forget_themes();
+
+	}
+
+	/**
+	 * Method to make the class forget what it read earlier in this request.
+	 *
+	 * The static memo sits in front of the option, so nothing planted in the option
+	 * is seen until it is cleared.
+	 *
+	 * @return void
+	 */
+	protected function _forget_themes(): void {
+
+		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
+
+	}
+
+	/**
+	 * The list is read from the cache, and a forced rebuild goes back to the disk.
+	 *
+	 * The theme list is a directory reading, and it was being taken afresh on every
+	 * front end page which rendered a code box, twice, and on every REST request the
+	 * site served. Both halves are asserted here: that the stored list is what a
+	 * caller is handed, which is the saving; and that `yes` throws it away, which is
+	 * the refresh button and the only way out of a cache with a week to run.
+	 *
+	 * @return void
+	 */
+	public function test_the_theme_list_is_cached_and_a_forced_rebuild_goes_back_to_the_disk(): void {
+
+		$real = Asset_Manager::build_themes();
+
+		$this->_plant_cached_themes( [ 'prism-not-a-theme' => 'Planted' ] );
+
+		$this->assertSame(
+			[ 'prism-not-a-theme' => 'Planted' ],
+			Asset_Manager::get_themes(),
+			'The cached list is what a caller gets, so the disk is not read again.'
+		);
+
+		$this->assertSame(
+			$real,
+			Asset_Manager::get_themes( 'yes' ),
+			'A forced rebuild reads the disk and answers with what is really there.'
+		);
+
+		$this->assertSame(
+			$real,
+			get_option( $this->_cache_option_name() )['data'] ?? null,
+			'And what it read is written back, so the next request pays nothing.'
+		);
+
+	}
+
+	/**
+	 * Only the word `yes` forces a rebuild.
+	 *
+	 * The value arrives over REST, so it is a string of somebody else's choosing.
+	 * Anything which is not a yes/no flag reads as `no`, which is what stops a
+	 * rebuild being triggered by a typo or by a caller passing something else
+	 * entirely.
+	 *
+	 * @return void
+	 */
+	public function test_anything_that_is_not_a_flag_leaves_the_cache_alone(): void {
+
+		$planted = [ 'prism-not-a-theme' => 'Planted' ];
+
+		foreach ( [ 'no', 'yes please', '1', '' ] as $value ) {
+
+			$this->_plant_cached_themes( $planted );
+
+			$this->assertSame(
+				$planted,
+				Asset_Manager::get_themes( $value ),
+				sprintf( '"%s" is not the word yes and rebuilt the list anyway.', $value )
+			);
+
+		}
 
 	}
 

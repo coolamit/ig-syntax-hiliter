@@ -47,6 +47,18 @@
 	}
 
 	/**
+	 * What the theme refresh answers with.
+	 *
+	 * Both are optional and are checked before they are used: this is the JSON
+	 * boundary, and an answer missing one of them must leave the dropdown alone
+	 * rather than empty it.
+	 */
+	interface ThemesResponse {
+		choices?: Record< string, string > | undefined;
+		urls?: Record< string, string > | undefined;
+	}
+
+	/**
 	 * What the revert route answers when asked how much there is to do.
 	 */
 	interface RevertState {
@@ -105,6 +117,13 @@
 	 */
 	const restUrl = config.restUrl;
 	const nonce = config.nonce;
+
+	/*
+	 * The same object, under a name the guard above has narrowed. The refresh
+	 * button replaces `themes`, so this cannot be copied out by value the way the
+	 * two strings above are.
+	 */
+	const adminConfig = config;
 
 	/*
 	 * PHP sends every one of these strings, so the type says so. The fallback is
@@ -517,13 +536,17 @@
 		const elements: LockableElement[] = Array.from(
 			document.querySelectorAll< OptionControl >( '[data-igsh-option]' )
 		);
-		const button = document.getElementById(
-			'igsh-revert-blocks'
-		) as HTMLButtonElement | null;
+		const buttons = [ 'igsh-revert-blocks', 'igsh-refresh-themes' ];
 
-		if ( button ) {
-			elements.push( button );
-		}
+		buttons.forEach( function ( id ) {
+			const button = document.getElementById(
+				id
+			) as HTMLButtonElement | null;
+
+			if ( button ) {
+				elements.push( button );
+			}
+		} );
 
 		elements.forEach( function ( element ) {
 			if ( element.disabled ) {
@@ -618,6 +641,101 @@
 				 * holding the stored value rather than the one sent, and on failure it has
 				 * been put back to what it was; the preview shows what the control shows
 				 * either way.
+				 */
+				syncPreview();
+			} );
+	}
+
+	/**
+	 * Rereads the themes on disk and repaints the dropdown from the answer.
+	 *
+	 * The list is a directory reading cached for a week, so this is the way to see
+	 * a theme which has only just been put there — or to lose one which is no
+	 * longer readable. The answer carries the list rather than a "done", because
+	 * the only thing worth knowing is what is in it now.
+	 *
+	 * The stored theme keeps its place even where the answer no longer offers it.
+	 * A `select` whose value matches no option shows the first one instead, and a
+	 * dropdown quietly showing a theme other than the one in the database is a
+	 * worse answer than one showing a theme which has gone missing.
+	 *
+	 * @param button  The refresh button.
+	 * @param control The theme control.
+	 */
+	function refreshThemes(
+		button: HTMLButtonElement,
+		control: HTMLSelectElement
+	): void {
+		const notice = notices.notify( strings.themesRefreshing, 'busy' );
+
+		setBusy( true );
+
+		button.classList.add( 'is-busy' );
+
+		request< ThemesResponse >( 'POST', 'themes' )
+			.then( function ( payload ) {
+				const choices = payload ? payload.choices : undefined;
+				const urls = payload ? payload.urls : undefined;
+
+				if ( urls ) {
+					adminConfig.themes = urls;
+				}
+
+				if ( ! choices ) {
+					notice.settle( strings.themesRefreshFail, 'error' );
+
+					return;
+				}
+
+				const previous = control.value;
+				const values = Object.keys( choices );
+				let kept: HTMLOptionElement | null = null;
+
+				for ( let i = 0; i < control.options.length; i++ ) {
+					if ( control.options[ i ]?.value === previous ) {
+						kept = control.options[ i ] as HTMLOptionElement;
+					}
+				}
+
+				while ( control.firstChild ) {
+					control.removeChild( control.firstChild );
+				}
+
+				if ( kept && ! values.includes( previous ) ) {
+					control.appendChild( kept );
+				}
+
+				values.forEach( function ( value ) {
+					const option = document.createElement( 'option' );
+
+					option.value = value;
+					option.textContent = choices[ value ] ?? value;
+
+					control.appendChild( option );
+				} );
+
+				control.value = previous;
+
+				notice.settle(
+					withCount( strings.themesRefreshed, values.length ),
+					'success'
+				);
+			} )
+			.catch( function ( error: RequestError ) {
+				notice.settle(
+					strings.themesRefreshFail + ' ' + error.message,
+					'error'
+				);
+			} )
+			.finally( function () {
+				setBusy( false );
+
+				button.classList.remove( 'is-busy' );
+
+				/*
+				 * The preview is painted from `config.themes`, which has just been
+				 * replaced, and the control may now be showing a theme which was not
+				 * there a moment ago.
 				 */
 				syncPreview();
 			} );
@@ -1107,6 +1225,19 @@
 		} );
 
 		syncPreview();
+
+		const refresh = document.getElementById(
+			'igsh-refresh-themes'
+		) as HTMLButtonElement | null;
+		const themeControl = document.querySelector< HTMLSelectElement >(
+			'select[data-igsh-option="theme"]'
+		);
+
+		if ( refresh && themeControl ) {
+			refresh.addEventListener( 'click', function () {
+				refreshThemes( refresh, themeControl );
+			} );
+		}
 
 		const button = document.getElementById( 'igsh-revert-blocks' );
 		const progress = document.getElementById( 'igsh-revert-progress' );

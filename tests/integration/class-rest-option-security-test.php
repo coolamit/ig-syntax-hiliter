@@ -33,6 +33,13 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	const ROUTE = '/' . Admin::REST_NAMESPACE . '/option';
 
 	/**
+	 * The theme refresh route, which is on the same permission callback.
+	 *
+	 * @var string
+	 */
+	const THEMES_ROUTE = '/' . Admin::REST_NAMESPACE . '/themes';
+
+	/**
 	 * Brings up a REST server with the plugin's routes on it.
 	 *
 	 * @return void
@@ -241,6 +248,70 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertSame( 'no', $stored['toolbar'] ?? '' );
+
+	}
+
+	/**
+	 * Method to ask for the theme list to be read off the disk again.
+	 *
+	 * @return \WP_REST_Response
+	 */
+	protected function _refresh_themes() {
+
+		return rest_do_request( new WP_REST_Request( 'POST', self::THEMES_ROUTE ) );
+
+	}
+
+	/**
+	 * The theme refresh is refused to a stranger and to a subscriber.
+	 *
+	 * It deletes an option and reads the disk, so it is a write and is behind the
+	 * same capability as the settings themselves. The two refusals are told apart
+	 * because a caller which is merely logged out has something to do about it.
+	 *
+	 * @return void
+	 */
+	public function test_the_theme_refresh_is_refused_to_anybody_who_may_not_change_settings(): void {
+
+		wp_set_current_user( 0 );
+
+		$this->assertSame( 401, $this->_refresh_themes()->get_status() );
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
+
+		$this->assertSame( 403, $this->_refresh_themes()->get_status() );
+
+	}
+
+	/**
+	 * An administrator gets the rebuilt list back, and not merely a "done".
+	 *
+	 * The button exists for the case where what is on disk is not what was cached,
+	 * so an answer which does not carry the list cannot tell a site owner whether
+	 * the theme they went looking for is there now.
+	 *
+	 * @return void
+	 */
+	public function test_the_theme_refresh_answers_with_the_rebuilt_list(): void {
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+		$response = $this->_refresh_themes();
+		$payload  = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+
+		$this->assertSame(
+			Admin::get_theme_choices(),
+			$payload['choices'] ?? null,
+			'The answer carries the choices the dropdown is drawn from.'
+		);
+
+		$this->assertSame(
+			Admin::get_theme_urls(),
+			$payload['urls'] ?? null,
+			'And the stylesheet URLs, so the preview can paint a theme which has just appeared.'
+		);
 
 	}
 

@@ -48,8 +48,57 @@ $igsh-radius: 3px;
 		}
 	}
 
+	&__control {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
 	&__select {
 		min-width: 16rem;
+	}
+
+	/*
+	 * Square, so it reads as an action on the control beside it rather than as a
+	 * second setting. The height is wp-admin's own for a `.button` next to a
+	 * `select`, and the width is set to match it rather than left to the icon.
+	 */
+	&__refresh {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		min-width: 30px;
+		height: 30px;
+		padding: 0;
+
+		.dashicons {
+			width: 18px;
+			height: 18px;
+			font-size: 18px;
+			line-height: 1;
+		}
+
+		/*
+		 * The icon turns while the list is being reread. The class is put on by
+		 * the click handler rather than by the page lock, because the lock
+		 * disables every control on the page during any request and only this
+		 * one is doing the work.
+		 */
+		&.is-busy .dashicons {
+			animation: igsh-spin 1s linear infinite;
+		}
+	}
+}
+
+@keyframes igsh-spin {
+
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
 	}
 }
 
