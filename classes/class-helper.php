@@ -128,6 +128,47 @@ class Helper {
 	}
 
 	/**
+	 * Method to get an absolute filesystem path inside the plugin directory.
+	 *
+	 * Resolved from this file's own location, so nothing depends on the plugin
+	 * directory's name.
+	 *
+	 * @param string $path Optional. Path relative to the plugin directory.
+	 *
+	 * @return string Absolute path, with no trailing slash added of its own.
+	 */
+	public static function get_path( string $path = '' ): string {
+		return plugin_dir_path( __DIR__ ) . static::unleadingslashit( $path );
+	}
+
+	/**
+	 * Method to get the plugin version.
+	 *
+	 * The one place the version constant is read. Four classes each open coded this
+	 * `defined()` check before, and their fallbacks had quietly drifted apart: three
+	 * answered `0`, which is a cache busting string an asset URL can carry, and
+	 * `Migrate` answered an empty string, which is load bearing there because it is
+	 * what tells a fresh install from an upgrade. Both are still wanted, so the
+	 * fallback is the caller's to name and the difference is stated at each call
+	 * rather than buried in four copies of the same check.
+	 *
+	 * It lives here rather than on `Plugin` because it answers a question about a
+	 * constant and needs nothing booted. On `Plugin` it was the reason
+	 * `Block::register_block()` reached for `Plugin::get_instance()` from inside
+	 * `Plugin::__construct()`'s own call chain, which built the plugin twice.
+	 *
+	 * The plugin spells its version `Major.Minor`, eg. `6.0`. Compare it with
+	 * `version_compare()` after normalising it, never numerically.
+	 *
+	 * @param string $fallback Optional. What to answer where the constant is not defined.
+	 *
+	 * @return string Version string, eg. `6.0`.
+	 */
+	public static function get_version( string $fallback = '' ): string {
+		return ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : $fallback;
+	}
+
+	/**
 	 * Method to build the pattern which matches this plugin's shortcodes.
 	 *
 	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested

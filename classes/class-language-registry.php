@@ -476,7 +476,7 @@ class Language_Registry {
 	 */
 	protected static function _get_cache_key(): string {
 
-		$version = Plugin::get_version( '0' );
+		$version = Helper::get_version( '0' );
 
 		return sprintf( 'ig-syntax-hiliter-languages-%s', $version );
 

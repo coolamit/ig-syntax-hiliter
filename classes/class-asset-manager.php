@@ -1223,7 +1223,7 @@ class Asset_Manager {
 	 * @return string
 	 */
 	protected static function _get_version(): string {
-		return Plugin::get_version( '0' );
+		return Helper::get_version( '0' );
 	}    //end _get_version()
 
 }    //end of class

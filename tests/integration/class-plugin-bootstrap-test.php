@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
+use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Plugin;
 use iG_Syntax_Hiliter_Gatekeeper;
 use WP_UnitTestCase;
@@ -92,20 +93,26 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * plugin directory is not named after the repository (the repo is
 	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
 	 *
-	 * The version is asserted here as well, because `Plugin::get_version()` is the
+	 * The version is asserted here as well, because `Helper::get_version()` is the
 	 * one place the constant is read now — four classes open coded it before.
+	 *
+	 * That the constant is defined at all is asserted first. Nothing else could see
+	 * it go: every reader goes through `Helper::get_version()`, which answers the
+	 * caller's fallback rather than failing, so a boot which stopped defining it
+	 * would show up as an asset URL with no cache buster on it and as a migration
+	 * which read the install as fresh.
 	 *
 	 * @return void
 	 */
 	public function test_paths_do_not_assume_the_plugin_folder_name(): void {
 
-		$plugin = Plugin::get_instance();
+		$this->assertTrue( defined( 'IG_SYNTAX_HILITER_VERSION' ), 'The version constant is what every version answer in the plugin comes from.' );
 
-		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/', $plugin->get_path() );
-		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', $plugin->get_path( 'assets/build/css/admin.css' ) );
-		$this->assertFileExists( $plugin->get_path( 'assets/build/css/admin.css' ) );
+		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/', Helper::get_path() );
+		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', Helper::get_path( 'assets/build/css/admin.css' ) );
+		$this->assertFileExists( Helper::get_path( 'assets/build/css/admin.css' ) );
 
-		$this->assertSame( IG_SYNTAX_HILITER_VERSION, Plugin::get_version() );
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, Helper::get_version() );
 
 	}
 

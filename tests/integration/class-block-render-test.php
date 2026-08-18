@@ -18,7 +18,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Content_Protector;
-use iG\Syntax_Hiliter\Plugin;
+use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
@@ -165,7 +165,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	public function test_the_registered_block_is_the_one_the_pipeline_matches_on(): void {
 
 		$this->assertFileExists(
-			Plugin::get_instance()->get_path( Block::BUILD_DIR ) . '/block.json',
+			Helper::get_path( Block::BUILD_DIR ) . '/block.json',
 			'The block is not built, so nothing was registered and there is no name to compare.'
 		);
 

@@ -190,7 +190,7 @@ class Migrate {
 	 * @return string
 	 */
 	protected function _get_plugin_version(): string {
-		return Plugin::get_version();
+		return Helper::get_version();
 	}    //end _get_plugin_version()
 
 	/**

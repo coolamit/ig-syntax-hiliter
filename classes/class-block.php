@@ -132,8 +132,6 @@ class Block {
 	 */
 	public function register_block(): void {
 
-		$plugin = Plugin::get_instance();
-
 		$blocks = [
 			static::BUILD_DIR      => [ $this, 'render' ],
 			static::GIST_BUILD_DIR => [ $this, 'render_gist' ],
@@ -141,7 +139,7 @@ class Block {
 
 		foreach ( $blocks as $build_dir => $callback ) {
 
-			$directory = $plugin->get_path( $build_dir );
+			$directory = Helper::get_path( $build_dir );
 
 			if ( ! is_readable( $directory . '/block.json' ) ) {
 				continue;

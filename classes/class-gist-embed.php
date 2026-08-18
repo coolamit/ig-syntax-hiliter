@@ -146,7 +146,7 @@ class Gist_Embed {
 			static::STYLE_HANDLE,
 			Helper::get_asset_url( 'build/css/gist.css' ),
 			[],
-			Plugin::get_version( '0' )
+			Helper::get_version( '0' )
 		);
 
 	}    //end enqueue()

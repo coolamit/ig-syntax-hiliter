@@ -690,7 +690,7 @@ PREVIEW;
 
 		$handle  = sprintf( '%s-admin', static::PLUGIN_ID );
 		$notices = sprintf( '%s-notices', static::PLUGIN_ID );
-		$version = (string) IG_SYNTAX_HILITER_VERSION;
+		$version = Helper::get_version();
 
 		/*
 		 * The notice stack is a script and a stylesheet of its own, knowing nothing
@@ -868,7 +868,7 @@ PREVIEW;
 
 		delete_option( static::PLUGIN_ID . '-migrated-from' );    //shown once, then gone
 
-		if ( ! version_compare( $old_version, (string) IG_SYNTAX_HILITER_VERSION, '<' ) ) {
+		if ( ! version_compare( $old_version, Helper::get_version(), '<' ) ) {
 			return;
 		}
 
