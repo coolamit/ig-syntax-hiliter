@@ -12,9 +12,9 @@ use iG\Syntax_Hiliter\Traits\Singleton;
 /**
  * Decides what the browser is asked to download, and whether it is asked at all.
  *
- * Nothing is enqueued unless a snippet was rendered on the page. The renderer
- * raises that signal for every box it renders; the shortcode handler and the block
- * callback may raise it themselves via `snippet_rendered()`.
+ * Nothing is enqueued unless a snippet was rendered on the page. `Renderer` raises
+ * that signal for every box it renders, and is the only caller of
+ * `snippet_rendered()` — every path which produces a code box goes through it.
  *
  * This class and the renderer are the only two which know the highlighting engine
  * is Prism.
@@ -335,25 +335,7 @@ class Asset_Manager {
 	 */
 	public function enqueue_for_preview( string $theme, string $font = self::FONT_NONE ): void {
 
-		$theme = static::_resolve_theme( $theme );
-
-		if ( static::THEME_NONE !== $theme ) {
-
-			wp_enqueue_style(
-				static::_handle( 'theme' ),
-				Helper::get_asset_url( static::get_theme_file( $theme ) ),
-				[],
-				static::_get_version()
-			);
-
-		}
-
-		wp_enqueue_style(
-			static::_handle( 'chrome' ),
-			Helper::get_asset_url( 'build/css/frontend-chrome.css' ),
-			[],
-			static::_get_version()
-		);
+		$this->_enqueue_theme( $theme );
 
 		$this->_enqueue_font( $font );
 
@@ -890,11 +872,19 @@ class Asset_Manager {
 	/**
 	 * Method to enqueue the chosen theme stylesheet, and the plugin's own chrome.
 	 *
+	 * The preview passes its theme in, because the settings page is showing a theme
+	 * which is being picked rather than the one which is stored. Everything else about
+	 * the two is the same, which is why they are one method: this pair of stylesheets
+	 * is what a code box is dressed in, and a preview dressing itself a second way
+	 * would be a preview of something the front end never renders.
+	 *
+	 * @param string|null $theme Optional. Theme slug to load. The stored setting when none is named.
+	 *
 	 * @return void
 	 */
-	protected function _enqueue_theme(): void {
+	protected function _enqueue_theme( ?string $theme = null ): void {
 
-		$theme = Shortcode_Handler::get_plugin_option( 'theme', static::DEFAULT_THEME );
+		$theme = $theme ?? Shortcode_Handler::get_plugin_option( 'theme', static::DEFAULT_THEME );
 
 		$theme = static::_resolve_theme( $theme );
 

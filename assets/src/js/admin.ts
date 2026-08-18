@@ -737,25 +737,22 @@
 	}
 
 	/**
-	 * Points the theme stylesheet at the theme now chosen.
+	 * Points a stylesheet link at a URL, building the link where there is none.
 	 *
 	 * The tag is the one `Asset_Manager` enqueued, found by the id PHP sent over. A
-	 * site whose theme setting is "None" has no such tag, because nothing was
-	 * enqueued to make one, so the first theme picked builds it — and picking "None"
-	 * again empties it rather than removing it, which keeps the id in the document
-	 * for the next change to find.
+	 * site whose setting is "None" has no such tag, because nothing was enqueued to
+	 * make one, so the first value picked builds it — and picking "None" again empties
+	 * it rather than removing it, which keeps the id in the document for the next
+	 * change to find.
 	 *
-	 * @param theme Value the theme control now holds.
+	 * An empty `href` on a stylesheet link loads nothing, which is what "None" means.
+	 * Removing the attribute would make the browser resolve the page's own URL and
+	 * fetch the settings page as a stylesheet.
+	 *
+	 * @param id   Element id of the link tag.
+	 * @param href URL it should point at, or an empty string for "load nothing".
 	 */
-	function applyPreviewTheme( theme: string ): void {
-		const themes = config?.themes;
-		const id = config?.themeStyleId;
-
-		if ( ! themes || ! id || ! ( theme in themes ) ) {
-			return;
-		}
-
-		const href = themes[ theme ] ?? '';
+	function ensureStylesheet( id: string, href: string ): void {
 		let link = document.getElementById( id ) as HTMLLinkElement | null;
 
 		if ( ! link ) {
@@ -770,20 +767,31 @@
 			document.head.appendChild( link );
 		}
 
-		/*
-		 * An empty `href` on a stylesheet link loads nothing, which is what "None"
-		 * means. Removing the attribute would make the browser resolve the page's own
-		 * URL and fetch the settings page as a stylesheet.
-		 */
 		link.href = href;
+	}
+
+	/**
+	 * Points the theme stylesheet at the theme now chosen.
+	 *
+	 * @param theme Value the theme control now holds.
+	 */
+	function applyPreviewTheme( theme: string ): void {
+		const themes = adminConfig.themes;
+		const id = adminConfig.themeStyleId;
+
+		if ( ! themes || ! id || ! ( theme in themes ) ) {
+			return;
+		}
+
+		ensureStylesheet( id, themes[ theme ] ?? '' );
 	}
 
 	/**
 	 * Puts the font now chosen on the preview box.
 	 *
 	 * Two steps, because fetching a family does not put it on anything. The
-	 * stylesheet link works exactly as the theme's does above, including the empty
-	 * `href` for "None". The rule then goes into a `style` tag of the preview's own,
+	 * stylesheet is the same routine the theme uses. The rule then goes into a
+	 * `style` tag of the preview's own,
 	 * appended to the head so that it comes after everything wp-admin enqueued and
 	 * wins at the same specificity without `!important`.
 	 *
@@ -802,22 +810,8 @@
 		}
 
 		const chosen = fonts[ font ];
-		const href = chosen?.url ?? '';
-		let link = document.getElementById( id ) as HTMLLinkElement | null;
 
-		if ( ! link ) {
-			if ( '' === href ) {
-				return;
-			}
-
-			link = document.createElement( 'link' );
-			link.id = id;
-			link.rel = 'stylesheet';
-
-			document.head.appendChild( link );
-		}
-
-		link.href = href;
+		ensureStylesheet( id, chosen?.url ?? '' );
 
 		let rule = document.getElementById( PREVIEW_FONT_STYLE_ID );
 

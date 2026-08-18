@@ -229,13 +229,7 @@ class Cache {
 
 		$cache = $this->_get_cache();
 
-		if ( isset( $cache['expiry'] ) && time() < intval( $cache['expiry'] ) ) {
-			//cache has not expired, yet
-			return false;
-		}
-
-		//cache has expired
-		return true;
+		return ( ! isset( $cache['expiry'] ) || time() >= intval( $cache['expiry'] ) );
 
 	}
 

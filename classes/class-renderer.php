@@ -159,10 +159,12 @@ class Renderer {
 		 * the left gutter and the line highlight plugin puts its own badge in the top
 		 * left. Both measure the `pre` alone, so a sibling in front of it moves neither.
 		 */
+		$shortened = static::shorten_file_label( $label );
+
 		return sprintf(
 			'<div class="igsh-code-box"><span class="igsh-code-box__file"%1$s>%2$s</span>%3$s</div>',
-			static::_build_label_title( $label ),
-			static::escape_verbatim( static::shorten_file_label( $label ) ),
+			static::_build_label_title( $label, $shortened ),
+			static::escape_verbatim( $shortened ),
 			$markup
 		);
 
@@ -204,13 +206,18 @@ class Renderer {
 	 * screen is noise, and a reader who hovers and is told what they can already read
 	 * learns that hovering this element is pointless.
 	 *
-	 * @param string $label File label, with any markup already taken out of it.
+	 * The shortened form is passed in rather than worked out again: the caller has
+	 * just built it, and `shorten_file_label()` walks the string with `mb_strlen()`
+	 * and `mb_substr()`.
+	 *
+	 * @param string $label     File label, with any markup already taken out of it.
+	 * @param string $shortened The same label as `shorten_file_label()` left it.
 	 *
 	 * @return string The attribute with its leading space, or an empty string.
 	 */
-	protected static function _build_label_title( string $label ): string {
+	protected static function _build_label_title( string $label, string $shortened ): string {
 
-		if ( static::shorten_file_label( $label ) === $label ) {
+		if ( $shortened === $label ) {
 			return '';
 		}
 
