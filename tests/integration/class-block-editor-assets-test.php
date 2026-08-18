@@ -407,12 +407,14 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * and the editor silently loses its font while this whole file stays green. This is
 	 * the case which sees them.
 	 *
-	 * `init` is asserted as **not** hooked, and that is not an oversight. The plugin
-	 * boots on `init` itself, so `did_action( 'init' )` is already true by the time
-	 * `register_hooks()` runs and the block is registered on the spot — a callback
-	 * appended to the priority already running is never reached by the loop iterating
-	 * it. That is the branch which runs in production, and the negative assertion is
-	 * what stops the condition being "tidied up" into an unconditional `add_action()`.
+	 * The `init` priority is asserted and not merely the registration, because the
+	 * priority is the whole of why this works. The plugin boots on `init` at priority
+	 * 10, and a callback added at a priority which does not yet exist is picked up in
+	 * that same run — `WP_Hook::resort_active_iterations()` rebuilds the live
+	 * iteration array and moves the pointer past what has already run. Register the
+	 * block at priority 10 instead and it is appended to the priority currently
+	 * running, which the loop never reaches: the block silently vanishes, which looks
+	 * exactly like a checkout that was never built.
 	 *
 	 * @return void
 	 */
@@ -434,10 +436,17 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 			'The chosen font reaches the editor canvas, which is an iframe that enqueue_block_editor_assets does not reach.'
 		);
 
-		$this->_assert_not_hooked(
+		$this->_assert_hooked(
 			'init',
 			[ $block, 'register_block' ],
-			'The plugin boots on init, so the block is registered on the spot rather than hooked.'
+			Block::PRIORITY_REGISTER,
+			'The block registers behind the priority the plugin boots at, which is what gets it into the same run.'
+		);
+
+		$this->assertGreaterThan(
+			10,
+			Block::PRIORITY_REGISTER,
+			'The plugin boots on init at priority 10, so anything at 10 or earlier is appended to a priority already running and never reached.'
 		);
 
 	}

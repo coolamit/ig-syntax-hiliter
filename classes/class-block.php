@@ -59,19 +59,25 @@ class Block {
 	const EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
 
 	/**
+	 * Priority the block is registered at.
+	 *
+	 * The plugin boots on `init` at priority 10, so this is one step behind it and
+	 * that is the whole of what is needed. A callback added at a priority which does
+	 * **not** yet exist makes `WP_Hook::resort_active_iterations()` rebuild the live
+	 * iteration array and move the pointer on past the priorities already run, so a
+	 * later priority added during a run is reached in that same run. Only a callback
+	 * appended to the priority currently running is missed.
+	 *
+	 * @var int
+	 */
+	const PRIORITY_REGISTER = 11;
+
+	/**
 	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 */
 	protected function __construct() {
-		/*
-		 * The plugin boots on `init` itself, so hooking `init` here would append a
-		 * callback to the priority already running, which the loop iterating it
-		 * never reaches. Register straight away in that case.
-		 */
-		if ( did_action( 'init' ) ) {
-			$this->register_block();
-		} else {
-			add_action( 'init', [ $this, 'register_block' ] );
-		}
+
+		add_action( 'init', [ $this, 'register_block' ], static::PRIORITY_REGISTER );
 
 		add_action( 'enqueue_block_editor_assets', [ $this, 'add_editor_data' ] );
 
