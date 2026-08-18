@@ -9,10 +9,13 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Unit;
 
+use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Snippet;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionProperty;
 
 require_once __DIR__ . '/wp-shims.php';
 
@@ -31,11 +34,25 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Build a renderer over a small, known registry.
 	 *
+	 * An `Asset_Manager` built without its constructor is planted first, because
+	 * `render_snippet()` signals every snippet to it and `Asset_Manager::__construct()`
+	 * is where that class hooks itself up to WordPress. There is no WordPress here and
+	 * there must not be: shimming `add_action()` would have answered this and would
+	 * have blinded `Unit_Tier_Isolation_Test`, whose canary for a loaded WordPress is
+	 * that very function. What is under test is what the renderer emits, and the
+	 * signal only sets properties, so a service which never ran its constructor
+	 * answers it exactly as the real one does.
+	 *
 	 * @return void
 	 */
 	protected function setUp(): void {
 
 		parent::setUp();
+
+		( new ReflectionProperty( Asset_Manager::class, '_instance' ) )->setValue(
+			null,
+			( new ReflectionClass( Asset_Manager::class ) )->newInstanceWithoutConstructor()
+		);
 
 		$this->renderer = new Renderer(
 			new Language_Registry(

@@ -144,28 +144,13 @@ class Block_Converter {
 	const FILTER_BATCH_SIZE = 'ig_syntax_hiliter/revert_batch_size';
 
 	/**
-	 * Whether the hooks have been registered already.
-	 *
-	 * @var bool
+	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 */
-	protected bool $_hooked = false;
-
-	/**
-	 * Method to hook the converter's routes up to WordPress.
-	 *
-	 * @return void
-	 */
-	public function register_hooks(): void {
-
-		if ( $this->_hooked ) {
-			return;
-		}
-
-		$this->_hooked = true;
+	protected function __construct() {
 
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 
-	}    //end register_hooks()
+	}    //end __construct()
 
 	/**
 	 * Method to register the converter's REST routes.

@@ -68,13 +68,6 @@ class Admin extends Base {
 	const PREVIEW_LANGUAGE = 'php';
 
 	/**
-	 * Whether the hooks have been registered already.
-	 *
-	 * @var bool
-	 */
-	protected bool $_hooked = false;
-
-	/**
 	 * The settings schema, once it has been built in this request.
 	 *
 	 * @var array|null
@@ -82,9 +75,9 @@ class Admin extends Base {
 	protected static ?array $_settings_schema = null;
 
 	/**
-	 * Class constructor.
+	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 *
-	 * **Do not remove this as redundant. It is the opposite of redundant.**
+	 * **The `parent::__construct()` call is not boilerplate and must not go.**
 	 *
 	 * PHP resolves a constructor in a fixed order: one declared in the class beats
 	 * one a trait brings in, and a trait's beats one inherited from a parent. The
@@ -94,25 +87,13 @@ class Admin extends Base {
 	 * triggers a pending migration and this is the only class which reaches it.
 	 *
 	 * It would fail silently, and it would fail on upgrade.
+	 *
+	 * It also has to come first, ahead of the hooks below: a migration has to have
+	 * finished before anything this class registers can be reached.
 	 */
-	protected function __construct() {    // phpcs:ignore Generic.CodeAnalysis.UselessOverridingMethod.Found -- Anything but useless: without this the Singleton trait's empty constructor beats Base's.
+	protected function __construct() {
 
 		parent::__construct();
-
-	}    //end __construct()
-
-	/**
-	 * Method to hook the settings screen and its route up to WordPress.
-	 *
-	 * @return void
-	 */
-	public function register_hooks(): void {
-
-		if ( $this->_hooked ) {
-			return;
-		}
-
-		$this->_hooked = true;
 
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'add_menu' ] );
@@ -121,7 +102,7 @@ class Admin extends Base {
 
 		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
 
-	}    //end register_hooks()
+	}    //end __construct()
 
 	/**
 	 * Method to decide whether the current user may use the plugin's REST routes.

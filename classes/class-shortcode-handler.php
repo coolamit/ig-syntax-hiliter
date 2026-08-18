@@ -95,24 +95,13 @@ class Shortcode_Handler {
 	];
 
 	/**
-	 * Whether the hooks have been registered already.
+	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 *
-	 * @var bool
+	 * Two of the settings are read here rather than at filter time, because they
+	 * decide which filters there are: `hilite_comments` moves `comment_text` between
+	 * the display list and the strip list.
 	 */
-	protected bool $_hooked = false;
-
-	/**
-	 * Method to hook the shortcode pipeline up to WordPress.
-	 *
-	 * @return void
-	 */
-	public function register_hooks(): void {
-
-		if ( $this->_hooked ) {
-			return;
-		}
-
-		$this->_hooked = true;
+	protected function __construct() {
 
 		$hilite_comments = static::is_plugin_option_on( 'hilite_comments', 'yes' );
 
@@ -143,7 +132,7 @@ class Shortcode_Handler {
 			add_filter( $filter, [ $this, 'restore_save' ], static::PRIORITY_RESTORE );
 		}
 
-	}    //end register_hooks()
+	}    //end __construct()
 
 	/**
 	 * Method to lift snippets out of content on its way to the browser.

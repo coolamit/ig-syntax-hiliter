@@ -70,14 +70,15 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Shortcode_Handler::get_instance()->register_hooks();
-		Admin::get_instance()->register_hooks();
-		Block_Converter::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
+		Admin::get_instance();
+		Block_Converter::get_instance();
 
 		/*
-		 * The test case puts the hook registry back the way it found it after every
-		 * test, and register_hooks() only ever runs once per process, so the action
-		 * is put back by hand when it has been taken away.
+		 * Each class hooks itself from its constructor, which runs once per process,
+		 * and the test case puts the hook registry back the way it found it after
+		 * every test. So the action is put back by hand when it has been taken away —
+		 * asking for the instance again cannot do it, the object already exists.
 		 */
 		if ( false === has_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] ) ) {
 			add_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] );
@@ -1221,7 +1222,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->_become_administrator();
 
-		Gist_Embed::get_instance()->register_hooks();
+		Gist_Embed::get_instance();
 
 		$attributes = [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ];
 		$from_block = Block::get_instance()->render_gist( $attributes );

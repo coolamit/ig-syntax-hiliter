@@ -50,7 +50,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Shortcode_Handler::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
 
 		$this->_original_handler = Shortcode_Handler::get_instance();
 		$this->_original_option  = Option::get_instance();
@@ -123,7 +123,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 		$this->_set_singleton( Option::class, null );
 		$this->_set_singleton( Shortcode_Handler::class, null );
 
-		Shortcode_Handler::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
 
 	}
 

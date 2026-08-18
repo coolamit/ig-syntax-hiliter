@@ -48,13 +48,14 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Admin::get_instance()->register_hooks();
-		Block_Converter::get_instance()->register_hooks();
+		Admin::get_instance();
+		Block_Converter::get_instance();
 
 		/*
-		 * The test case puts the hook registry back the way it found it after every
-		 * test, and register_hooks() only ever runs once per process, so the actions
-		 * are put back by hand when they have been taken away.
+		 * Each class hooks itself from its constructor, which runs once per process,
+		 * and the test case puts the hook registry back the way it found it after
+		 * every test. So the actions are put back by hand when they have been taken
+		 * away — asking for the instance again cannot do it, the object already exists.
 		 */
 		foreach ( [ Admin::get_instance(), Block_Converter::get_instance() ] as $service ) {
 

@@ -35,7 +35,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Shortcode_Handler::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
 
 		$this->_reset_asset_state();
 

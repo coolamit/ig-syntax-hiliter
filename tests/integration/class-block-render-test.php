@@ -57,7 +57,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Shortcode_Handler::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
 
 		/*
 		 * What is under test here is the render callback, not when the block type

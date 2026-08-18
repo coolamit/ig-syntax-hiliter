@@ -59,25 +59,9 @@ class Block {
 	const EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
 
 	/**
-	 * Whether the hooks have been registered already.
-	 *
-	 * @var bool
+	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 */
-	protected bool $_hooked = false;
-
-	/**
-	 * Method to hook the block up to WordPress.
-	 *
-	 * @return void
-	 */
-	public function register_hooks(): void {
-
-		if ( $this->_hooked ) {
-			return;
-		}
-
-		$this->_hooked = true;
-
+	protected function __construct() {
 		/*
 		 * The plugin boots on `init` itself, so hooking `init` here would append a
 		 * callback to the priority already running, which the loop iterating it
@@ -98,7 +82,7 @@ class Block {
 		 */
 		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_font' ] );
 
-	}    //end register_hooks()
+	}    //end __construct()
 
 	/**
 	 * Method to put the chosen font on the block while it is being edited.

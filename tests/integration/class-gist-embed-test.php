@@ -34,7 +34,7 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 		parent::set_up();
 
-		Gist_Embed::get_instance()->register_hooks();
+		Gist_Embed::get_instance();
 
 		/*
 		 * The class is a singleton and the style registry is a global, so both
@@ -433,7 +433,7 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_gist_tag_inside_a_snippet_is_left_as_code(): void {
 
-		Shortcode_Handler::get_instance()->register_hooks();
+		Shortcode_Handler::get_instance();
 
 		$output = $this->_filter( 'the_content', '[php][github id="abc123"][/php]' );
 

@@ -70,13 +70,6 @@ class Gist_Embed {
 	];
 
 	/**
-	 * Whether the hooks have been registered already.
-	 *
-	 * @var bool
-	 */
-	protected bool $_hooked = false;
-
-	/**
 	 * Whether an embed has been rendered on this page.
 	 *
 	 * @var bool
@@ -84,17 +77,12 @@ class Gist_Embed {
 	protected bool $_has_embeds = false;
 
 	/**
-	 * Method to hook the Gist pipeline up to WordPress.
+	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 *
-	 * @return void
+	 * `gist_in_comments` is read here rather than at filter time, because it decides
+	 * whether `comment_text` gets an embed or a link.
 	 */
-	public function register_hooks(): void {
-
-		if ( $this->_hooked ) {
-			return;
-		}
-
-		$this->_hooked = true;
+	protected function __construct() {
 
 		$embed_filters = [ 'the_content' ];
 
@@ -122,7 +110,7 @@ class Gist_Embed {
 		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE );
 		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE_AGAIN );
 
-	}    //end register_hooks()
+	}    //end __construct()
 
 	/**
 	 * Method to enqueue the Gist stylesheet, if the page has an embed on it.
