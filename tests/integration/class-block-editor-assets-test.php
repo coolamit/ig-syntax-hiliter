@@ -29,6 +29,8 @@ use WP_UnitTestCase;
  */
 class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
+	use Hook_Test_Helpers;
+
 	/**
 	 * The block's generated editor script handle.
 	 *
@@ -403,6 +405,50 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		} finally {
 			$this->_reset_editor_font();
 		}
+
+	}
+
+	/**
+	 * The block registers the hooks the rest of this file then calls by hand.
+	 *
+	 * Every other case here reaches for `Block::get_instance()->…()` directly. That is
+	 * fast and it keeps each assertion on what the method does, but it leaves the
+	 * `add_action()` lines themselves invisible: delete the one on `enqueue_block_assets`
+	 * and the editor silently loses its font while this whole file stays green. This is
+	 * the case which sees them.
+	 *
+	 * `init` is asserted as **not** hooked, and that is not an oversight. The plugin
+	 * boots on `init` itself, so `did_action( 'init' )` is already true by the time
+	 * `register_hooks()` runs and the block is registered on the spot — a callback
+	 * appended to the priority already running is never reached by the loop iterating
+	 * it. That is the branch which runs in production, and the negative assertion is
+	 * what stops the condition being "tidied up" into an unconditional `add_action()`.
+	 *
+	 * @return void
+	 */
+	public function test_the_block_registers_its_hooks(): void {
+
+		$block = Block::get_instance();
+
+		$this->_assert_hooked(
+			'enqueue_block_editor_assets',
+			[ $block, 'add_editor_data' ],
+			null,
+			'The editor is handed the tag list and the language map.'
+		);
+
+		$this->_assert_hooked(
+			'enqueue_block_assets',
+			[ $block, 'enqueue_editor_font' ],
+			null,
+			'The chosen font reaches the editor canvas, which is an iframe that enqueue_block_editor_assets does not reach.'
+		);
+
+		$this->_assert_not_hooked(
+			'init',
+			[ $block, 'register_block' ],
+			'The plugin boots on init, so the block is registered on the spot rather than hooked.'
+		);
 
 	}
 
