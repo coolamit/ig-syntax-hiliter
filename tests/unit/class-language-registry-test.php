@@ -77,11 +77,9 @@ class Language_Registry_Test extends TestCase {
 				'languages' => [
 					'javascript' => [
 						'title' => 'JavaScript',
-						'file'  => 'prism-javascript.min.js',
 					],
 					'markup'     => [
 						'title' => 'Markup',
-						'file'  => 'prism-markup.min.js',
 					],
 				],
 				'aliases'   => [
@@ -123,7 +121,6 @@ class Language_Registry_Test extends TestCase {
 		$this->assertArrayNotHasKey( 'missing', $registry['languages'] );
 		$this->assertArrayNotHasKey( 'meta', $registry['languages'] );
 		$this->assertSame( 'Present', $registry['languages']['present']['title'] );
-		$this->assertSame( 'prism-present.min.js', $registry['languages']['present']['file'] );
 
 	}
 
@@ -205,11 +202,9 @@ class Language_Registry_Test extends TestCase {
 			'languages' => [
 				'php'  => [
 					'title' => 'PHP',
-					'file'  => 'prism-php.min.js',
 				],
 				'ruby' => [
 					'title' => 'Ruby',
-					'file'  => 'prism-ruby.min.js',
 				],
 			],
 			'aliases'   => [
@@ -222,11 +217,9 @@ class Language_Registry_Test extends TestCase {
 			'languages' => [
 				'php'    => [
 					'title' => 'php',
-					'file'  => 'prism-php.js',
 				],
 				'mylang' => [
 					'title' => 'mylang',
-					'file'  => 'prism-mylang.min.js',
 				],
 			],
 			'aliases'   => [],
@@ -234,8 +227,8 @@ class Language_Registry_Test extends TestCase {
 
 		$merged = Language_Registry::merge( $base, $overlay );
 
-		$this->assertSame( 'prism-php.js', $merged['languages']['php']['file'] );
-		$this->assertSame( 'prism-ruby.min.js', $merged['languages']['ruby']['file'] );
+		$this->assertSame( 'php', $merged['languages']['php']['title'], 'The overlay wins where both name the same language.' );
+		$this->assertSame( 'Ruby', $merged['languages']['ruby']['title'], 'And a language the overlay says nothing about is left as it was.' );
 		$this->assertArrayHasKey( 'mylang', $merged['languages'] );
 
 		// An alias pointing at a language which is not there is dropped.
@@ -258,11 +251,9 @@ class Language_Registry_Test extends TestCase {
 				'languages' => [
 					'ruby' => [
 						'title' => 'Ruby',
-						'file'  => 'prism-ruby.min.js',
 					],
 					'php'  => [
 						'title' => 'PHP',
-						'file'  => 'prism-php.min.js',
 					],
 				],
 				'aliases'   => [
@@ -322,9 +313,6 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( 'JavaScript', $registry->get_title( 'javascript' ) );
 		$this->assertNull( $registry->get_title( 'madeuplang' ) );
-
-		$this->assertSame( 'prism-javascript.min.js', $registry->get_file( 'javascript' ) );
-		$this->assertNull( $registry->get_file( 'madeuplang' ) );
 
 		$this->assertSame(
 			[

@@ -128,7 +128,6 @@ class Language_Registry {
 
 			$this->_languages[ $id ] = [
 				'title' => (string) ( $language['title'] ?? $id ),
-				'file'  => (string) ( $language['file'] ?? '' ),
 			];
 
 		}
@@ -206,7 +205,7 @@ class Language_Registry {
 		 *
 		 * Runs after the cache, so a callback is never baked into the cached value.
 		 *
-		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding `title` and `file`; and `aliases`, mapping alias to canonical id.
+		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding a `title`; and `aliases`, mapping alias to canonical id.
 		 */
 		$filtered = apply_filters( static::FILTER_LANGUAGES, $registry );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
@@ -291,9 +290,16 @@ class Language_Registry {
 				continue;
 			}
 
+			/*
+			 * The file name is what the readability test above was for and is not kept.
+			 * Nothing on the server ever needs it — the browser resolves a language file
+			 * for itself, from the directory `Asset_Manager::get_components_url()` names —
+			 * and storing it put a `prism-<id>.min.js` for three hundred languages into
+			 * the cached option and through the ingest loop on every request that reads
+			 * the registry.
+			 */
 			$registry['languages'][ $id ] = [
 				'title' => (string) ( $language['title'] ?? $id ),
-				'file'  => $file,
 			];
 
 			$aliases = $language['alias'] ?? [];
@@ -414,23 +420,6 @@ class Language_Registry {
 
 		return $this->_languages[ strtolower( trim( $id ) ) ]['title'] ?? null;
 	}    //end get_title()
-
-	/**
-	 * Method to get the base name of the file which defines a language.
-	 *
-	 * @param string $id Canonical language id.
-	 *
-	 * @return string|null
-	 */
-	public function get_file( string $id ): ?string {
-
-		$this->_load();
-
-		$file = $this->_languages[ strtolower( trim( $id ) ) ]['file'] ?? '';
-
-		return ( '' === $file ) ? null : $file;
-
-	}    //end get_file()
 
 	/**
 	 * Method to get every language in the registry.

@@ -31,6 +31,24 @@ class Legacy_Map {
 	const GENERIC_TAG = 'sourcecode';
 
 	/**
+	 * The tag list the alternation below was built from.
+	 *
+	 * The list comes through a filter, so it can change inside a request and the
+	 * memo has to be keyed on it rather than merely set once. `Content_Protector`
+	 * keeps its shortcode pattern the same way and for the same reason.
+	 *
+	 * @var array
+	 */
+	protected static array $_alternation_tags = [];
+
+	/**
+	 * The claimed tags as a regular expression alternation.
+	 *
+	 * @var string
+	 */
+	protected static string $_alternation = '';
+
+	/**
 	 * Legacy tag to canonical language id.
 	 *
 	 * The last three keys are shorthand aliases; `[sourcecode]` is absent because it
@@ -157,9 +175,14 @@ class Legacy_Map {
 	 */
 	public static function escape_tags( string $code ): ?string {
 
+		//the cheap test first: no bracket, no tag, and nothing to build an alternation for
+		if ( ! str_contains( $code, '[' ) ) {
+			return $code;
+		}
+
 		$tags = static::_get_tag_alternation();
 
-		if ( '' === $tags || ! str_contains( $code, '[' ) ) {
+		if ( '' === $tags ) {
 			return $code;
 		}
 
@@ -201,9 +224,14 @@ class Legacy_Map {
 	 */
 	public static function unescape_tags( string $code ): string {
 
+		//as in `escape_tags()`: almost no snippet holds a doubled bracket, and this runs once per snippet built
+		if ( ! str_contains( $code, '[[' ) ) {
+			return $code;
+		}
+
 		$tags = static::_get_tag_alternation();
 
-		if ( '' === $tags || ! str_contains( $code, '[[' ) ) {
+		if ( '' === $tags ) {
 			return $code;
 		}
 
@@ -255,11 +283,13 @@ class Legacy_Map {
 
 		$tags = static::get_tags();
 
-		if ( empty( $tags ) ) {
-			return '';
+		if ( $tags === static::$_alternation_tags && '' !== static::$_alternation ) {
+			return static::$_alternation;
 		}
 
-		return implode(
+		static::$_alternation_tags = $tags;
+
+		static::$_alternation = ( empty( $tags ) ) ? '' : implode(
 			'|',
 			array_map(
 				static function ( $tag ) {
@@ -268,6 +298,8 @@ class Legacy_Map {
 				$tags
 			)
 		);
+
+		return static::$_alternation;
 
 	}    //end _get_tag_alternation()
 

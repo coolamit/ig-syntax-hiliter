@@ -32,6 +32,12 @@ import metadata from './block.json';
 
 const TAG = 'github';
 
+/**
+ * The last text `loneGistShortcode()` was asked about, and what it answered.
+ */
+let lastText: string | null = null;
+let lastMatch: GistShortcodeAttributes | null = null;
+
 interface GistShortcodeAttributes {
 	gist?: string;
 	id?: string;
@@ -65,21 +71,29 @@ function gistUrl( named: GistShortcodeAttributes ): string {
  * only mentions the shortcode in a sentence stays a paragraph, which is the rule
  * core applies one stage earlier too.
  *
+ * The answer to the last question asked is kept, because `isMatch` and
+ * `transform` are handed the same node one after the other and would otherwise
+ * trim the string, build a `RegExp`, run it and parse the attributes twice for
+ * every paragraph of the paste. One entry is all that is needed: the two calls
+ * are consecutive by construction.
+ *
  * @param text Text content of the node being offered.
  */
 function loneGistShortcode( text: string ): GistShortcodeAttributes | null {
+	if ( text === lastText ) {
+		return lastMatch;
+	}
+
 	const trimmed = text.trim();
 	const match = next( TAG, trimmed );
 
-	if (
-		! match ||
-		0 !== match.index ||
-		trimmed.length !== match.content.length
-	) {
-		return null;
-	}
+	lastText = text;
+	lastMatch =
+		! match || 0 !== match.index || trimmed.length !== match.content.length
+			? null
+			: ( match.shortcode.attrs.named as GistShortcodeAttributes );
 
-	return match.shortcode.attrs.named as GistShortcodeAttributes;
+	return lastMatch;
 }
 
 const transforms = {

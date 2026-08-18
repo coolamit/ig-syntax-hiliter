@@ -235,7 +235,6 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 			$registry['languages'][ self::LANGUAGE ] = [
 				'title' => 'Probe Lang',
-				'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
 			];
 
 			return $registry;
@@ -341,7 +340,6 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 			$registry['languages'][ self::LANGUAGE ] = [
 				'title' => 'Probe Lang',
-				'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
 			];
 
 			return $registry;
@@ -399,7 +397,6 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 			'languages' => [
 				self::LANGUAGE => [
 					'title' => 'Probe Lang',
-					'file'  => sprintf( 'prism-%s.min.js', self::LANGUAGE ),
 				],
 			],
 			'aliases'   => [],
