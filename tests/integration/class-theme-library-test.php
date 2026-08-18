@@ -301,6 +301,40 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * An empty cached list is a failure and is never served.
+	 *
+	 * `Cache` writes `[]` down as readily as it writes a real list, and `Cache::get()`
+	 * hands it back — `isset( $cache['data'] )` is true for an empty array — so the
+	 * one request in which nothing on disk happened to be readable used to be served
+	 * for the whole seven days the entry lives. What a site owner sees then is a theme
+	 * dropdown holding nothing but "None", and a settings screen answering 400 for
+	 * every real theme slug, with the refresh button the only way out.
+	 *
+	 * The other half of the fix — that an empty *rebuild* is not written down either —
+	 * has no seam to drive it through from here: `build_themes()` reads two constant
+	 * directories and takes nothing this test could point elsewhere. It is two lines
+	 * beside the ones asserted below and is stated in the docblock there.
+	 *
+	 * @return void
+	 */
+	public function test_an_empty_cached_list_is_never_served(): void {
+
+		$this->_plant_cached_themes( [] );
+
+		$this->assertSame(
+			Asset_Manager::build_themes(),
+			Asset_Manager::get_themes(),
+			'An empty cached list is not an answer, so the disk is read again.'
+		);
+
+		$this->assertFalse(
+			get_option( $this->_cache_option_name(), false ),
+			'And the unusable entry is gone, so it is not stepped over again on every request for a week.'
+		);
+
+	}
+
+	/**
 	 * Only the word `yes` forces a rebuild.
 	 *
 	 * The value arrives over REST, so it is a string of somebody else's choosing.

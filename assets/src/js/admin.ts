@@ -768,14 +768,20 @@
 				const choices = payload ? payload.choices : undefined;
 				const urls = payload ? payload.urls : undefined;
 
-				if ( urls ) {
-					adminConfig.themes = urls;
-				}
-
 				if ( ! choices ) {
 					notice.settle( strings.themesRefreshFail, 'error' );
 
 					return;
+				}
+
+				/*
+				 * Below the guard, and it has to be. An answer carrying the URLs but
+				 * not the list leaves the dropdown alone, as documented — so replacing
+				 * the map the preview paints from would leave the two describing
+				 * different lists while the reader was told nothing had changed.
+				 */
+				if ( urls ) {
+					adminConfig.themes = urls;
 				}
 
 				const previous = control.value;
@@ -807,8 +813,17 @@
 
 				control.value = previous;
 
+				/*
+				 * Without the `none` entry, which `Admin::get_theme_choices()` puts on
+				 * the front and which is not a theme. The count is there so a site owner
+				 * can check the answer against what is in the directory, and one they
+				 * cannot check is worse than none at all.
+				 */
 				notice.settle(
-					withCount( strings.themesRefreshed, values.length ),
+					withCount(
+						strings.themesRefreshed,
+						Math.max( 0, values.length - 1 )
+					),
 					'success'
 				);
 			} )

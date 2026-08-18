@@ -121,6 +121,16 @@ class Migrate {
 	 * then keeps that spelling for good, and every later read pays to normalise it
 	 * again.
 	 *
+	 * **This is also an upgrade, and the only one which reaches no other clean up.**
+	 * Every version is compared normalised and `_normalize_version()` sends anything
+	 * non numeric through `floatval()`, so `6.0-beta-1`, `6.0-beta-2` and `6.0` are
+	 * all `6.0.0` and `settings()` takes its early return for each of them — which is
+	 * right, there are no settings to migrate between them, and wrong about what is
+	 * cached, because the files on disk really did change. So the caches are cleared
+	 * here, on the one condition which says an upgrade happened: the spelling stored
+	 * is not the spelling running. An ordinary page load on an install which is up to
+	 * date returns above without touching anything.
+	 *
 	 * Only a stored version which normalises to exactly the running one is touched.
 	 * A version from the future is left alone, spelling and all: this version knows
 	 * nothing about what a later one means by it, and rewriting it would be a
@@ -142,6 +152,8 @@ class Migrate {
 		if ( $stored === $version ) {
 			return;    //already spelled the way this version spells it
 		}
+
+		$this->_clean_up();
 
 		update_option( Base::PLUGIN_ID . '-version', $version );
 

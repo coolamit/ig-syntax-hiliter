@@ -288,6 +288,67 @@ class Migrate_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * And that rewrite clears the caches, because it is the one upgrade which
+	 * reaches no other clean up.
+	 *
+	 * Every beta of 6.0 normalises to `6.0.0`, so `settings()` takes its early
+	 * return on the way from one to the next and `_clean_up()` is never reached
+	 * down that path. Nothing about the settings needs migrating between them and
+	 * that part is right; the theme list is a directory reading cached for a week,
+	 * and the files on disk are exactly what a plugin update changes. Left alone,
+	 * a site upgrading from a beta would go on being served the previous build's
+	 * theme list until the cache ran out or somebody pressed refresh.
+	 *
+	 * @return void
+	 */
+	public function test_a_rewritten_version_clears_the_caches(): void {
+
+		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+
+		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
+		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
+		update_option(
+			$cache_key,
+			[
+				'expiry' => ( time() + HOUR_IN_SECONDS ),
+				'data'   => [ 'prism-gone' => 'A theme from the previous build' ],
+			],
+			false
+		);
+
+		$this->_migrate();
+
+		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
+		$this->assertFalse( get_option( $cache_key, false ), 'The previous build\'s theme list must not survive the upgrade.' );
+
+	}
+
+	/**
+	 * The guard on that: an install already spelling its version the way this one
+	 * does is an ordinary page load, and an ordinary page load must not throw the
+	 * caches away. This runs on every request the site serves.
+	 *
+	 * @return void
+	 */
+	public function test_an_up_to_date_install_keeps_its_caches(): void {
+
+		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+		$cached    = [
+			'expiry' => ( time() + HOUR_IN_SECONDS ),
+			'data'   => [ 'prism-okaidia' => 'Okaidia' ],
+		];
+
+		update_option( Base::PLUGIN_ID . '-version', IG_SYNTAX_HILITER_VERSION );
+		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
+		update_option( $cache_key, $cached, false );
+
+		$this->_migrate();
+
+		$this->assertSame( $cached, get_option( $cache_key, false ), 'A page load on an install which is up to date must leave the caches alone.' );
+
+	}
+
+	/**
 	 * The guard on the test above: a version from the future is left exactly as it
 	 * is, spelling and all. This version does not know what a later one means by
 	 * what it stored, and rewriting it would downgrade the install's record of

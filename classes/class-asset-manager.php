@@ -578,6 +578,22 @@ class Asset_Manager {
 	 * dropdown would be indistinguishable from a plugin with no themes in it, and the
 	 * files are right there.
 	 *
+	 * **An empty list is a failure and not an answer**, which is why `empty()` is
+	 * tested and not only `is_array()`. `Cache` writes `[]` down as happily as it
+	 * writes a real list, and `Cache::get()` hands it back — `isset( $cache['data'] )`
+	 * is true for an empty array — so a moment when nothing on disk was readable, a
+	 * deploy swapping `assets/lib/` in place or an rsync caught half way, would
+	 * otherwise be served for the whole of `THEMES_CACHE_LIFE`. What a site owner sees
+	 * then is a theme dropdown holding nothing but "None" and a settings screen
+	 * answering 400 for every real theme, with the refresh button the only way out.
+	 *
+	 * So such an entry is deleted rather than merely stepped over: stepping over it
+	 * would leave it there to be stepped over again on every request for the next
+	 * seven days, each one paying for a full directory scan. Deleting it means this
+	 * request reads the disk and the next one caches what it finds, in the ordinary
+	 * way. And an empty rebuild is not memoised either, so a site which really has
+	 * lost its theme files starts working again the moment they come back.
+	 *
 	 * @param string $force_rebuild `yes` to throw the cached list away and read the disk again.
 	 *
 	 * @return array Theme file base name to human readable title.
@@ -605,8 +621,16 @@ class Asset_Manager {
 						->expires_in( static::THEMES_CACHE_LIFE )
 						->get();
 
-		if ( ! is_array( $themes ) ) {
+		if ( ! is_array( $themes ) || empty( $themes ) ) {
+
+			$cache->delete();    //do not let an unusable answer stand for a week
+
 			$themes = static::build_themes();
+
+		}
+
+		if ( empty( $themes ) ) {
+			return [];    //nothing readable, and not memoised, so the next request asks again
 		}
 
 		static::$_themes = $themes;
