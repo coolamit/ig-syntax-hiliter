@@ -111,7 +111,19 @@
 	 * claim rather than a check.
 	 */
 	const restUrl = config.restUrl;
-	const nonce = config.nonce;
+
+	/*
+	 * The nonce is the one of these which changes, so it is a variable and is read
+	 * at call time rather than closed over as a value. Core hands a fresh one back
+	 * on the way out of every successful cookie authenticated REST response — see
+	 * `rest_cookie_check_errors()` — and `request()` stores what it is given, so
+	 * every save, revert and theme refresh re-arms it as a side effect of work the
+	 * page was doing anyway. A screen being used goes on working for as long as it
+	 * is used, without this plugin adding a route or a timer of its own. A screen
+	 * left untouched for longer than a nonce lives still needs reloading, and that
+	 * is what the 403 branch is for.
+	 */
+	let nonce = config.nonce;
 
 	/*
 	 * The same object, under a name the guard above has narrowed. The refresh
@@ -351,6 +363,22 @@
 
 		return pending
 			.then( function ( response ) {
+				/*
+				 * Only a response whose nonce was accepted carries a fresh one —
+				 * `rest_cookie_check_errors()` returns its 403 before it reaches the
+				 * `send_header()` call. So this keeps a working page working and cannot
+				 * rescue one whose nonce has already gone; `describeError()` is what
+				 * answers that, by asking the reader to reload. The header is read
+				 * whatever the status because "there is one" is the only question worth
+				 * asking. Same origin, so every header is readable, and the call already
+				 * sends its cookies.
+				 */
+				const fresh = response.headers.get( 'X-WP-Nonce' );
+
+				if ( fresh ) {
+					nonce = fresh;
+				}
+
 				return response.json().then(
 					function (
 						payload:
