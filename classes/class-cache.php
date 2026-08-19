@@ -55,13 +55,23 @@ class Cache {
 	/**
 	 * Callable which produces a fresh dataset once the cached one has expired.
 	 *
-	 * Typed `mixed` because `callable` is not a legal property type in PHP. What is
-	 * really stored is an array, a string or a Closure, which the docblock says and
-	 * the `is_callable()` guard in `_refresh_cache()` checks.
+	 * `callable` is not a legal property type in PHP, so the union spells out what a
+	 * callable actually is: a Closure, a function name, or a `[ class, method ]` pair.
+	 * `mixed` stood here and said less than it could — it admits an int, a float and a
+	 * bool, none of which a callable can ever be.
+	 *
+	 * The one form left out is an object with `__invoke()`. Nothing in this plugin uses
+	 * one, and `updates_with()` still asks for a `callable`, which is what a caller
+	 * should be asked for.
+	 *
+	 * The `null` is the state before `updates_with()` has been called, which is what
+	 * `_refresh_cache()` refuses. Neither of the type's other jobs is checking that the
+	 * value resolves to anything — that is `is_callable()`, and a string or an array can
+	 * satisfy this type and still name nothing at all.
 	 *
 	 * @var callable|null
 	 */
-	protected mixed $_callback = null;
+	protected \Closure|string|array|null $_callback = null;
 
 	/**
 	 * Arguments passed to the callback.
