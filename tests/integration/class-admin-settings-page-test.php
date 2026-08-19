@@ -11,6 +11,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Fonts;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Themes;
 use ReflectionProperty;
@@ -226,11 +227,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The preview snippet shows a reader what the three ligature fonts do.
+	 * The preview snippet shows a reader what the four ligature fonts do.
 	 *
-	 * Ten fonts are offered and three of them draw `=>`, `&&` and `===` as single
+	 * Fifteen fonts are offered and four of them draw `=>`, `&&` and `===` as single
 	 * glyphs. A sample carrying none of those sequences would make the whole point of
-	 * picking one of those three invisible in the one place it is meant to be seen.
+	 * picking one of those four invisible in the one place it is meant to be seen.
 	 *
 	 * @test
 	 *
@@ -279,6 +280,59 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			strpos( $html, 'data-igsh-option="theme"' ),
 			'The font control is drawn after the theme control.'
 		);
+
+	}
+
+	/**
+	 * The font dropdown is drawn in two labelled groups with `None` above both.
+	 *
+	 * The grouping is carried on the schema entry beside `choices` rather than being
+	 * nested into it, so the template is the only thing which turns it into markup and
+	 * this is the only place that turn is visible. **The theme dropdown must stay
+	 * flat** — it carries no groups, so the same branch has to render it exactly as it
+	 * rendered it before, and that half is asserted here too because a template branch
+	 * which quietly grouped every select would look right on this page and wrong on
+	 * the one control which has 43 entries and no grouping.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_draws_the_font_dropdown_in_two_groups(): void {
+
+		$html = $this->_render();
+
+		$groups = Admin::get_font_groups();
+
+		$this->assertCount( 2, $groups );
+
+		$positions = [];
+
+		foreach ( array_keys( $groups ) as $label ) {
+
+			$needle = sprintf( '<optgroup label="%s">', esc_attr( $label ) );
+
+			$this->assertStringContainsString( $needle, $html, sprintf( 'The %s group is drawn.', $label ) );
+
+			$positions[] = strpos( $html, $needle );
+
+		}
+
+		$this->assertSame( 2, substr_count( $html, '<optgroup' ) );
+		$this->assertSame( 2, substr_count( $html, '</optgroup>' ) );
+
+		//None is not a font, so it is drawn ahead of the first group rather than inside one
+		$none = strpos( $html, sprintf( '<option value="%s"', esc_attr( Fonts::FONT_NONE ) ) );
+
+		$this->assertNotFalse( $none );
+		$this->assertLessThan( min( $positions ), $none, 'None sits above both groups.' );
+
+		//the theme control carries no groups, and the same template branch has to leave it alone
+		$theme = strpos( $html, 'data-igsh-option="theme"' );
+		$font  = strpos( $html, 'data-igsh-option="font"' );
+
+		$this->assertGreaterThan( $theme, min( $positions ), 'Nothing groups the theme dropdown.' );
+		$this->assertGreaterThan( $font, min( $positions ) );
 
 	}
 

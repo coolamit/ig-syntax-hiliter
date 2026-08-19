@@ -156,7 +156,7 @@ class Admin extends Base {
 	 * Built once per request. `register_rest_routes()` reads it for the route's `enum`
 	 * and so pays for it on every `rest_api_init` the site serves — the editor's
 	 * requests included — and a single `POST /option` reached it four times. Each
-	 * build is twenty `__()` calls and both choice lists.
+	 * build is twenty `__()` calls, both choice lists and the font grouping.
 	 *
 	 * @return array Setting name to its type, label, description and permitted values.
 	 */
@@ -183,6 +183,7 @@ class Admin extends Base {
 				'label'       => __( 'Font', 'igsyntax-hiliter' ),
 				'description' => __( 'Typeface used for code boxes on the front end. Anything other than None is fetched from Bunny Fonts, a font service which stores no visitor data, so each reader\'s browser makes one request to fonts.bunny.net. None fetches nothing.', 'igsyntax-hiliter' ),
 				'choices'     => static::get_font_choices(),
+				'groups'      => static::get_font_groups(),
 			],
 			'toolbar'           => [
 				'type'        => 'toggle',
@@ -320,6 +321,54 @@ class Admin extends Base {
 		);
 
 	}    //end get_font_choices()
+
+	/**
+	 * Method to get how the font dropdown is grouped.
+	 *
+	 * Fifteen families is more than a reader can hold in one list, and the question
+	 * they are actually asking is whether the font draws `=>` as one glyph or two. So
+	 * the dropdown is split on that, and `None` sits above both groups because it is
+	 * not a font.
+	 *
+	 * **This rides beside `choices` and does not replace it, which is the whole design
+	 * of the change.** `choices` is read as an allowlist in `validate_option_value()`
+	 * and again in `save_option()`, both `isset( $choices[ $value ] )`; nesting it by
+	 * group would fail both closed and would answer 400 on every font save. Two more
+	 * readers would break more quietly still — `render_page()` falls back to the
+	 * default when a stored value is not a key of `choices`, so a site running Fira
+	 * Code would be shown `None` while the database held Fira Code, and
+	 * `get_font_data()` walks `array_keys( get_font_choices() )`, so the preview would
+	 * stop repainting. A structure read in five places is not a display structure,
+	 * whatever it looks like where it is declared.
+	 *
+	 * The order inside each group is the order of `choices`, which is sorted by title,
+	 * so the two lists agree by construction rather than by being sorted twice.
+	 *
+	 * @return array Group label to a numerically indexed list of font slugs.
+	 */
+	public static function get_font_groups(): array {
+
+		$groups = [
+			__( 'With Ligature', 'igsyntax-hiliter' )    => [],
+			__( 'Without Ligature', 'igsyntax-hiliter' ) => [],
+		];
+
+		$with    = array_key_first( $groups );
+		$without = array_key_last( $groups );
+
+		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
+
+			if ( Fonts::FONT_NONE === $slug ) {
+				continue;    //not a font, and it belongs above both groups
+			}
+
+			$groups[ Fonts::has_ligatures( $slug ) ? $with : $without ][] = $slug;
+
+		}
+
+		return $groups;
+
+	}    //end get_font_groups()
 
 	/**
 	 * Method to get what the preview needs in order to paint each font.
@@ -618,7 +667,7 @@ class Admin extends Base {
 	 * The snippet itself is source code and is deliberately not translated. It is
 	 * chosen to put a comment, a string, a keyword, a number and a function name in
 	 * front of the reader, because those are what a theme colours differently — and
-	 * `=>`, `&&`, `===` and `->`, because those are what the three fonts carrying code
+	 * `=>`, `&&`, `===` and `->`, because those are what the four fonts carrying code
 	 * ligatures draw differently from every other font on the list.
 	 *
 	 * **The box scrolls in both directions and that is expected.** The snippet is

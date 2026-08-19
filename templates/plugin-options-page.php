@@ -78,8 +78,44 @@
 								title="<?php echo esc_attr( $setting['description'] ); ?>"
 								aria-describedby="<?php echo esc_attr( $setting['name'] ); ?>-description"
 							>
-								<?php foreach ( $setting['choices'] as $choice_value => $choice_label ) : ?>
-									<option value="<?php echo esc_attr( $choice_value ); ?>" <?php selected( $setting['value'], $choice_value ); ?>><?php echo esc_html( $choice_label ); ?></option>
+								<?php
+								/*
+								 * A setting may carry a `groups` key beside its `choices`, and the font
+								 * setting does. `choices` stays a flat allowlist because that is what the
+								 * REST route checks a saved value against; the grouping rides beside it and
+								 * is a fact about this screen alone, which is why it is assembled here and
+								 * not baked into the list.
+								 *
+								 * Anything a group does not claim is rendered first and ungrouped — that is
+								 * how `None` ends up above both groups rather than inside one.
+								 */
+								$igsh_option_groups = [ '' => array_keys( $setting['choices'] ) ];
+
+								if ( ! empty( $setting['groups'] ) ) {
+
+									$igsh_grouped = array_merge( [], ...array_values( $setting['groups'] ) );
+
+									$igsh_option_groups = [ '' => array_values( array_diff( array_keys( $setting['choices'] ), $igsh_grouped ) ) ];
+
+									foreach ( $setting['groups'] as $igsh_group_label => $igsh_group_slugs ) {
+										$igsh_option_groups[ $igsh_group_label ] = $igsh_group_slugs;
+									}
+								}
+								?>
+								<?php foreach ( $igsh_option_groups as $igsh_group_label => $igsh_group_slugs ) : ?>
+
+									<?php if ( ! empty( $igsh_group_label ) ) : ?>
+										<optgroup label="<?php echo esc_attr( $igsh_group_label ); ?>">
+									<?php endif; ?>
+
+									<?php foreach ( $igsh_group_slugs as $choice_value ) : ?>
+										<option value="<?php echo esc_attr( $choice_value ); ?>" <?php selected( $setting['value'], $choice_value ); ?>><?php echo esc_html( $setting['choices'][ $choice_value ] ); ?></option>
+									<?php endforeach; ?>
+
+									<?php if ( ! empty( $igsh_group_label ) ) : ?>
+										</optgroup>
+									<?php endif; ?>
+
 								<?php endforeach; ?>
 							</select>
 

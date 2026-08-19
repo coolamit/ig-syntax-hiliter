@@ -38,18 +38,23 @@ class Font_Library_Test extends WP_UnitTestCase {
 	protected const string _FONT_HOST = 'fonts.bunny.net';
 
 	/**
-	 * The fonts whose family really does carry code ligatures.
+	 * The four families which are programming ligature faces.
 	 *
 	 * Read out of each family's `GSUB` table — `liga` and `calt` lookups — from the
-	 * files the service actually serves, and not from anybody's catalogue. Google Sans
-	 * Code is the trap: it has none, whatever its name suggests.
+	 * files the service actually serves, and not from anybody's catalogue. Two traps
+	 * live here. **Google Sans Code has none at all**, whatever its name suggests.
+	 * And **Azeret Mono is not on this list although it has lookups**: one `liga` and
+	 * two `calt`, against Victor Mono's 89, Fira Code's 100, Cascadia Code's 108 and
+	 * JetBrains Mono's 138. The measurement stands and the classification is a
+	 * judgment on top of it, which is why this constant is a list and not a filter.
 	 *
 	 * @var array
 	 */
 	protected const array _FONTS_WITH_LIGATURES = [
-		'azeret-mono',
+		'cascadia-code',
 		'fira-code',
 		'jetbrains-mono',
+		'victor-mono',
 	];
 
 	/**
@@ -287,7 +292,80 @@ class Font_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Ligatures are asked for by the three families which have them, and by nothing
+	 * Every offered font is in exactly one group, and `None` is in neither.
+	 *
+	 * The dropdown is split on the one question a reader picking a code font is
+	 * actually asking — does it draw `=>` as one glyph or two — and a font which fell
+	 * out of both groups would simply not be offered, while one in both would be
+	 * offered twice. Neither shows up anywhere else: the grouping is a display
+	 * structure, `choices` stays the flat allowlist storage is checked against, and
+	 * every other case in this file is about `choices`.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_puts_every_offered_font_in_exactly_one_group(): void {
+
+		$groups = Admin::get_font_groups();
+
+		$this->assertCount( 2, $groups, 'With Ligature and Without Ligature, and nothing else.' );
+
+		$listed = array_merge( [], ...array_values( $groups ) );
+
+		$this->assertNotContains( Fonts::FONT_NONE, $listed, 'None is not a font and sits above both groups.' );
+
+		$this->assertSame(
+			count( $listed ),
+			count( array_unique( $listed ) ),
+			'A font in both groups would be offered twice.'
+		);
+
+		$offered = array_keys( Fonts::get_fonts() );
+
+		sort( $offered );
+		sort( $listed );
+
+		$this->assertSame( $offered, $listed, 'The groups between them hold exactly the fonts the plugin offers.' );
+
+	}
+
+	/**
+	 * Each group is in order by name, the same order the flat list is in.
+	 *
+	 * This is what is left of the single flat sort once the list is grouped: the
+	 * dropdown no longer reads as one sorted run, and each group has to earn that
+	 * on its own.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_sorts_each_font_group_by_name(): void {
+
+		$choices = Admin::get_font_choices();
+
+		foreach ( Admin::get_font_groups() as $label => $slugs ) {
+
+			$names = array_map(
+				static fn ( string $slug ): string => $choices[ $slug ],
+				$slugs
+			);
+
+			$this->assertNotEmpty( $names, sprintf( 'The %s group offers something.', $label ) );
+
+			$sorted = $names;
+
+			usort( $sorted, 'strnatcasecmp' );
+
+			$this->assertSame( $sorted, $names, sprintf( 'The %s group is in order by name.', $label ) );
+
+		}
+
+	}
+
+	/**
+	 * Ligatures are asked for by the four families which have them, and by nothing
 	 * else.
 	 *
 	 * A declaration on a family with no such lookups does nothing at all, which is
@@ -328,7 +406,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * exactly what happened: `letter-spacing: 0.013rem` on a theme's `.entry-content`
 	 * meant the settings preview ligated and the published post did not.
 	 *
-	 * The other half matters as much. A site running one of the seven fonts without
+	 * The other half matters as much. A site running one of the eleven fonts without
 	 * ligatures, or no font at all, keeps whatever letter spacing its theme asks for —
 	 * this plugin has no business changing how a theme sets type where nothing of ours
 	 * depends on it.
@@ -436,15 +514,20 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		$weights = [
 			'azeret-mono'       => 300,
+			'cascadia-code'     => 300,
 			'fira-code'         => 400,
 			'fira-mono'         => 400,
 			'google-sans-code'  => 400,
+			'ibm-plex-mono'     => 400,
+			'inconsolata'       => 400,
 			'jetbrains-mono'    => 400,
 			'm-plus-code-latin' => 400,
 			'nova-mono'         => 400,
 			'roboto-mono'       => 400,
 			'source-code-pro'   => 400,
+			'space-mono'        => 400,
 			'ubuntu-mono'       => 400,
+			'victor-mono'       => 400,
 		];
 
 		$declared = [];

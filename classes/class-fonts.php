@@ -84,11 +84,15 @@ class Fonts {
 	 *   have without complaining, so this can never fail a request — but a font asked
 	 *   for at a weight it does not have would be synthesised by the browser, which is
 	 *   why each one is the weight its own family really ships.
-	 * - `ligatures` says the family's `GSUB` table genuinely carries `liga` or `calt`
-	 *   lookups. Only three of the ten do. A browser may switch contextual alternates
-	 *   off for a face it treats as fixed pitch, so the fonts which have them ask for
-	 *   them by name; the rest say nothing, because a declaration which does nothing
-	 *   reads as though it does.
+	 * - `ligatures` says this is a programming ligature face. Four of the fifteen are.
+	 *   It is not simply "the `GSUB` carries a `liga` or `calt` lookup": Azeret Mono
+	 *   carries one `liga` lookup and two `calt`, against Victor Mono's 89, Fira Code's
+	 *   100, Cascadia Code's 108 and JetBrains Mono's 138, and grouping three lookups
+	 *   with a hundred and thirty-eight oversells it to somebody choosing a font to
+	 *   read code in. A browser may switch contextual alternates off for a face it
+	 *   treats as fixed pitch, so the four which have them ask for them by name; the
+	 *   rest say nothing, because a declaration which does nothing reads as though it
+	 *   does.
 	 *
 	 * @return array Font slug to title, weight and whether it carries code ligatures.
 	 */
@@ -97,6 +101,11 @@ class Fonts {
 		return [
 			'azeret-mono'       => [
 				'title'     => 'Azeret Mono',
+				'weight'    => 300,
+				'ligatures' => false,    //its GSUB has one liga lookup and two calt; that is not a programming ligature face
+			],
+			'cascadia-code'     => [
+				'title'     => 'Cascadia Code',
 				'weight'    => 300,
 				'ligatures' => true,
 			],
@@ -114,6 +123,16 @@ class Fonts {
 				'title'     => 'Google Sans Code',
 				'weight'    => 400,
 				'ligatures' => false,    //the name says otherwise; its GSUB has ccmp, locl and ss01 and nothing else
+			],
+			'ibm-plex-mono'     => [
+				'title'     => 'IBM Plex Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
+			'inconsolata'       => [
+				'title'     => 'Inconsolata',
+				'weight'    => 400,
+				'ligatures' => false,
 			],
 			'jetbrains-mono'    => [
 				'title'     => 'JetBrains Mono',
@@ -140,10 +159,20 @@ class Fonts {
 				'weight'    => 400,
 				'ligatures' => false,
 			],
+			'space-mono'        => [
+				'title'     => 'Space Mono',
+				'weight'    => 400,
+				'ligatures' => false,
+			],
 			'ubuntu-mono'       => [
 				'title'     => 'Ubuntu Mono',
 				'weight'    => 400,
 				'ligatures' => false,
+			],
+			'victor-mono'       => [
+				'title'     => 'Victor Mono',
+				'weight'    => 400,
+				'ligatures' => true,
 			],
 		];
 
@@ -165,6 +194,22 @@ class Fonts {
 		);
 
 	}    //end get_fonts()
+
+	/**
+	 * Method to ask whether a font is a programming ligature face.
+	 *
+	 * The one reader outside this class is the settings screen, which groups the
+	 * dropdown by it — see `Admin::get_font_groups()`. It is asked here rather than
+	 * read off the map, because what "has ligatures" means is this class's decision
+	 * and the map is protected precisely so that it stays one.
+	 *
+	 * @param string $slug Font slug.
+	 *
+	 * @return bool FALSE for a font this plugin does not offer, which has no ligatures either.
+	 */
+	public static function has_ligatures( string $slug ): bool {
+		return (bool) ( static::_get_font_titles()[ $slug ]['ligatures'] ?? false );
+	}    //end has_ligatures()
 
 	/**
 	 * Method to get the stylesheet URL for a font.
@@ -239,7 +284,7 @@ class Fonts {
 	 * its article text — `letter-spacing: 0.013rem` on `.entry-content` is a real
 	 * example — reaches inside the code box and silently switches off the ligatures a
 	 * site owner chose the font for. So a ligature font zeroes it and nothing else
-	 * does: a site running one of the other seven, or no font at all, keeps whatever
+	 * does: a site running one of the other eleven, or no font at all, keeps whatever
 	 * its theme asks for.
 	 *
 	 * @param string $slug Font slug.
