@@ -103,7 +103,6 @@ class Renderer {
 		}
 
 		$attributes = [
-			'id'    => sprintf( '%s%d', static::ID_PREFIX, $this->_counter ),
 			'class' => implode( ' ', $classes ),
 		];
 
@@ -144,27 +143,49 @@ class Renderer {
 			static::escape_verbatim( $snippet->code )
 		);
 
+		/*
+		 * The file label sits above the box rather than inside it. It used to be a
+		 * toolbar item, which meant it was invisible until the reader hovered and sat
+		 * in the corner the copy button wanted. Inside the box there is nowhere for it
+		 * to go either: the line numbers plugin reserves the left gutter and the line
+		 * highlight plugin puts its own badge in the top left. Both measure the `pre`
+		 * alone, so a sibling in front of it moves neither.
+		 *
+		 * **The label is what is conditional. The container is not.** Whether a box
+		 * shows a label is a question about this snippet; whether a box has a container
+		 * is a question about what a code box *is*, and the two were tangled until 6.0
+		 * — a snippet with no label got no wrapper, so the box's own identity had
+		 * nowhere to live but the `pre`, and the id went there beside the classes Prism
+		 * reads. `frontend-chrome.scss` then had to select `pre[id^="ig-sh-"]` to find
+		 * a code box at all, which made the plugin's no-wrap guarantee and its whole
+		 * font feature depend on an id that a labelled snippet and an unlabelled one
+		 * happened to share. The container carries the id now and the stylesheet keys
+		 * off `.igsh-code-box`, so neither depends on the other any more.
+		 */
 		$label = wp_strip_all_tags( $snippet->file );
+		$file  = '';
 
-		if ( empty( $label ) ) {
-			return $markup;
+		if ( ! empty( $label ) ) {
+
+			$shortened = static::shorten_file_label( $label );
+
+			$file = sprintf(
+				'<span class="igsh-code-box__file"%1$s>%2$s</span>',
+				static::_build_label_title( $label, $shortened ),
+				static::escape_verbatim( $shortened )
+			);
+
 		}
 
 		/*
-		 * The file label sits above the box rather than inside it, and only a snippet
-		 * which has one is wrapped at all — every other snippet's markup is what it
-		 * always was. It used to be a toolbar item, which meant it was invisible until
-		 * the reader hovered and sat in the corner the copy button wanted. Inside the
-		 * box there is nowhere for it to go either: the line numbers plugin reserves
-		 * the left gutter and the line highlight plugin puts its own badge in the top
-		 * left. Both measure the `pre` alone, so a sibling in front of it moves neither.
+		 * `class` is written before `id` deliberately. Nothing in the plugin depends on
+		 * it, but a reader scanning the page sees what the element *is* before it sees
+		 * which one it is, and the ids are per request and carry no meaning of their own.
 		 */
-		$shortened = static::shorten_file_label( $label );
-
 		return sprintf(
-			'<div class="igsh-code-box"><span class="igsh-code-box__file"%1$s>%2$s</span>%3$s</div>',
-			static::_build_label_title( $label, $shortened ),
-			static::escape_verbatim( $shortened ),
+			'<div class="igsh-code-box" id="%1$s">%2$s%3$s</div>',
+			esc_attr( sprintf( '%s%d', static::ID_PREFIX, $this->_counter ) ),
+			$file,
 			$markup
 		);
 

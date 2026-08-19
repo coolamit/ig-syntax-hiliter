@@ -242,6 +242,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 		$output = $this->_filter( 'comment_text', "before [php]\n\$a = 1;\n[/php] after" );
 
 		$this->assertStringNotContainsString( '<pre', $output );
+		$this->assertStringNotContainsString( 'igsh-code-box', $output );
 		$this->assertStringNotContainsString( '$a = 1;', $output );
 		$this->assertStringNotContainsString( '[php]', $output );
 		$this->assertStringContainsString( 'before', $output );
@@ -263,6 +264,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 			$output = $this->_filter( $filter, 'before [php]$secret = 1;[/php] after' );
 
 			$this->assertStringNotContainsString( '<pre', $output, $filter );
+			$this->assertStringNotContainsString( 'igsh-code-box', $output, $filter );
 			$this->assertStringNotContainsString( '$secret', $output, $filter );
 			$this->assertStringNotContainsString( '[php]', $output, $filter );
 			$this->assertStringContainsString( 'before', $output, $filter );
@@ -369,6 +371,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 		$excerpt = get_the_excerpt( $post_id );
 
 		$this->assertStringNotContainsString( '<pre', $excerpt, 'A code box was rendered into the excerpt.' );
+		$this->assertStringNotContainsString( 'igsh-code-box', $excerpt, 'A code box container was rendered into the excerpt.' );
 		$this->assertStringNotContainsString( 'escaped-leak-marker', $excerpt, 'The code reached the excerpt as prose.' );
 		$this->assertDoesNotMatchRegularExpression( '#\[/?php#', $excerpt, 'A piece of the shortcode reached the excerpt.' );
 		$this->assertStringContainsString( 'Outro paragraph.', $excerpt, 'Prose past the escape was lost.' );

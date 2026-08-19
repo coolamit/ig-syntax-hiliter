@@ -170,6 +170,10 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 		$output = $this->_filter( 'the_content', 'before[php][/php]after' );
 
 		$this->assertStringNotContainsString( '<pre ', $output );
+
+		// Nothing at all, container included - a wrapper around no box is still a box on the page.
+		$this->assertStringNotContainsString( 'igsh-code-box', $output );
+
 		$this->assertStringNotContainsString( '[php]', $output );
 		$this->assertStringContainsString( 'before', $output );
 		$this->assertStringContainsString( 'after', $output );
@@ -262,6 +266,14 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	public function it_does_not_wrap_a_code_box_in_a_paragraph(): void {
 
 		$output = $this->_filter( 'the_content', "Some text:\n[php]echo 1;[/php]\nMore text" );
+
+		/*
+		 * The container is the element at top level now, so it is the one `wpautop`
+		 * could wrap. Checking the `pre` alone would keep passing while the box sat
+		 * inside a paragraph, which is the failure this case exists to catch.
+		 */
+		$this->assertStringNotContainsString( '<p><div class="igsh-code-box"', $output );
+		$this->assertStringNotContainsString( '<br />' . "\n" . '<div class="igsh-code-box"', $output );
 
 		$this->assertStringNotContainsString( '<p><pre', $output );
 		$this->assertStringNotContainsString( '<br />' . "\n" . '<pre', $output );

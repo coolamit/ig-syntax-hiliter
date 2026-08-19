@@ -24,8 +24,11 @@
  * the lines they mark. Both plugins measure the `pre` alone, so a sibling in
  * front of it moves neither.
  *
- * Only a snippet which was given a label is wrapped at all, so every other
- * code box is the bare `pre` it always was.
+ * Every code box is wrapped, whether it was given a label or not. Only the
+ * label span is conditional: a container is what a code box *is*, and whether
+ * it shows a label is a fact about one snippet. Before 6.0 the two were
+ * tangled — an unlabelled snippet got no wrapper, which is why the rules
+ * further down used to have to find a code box by the id on its `pre`.
  */
 
 /*
@@ -103,10 +106,21 @@ pre[class*="language-"] > code.language-none {
  *
  * `[class*="language-"]` is on the selector to take it to 0-2-1, past every
  * theme and past a `.wrap pre` of a site's own whatever order they load in.
- * It is not a trick: the renderer writes the id and that class onto this
- * very element.
+ * It is not a trick: the renderer writes that class onto this very element,
+ * and `.igsh-code-box` onto the container it always emits around it.
+ *
+ * **0-2-1 is preserved rather than merely sufficient.** This rule used to read
+ * `pre[id^="ig-sh-"][class*="language-"]`, which is the same weight, so moving
+ * the id onto the container changed which element is matched and nothing about
+ * where this lands in the cascade. Keying off the container's id instead —
+ * `div[id^="ig-sh-"] pre[…]` — would have been 0-2-2 and would have started
+ * winning fights this rule is meant to lose.
+ *
+ * **Descendant, never child.** The toolbar plugin wraps each `pre` in a
+ * `.code-toolbar` div at runtime, so `.igsh-code-box > pre` would match until
+ * somebody switched the toolbar setting on.
  */
-pre[id^="ig-sh-"][class*="language-"] {
+.igsh-code-box pre[class*="language-"] {
 	position: relative;
 	overflow: auto;
 	max-width: 100%;
@@ -115,7 +129,7 @@ pre[id^="ig-sh-"][class*="language-"] {
 	word-wrap: normal;
 }
 
-pre[id^="ig-sh-"] > code {
+.igsh-code-box pre > code {
 	display: block;
 	white-space: pre;
 	word-wrap: normal;
@@ -139,8 +153,8 @@ pre[id^="ig-sh-"] > code {
  * because a non-zero one suppresses ligatures outright and a theme setting it
  * on its article text is enough to do that.
  */
-pre[id^="ig-sh-"] > code,
-pre[id^="ig-sh-"] > code * {
+.igsh-code-box pre > code,
+.igsh-code-box pre > code * {
 	font-family: var(--igsh-code-font, #{$igsh-code-font});
 	font-variant-ligatures: var(--igsh-code-ligatures, inherit);
 	letter-spacing: var(--igsh-code-letter-spacing, inherit);

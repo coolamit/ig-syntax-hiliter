@@ -353,6 +353,7 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '$secret', $excerpt );
 		$this->assertStringNotContainsString( '[php]', $excerpt );
 		$this->assertStringNotContainsString( '<pre', $excerpt );
+		$this->assertStringNotContainsString( 'igsh-code-box', $excerpt );
 
 	}
 

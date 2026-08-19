@@ -68,6 +68,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 		$this->assertFalse( Asset_Manager::get_instance()->has_snippets() );
 		$this->assertSame( [], $this->_plugin_asset_handles() );
 		$this->assertStringNotContainsString( '<pre', $output );
+		$this->assertStringNotContainsString( 'igsh-code-box', $output );
 
 	}
 
@@ -427,9 +428,21 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
 
 		$this->assertMatchesRegularExpression(
-			'~pre\[id\^=["\']?ig-sh-["\']?\]\[class\*=[^\]]+\][^{}]*\{[^}]*white-space:\s*pre[;}]~',
+			'~\.igsh-code-box\s+pre\[class\*=[^\]]+\][^{}]*\{[^}]*white-space:\s*pre[;}]~',
 			$css,
 			'The pre carries no white-space of its own, so a wrapping site stylesheet wins.'
+		);
+
+		/*
+		 * The container is what the rule finds the box by, and a descendant combinator
+		 * is what reaches it: the toolbar plugin wraps each `pre` in a `.code-toolbar`
+		 * div at runtime, so a child combinator would stop matching the moment the
+		 * toolbar setting is on.
+		 */
+		$this->assertStringNotContainsString(
+			'.igsh-code-box>pre',
+			$css,
+			'A child combinator would miss every box once the toolbar wraps the pre.'
 		);
 
 	}

@@ -142,7 +142,8 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * @return string
 	 */
 	protected static function _normalize( string $markup ): string {
-		return trim( (string) preg_replace( '/ id="ig-sh-\d+"/', ' id="ig-sh-N"', $markup ) );
+		// Not anchored on a leading space, so it does not depend on where `id` sits among the attributes.
+		return trim( (string) preg_replace( '/id="ig-sh-\d+"/', 'id="ig-sh-N"', $markup ) );
 	}
 
 	/**

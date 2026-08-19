@@ -99,8 +99,8 @@ class Renderer_Test extends TestCase {
 		);
 
 		$this->assertSame(
-			'<div class="igsh-code-box"><span class="igsh-code-box__file">index.php</span>'
-			. '<pre id="ig-sh-1" class="language-php line-numbers" data-start="5" data-line-offset="4" data-line="2,4-6" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>'
+			'<div class="igsh-code-box" id="ig-sh-1"><span class="igsh-code-box__file">index.php</span>'
+			. '<pre class="language-php line-numbers" data-start="5" data-line-offset="4" data-line="2,4-6" data-no-optimize="1" data-cfasync="false"><code class="language-php">echo 1;</code></pre>'
 			. '</div>',
 			$markup
 		);
@@ -108,23 +108,26 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * A snippet with no file label is the bare code box it has always been.
+	 * A snippet with no file label still gets its container, and no label span.
 	 *
-	 * The wrapper exists to carry the label, so a snippet without one must not gain
-	 * an element: every theme, and every site's own CSS, selects on what was there
-	 * before.
+	 * The container is what a code box *is* and does not depend on this snippet
+	 * having been given a label; the span does. Until 6.0 the two were the same
+	 * decision, which left an unlabelled box with nowhere to carry its own id and
+	 * made `frontend-chrome.scss` find a code box by the id on its `pre`.
 	 *
 	 * @test
 	 *
 	 * @return void
 	 */
-	public function it_does_not_wrap_a_snippet_without_a_file_label(): void {
+	public function it_wraps_a_snippet_without_a_file_label_and_writes_no_label_span(): void {
 
 		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php' ) );
 
-		$this->assertStringStartsWith( '<pre ', $markup );
-		$this->assertStringEndsWith( '</pre>', $markup );
-		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
+		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $markup );
+		$this->assertStringEndsWith( '</pre></div>', $markup );
+
+		// The container is unconditional; what it holds is not.
+		$this->assertStringNotContainsString( 'igsh-code-box__file', $markup );
 
 	}
 
@@ -143,7 +146,10 @@ class Renderer_Test extends TestCase {
 		$this->assertStringNotContainsString( 'data-start', $markup );
 		$this->assertStringNotContainsString( 'data-line=', $markup );
 		$this->assertStringNotContainsString( 'data-line-offset', $markup );
-		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
+
+		// The id belongs to the container, so the `pre` carries none at all.
+		$this->assertSame( 1, preg_match( '#<pre class="language-php"[^>]*>#', $markup ) );
+		$this->assertStringNotContainsString( '<pre id=', $markup );
 
 		// The optimizer opt outs are not optional.
 		$this->assertStringContainsString( 'data-no-optimize="1"', $markup );
@@ -167,10 +173,11 @@ class Renderer_Test extends TestCase {
 		$code   = "<?php\n\$x = '<script src=\"http://example.com/x.js\"></script>';\n// A & B\n";  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test data, not a script the plugin loads.
 		$markup = $this->renderer->render_snippet( new Snippet( $code, 'php' ) );
 
-		$expected = '<pre id="ig-sh-1" class="language-php line-numbers" data-no-optimize="1" data-cfasync="false">'
+		$expected = '<div class="igsh-code-box" id="ig-sh-1">'
+			. '<pre class="language-php line-numbers" data-no-optimize="1" data-cfasync="false">'
 			. '<code class="language-php">'
 			. "&lt;?php\n\$x = &#039;&lt;script src=&quot;http://example.com/x.js&quot;&gt;&lt;/script&gt;&#039;;\n// A &amp; B\n"
-			. '</code></pre>';
+			. '</code></pre></div>';
 
 		$this->assertSame( $expected, $markup );
 
@@ -243,7 +250,7 @@ class Renderer_Test extends TestCase {
 
 			$this->assertSame(
 				1,
-				preg_match( '#<code[^>]*>(.*)</code></pre>$#s', $markup, $matches ),
+				preg_match( '#<code[^>]*>(.*)</code></pre></div>$#s', $markup, $matches ),
 				sprintf( 'The %s path rendered no code element.', $path )
 			);
 
@@ -385,9 +392,18 @@ class Renderer_Test extends TestCase {
 		$second = $this->renderer->render_snippet( $snippet );
 		$third  = $this->renderer->render_snippet( new Snippet( 'echo 2;', 'php' ) );
 
-		$this->assertStringContainsString( 'id="ig-sh-1"', $first );
-		$this->assertStringContainsString( 'id="ig-sh-2"', $second );
-		$this->assertStringContainsString( 'id="ig-sh-3"', $third );
+		/*
+		 * Anchored on the container. `assertStringContainsString( 'id="ig-sh-1"' )`
+		 * passes whichever element carries the id, so it would have gone on passing
+		 * silently when the id moved off the `pre` — and this is the only case which
+		 * says where it lives.
+		 */
+		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $first );
+		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-2">', $second );
+		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-3">', $third );
+
+		// And nowhere else: the `pre` has no id of its own.
+		$this->assertStringNotContainsString( '<pre id=', $first );
 
 	}
 
@@ -452,14 +468,14 @@ class Renderer_Test extends TestCase {
 
 	/**
 	 * A label which is nothing but markup leaves nothing to label the box with, so
-	 * the box is the bare one a snippet without a label has always had. An empty
-	 * element would be a wrapper and a gap above every such snippet.
+	 * no span is written — an empty one would draw a gap above the box. The
+	 * container is still there, because it does not depend on the label.
 	 *
 	 * @test
 	 *
 	 * @return void
 	 */
-	public function it_leaves_the_box_bare_for_a_file_label_which_is_only_markup(): void {
+	public function it_writes_no_label_span_for_a_file_label_which_is_only_markup(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -471,8 +487,10 @@ class Renderer_Test extends TestCase {
 			)
 		);
 
-		$this->assertStringStartsWith( '<pre ', $markup );
-		$this->assertStringNotContainsString( 'igsh-code-box', $markup );
+		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $markup );
+
+		// Stripped to nothing, so there is no span - but the container is not the span.
+		$this->assertStringNotContainsString( 'igsh-code-box__file', $markup );
 		$this->assertStringNotContainsString( 'alert(1)', $markup );
 
 	}

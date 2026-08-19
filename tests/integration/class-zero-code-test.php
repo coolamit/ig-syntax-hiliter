@@ -220,17 +220,20 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 */
 	public function it_still_renders_nothing_for_a_genuinely_empty_snippet(): void {
 
-		$this->assertStringNotContainsString(
-			'<pre ',
-			$this->_filter( 'the_content', '[php][/php]' ),
-			'An empty shortcode rendered a code box.'
-		);
+		$shortcode = $this->_filter( 'the_content', '[php][/php]' );
+		$block     = $this->_filter( 'the_content', static::_block( [ 'code' => '' ] ) );
 
-		$this->assertStringNotContainsString(
-			'<pre ',
-			$this->_filter( 'the_content', static::_block( [ 'code' => '' ] ) ),
-			'An empty block rendered a code box.'
-		);
+		$this->assertStringNotContainsString( '<pre ', $shortcode, 'An empty shortcode rendered a code box.' );
+		$this->assertStringNotContainsString( '<pre ', $block, 'An empty block rendered a code box.' );
+
+		/*
+		 * The container as well, and not as belt and braces. Since 6.0 the wrapper is
+		 * emitted for every box rather than only a labelled one, so a guard that let an
+		 * empty snippet through would put an empty container on the page and the two
+		 * assertions above would not see it.
+		 */
+		$this->assertStringNotContainsString( 'igsh-code-box', $shortcode, 'An empty shortcode rendered a container.' );
+		$this->assertStringNotContainsString( 'igsh-code-box', $block, 'An empty block rendered a container.' );
 
 	}
 
