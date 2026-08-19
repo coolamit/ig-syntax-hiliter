@@ -65,6 +65,14 @@ class Validate {
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //show line numbers in code by default
 		],
+		'match_braces'      => [
+			'allowed' => [ 'yes', 'no' ],
+			'default' => 'yes',    //point out a bracket's partner on hover by default, since nothing shows until a reader hovers
+		],
+		'rainbow_braces'    => [
+			'allowed' => [ 'yes', 'no' ],
+			'default' => 'no',    //don't colour brackets by nesting depth by default, since that repaints every box on the site
+		],
 		'hilite_comments'   => [
 			'allowed' => [ 'yes', 'no' ],
 			'default' => 'yes',    //hilite code posted in comments by default

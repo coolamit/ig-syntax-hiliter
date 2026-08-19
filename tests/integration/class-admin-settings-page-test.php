@@ -50,6 +50,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		'ig-syntax-hiliter-show-language',
 		'ig-syntax-hiliter-copy-to-clipboard',
 		'ig-syntax-hiliter-line-numbers',
+		'ig-syntax-hiliter-match-braces',
 		'ig-syntax-hiliter-setup',
 	];
 

@@ -156,7 +156,7 @@ class Admin extends Base {
 	 * Built once per request. `register_rest_routes()` reads it for the route's `enum`
 	 * and so pays for it on every `rest_api_init` the site serves — the editor's
 	 * requests included — and a single `POST /option` reached it four times. Each
-	 * build is sixteen `__()` calls and both choice lists.
+	 * build is twenty `__()` calls and both choice lists.
 	 *
 	 * @return array Setting name to its type, label, description and permitted values.
 	 */
@@ -200,6 +200,18 @@ class Admin extends Base {
 				'type'        => 'toggle',
 				'label'       => __( 'Show line numbers', 'igsyntax-hiliter' ),
 				'description' => __( 'The default for every code box. A single snippet can override it with the gutter attribute or the block setting.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'match_braces'      => [
+				'type'        => 'toggle',
+				'label'       => __( 'Point out matching brackets', 'igsyntax-hiliter' ),
+				'description' => __( 'Outlines the partner of a bracket, a brace or a parenthesis when a reader hovers over it, and keeps the pair outlined when they click it.', 'igsyntax-hiliter' ),
+				'choices'     => $yes_no,
+			],
+			'rainbow_braces'    => [
+				'type'        => 'toggle',
+				'label'       => __( 'Colour brackets by depth', 'igsyntax-hiliter' ),
+				'description' => __( 'Gives each level of nesting its own colour, so a bracket and its partner share one. Four of the bundled themes colour these themselves; everywhere else the colours are the ones this plugin ships.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'hilite_comments'   => [

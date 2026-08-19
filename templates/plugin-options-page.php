@@ -134,9 +134,18 @@
 	 * `$preview` is the plugin's own renderer's output — the same markup the front
 	 * end gets — so it is printed as it stands. The code inside it was escaped on its
 	 * way through the renderer, which is the one place snippet code is ever escaped.
+	 *
+	 * `match-braces` is on the container unconditionally, for the same reason
+	 * `Asset_Manager::enqueue_for_preview()` loads every engine plugin whatever the
+	 * settings say. That class is the only one the engine reads **once**, while it is
+	 * highlighting, so a box which did not carry it at load can never gain the brace
+	 * markup afterwards and the toggle beside it would do nothing. The three classes
+	 * which decide what is *shown* — the nesting colours and the two which switch the
+	 * hover and the click off — are read at paint time and at event time, so those
+	 * are the ones the script toggles.
 	 */
 	?>
-	<aside class="igsh-preview" id="igsh-preview" aria-labelledby="igsh-preview-heading">
+	<aside class="igsh-preview match-braces" id="igsh-preview" aria-labelledby="igsh-preview-heading">
 
 		<h2 class="igsh-preview__heading" id="igsh-preview-heading"><?php esc_html_e( 'Preview', 'igsyntax-hiliter' ); ?></h2>
 

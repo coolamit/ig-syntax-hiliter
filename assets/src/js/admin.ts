@@ -1032,6 +1032,27 @@
 			'yes' !== controlValue( 'copy_code' )
 		);
 
+		/*
+		 * `match-braces` itself is on the container from PHP and stays there: the
+		 * engine reads it once, while it is highlighting, so a box which did not
+		 * carry it at load can never gain the brace markup afterwards. These three
+		 * are read at paint time and at event time instead, which is what lets them
+		 * switch in front of the reader.
+		 *
+		 * The two `no-brace-*` classes are how the front end keeps the colours and
+		 * the interaction separate, and the preview has to say the same thing: the
+		 * plugin defaults both interactions on, and only those names turn them off.
+		 */
+		const matching = 'yes' === controlValue( 'match_braces' );
+
+		preview.classList.toggle(
+			'rainbow-braces',
+			'yes' === controlValue( 'rainbow_braces' )
+		);
+
+		preview.classList.toggle( 'no-brace-hover', ! matching );
+		preview.classList.toggle( 'no-brace-select', ! matching );
+
 		const box = preview.querySelector< HTMLElement >(
 			'pre[class*="language-"]'
 		);

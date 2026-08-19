@@ -36,6 +36,8 @@ class Default_Settings {
 		'toolbar'           => 'yes',
 		'copy_code'         => 'yes',
 		'show_line_numbers' => 'yes',
+		'match_braces'      => 'yes',
+		'rainbow_braces'    => 'no',
 		'hilite_comments'   => 'yes',
 		'gist_in_comments'  => 'no',
 		'gist_limit_height' => 'yes',

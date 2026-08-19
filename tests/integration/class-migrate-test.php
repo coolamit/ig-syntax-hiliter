@@ -115,6 +115,8 @@ class Migrate_Test extends WP_UnitTestCase {
 				'toolbar'           => 'no',      // carried
 				'copy_code'         => 'no',      // plain_text=no
 				'show_line_numbers' => 'no',      // carried
+				'match_braces'      => 'yes',     // new, defaults on
+				'rainbow_braces'    => 'no',      // new, defaults off
 				'hilite_comments'   => 'no',      // carried
 				'gist_in_comments'  => 'yes',     // carried
 				'gist_limit_height' => 'yes',     // new, defaults on

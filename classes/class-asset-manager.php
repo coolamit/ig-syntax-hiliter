@@ -246,7 +246,63 @@ class Asset_Manager {
 		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE );
 		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE_AGAIN );
 
+		add_filter( 'body_class', [ $this, 'get_body_classes' ] );
+
 	}    //end _register_hooks()
+
+	/**
+	 * Method to put the brace matching classes on the page.
+	 *
+	 * Prism's `match-braces` plugin settles whether it runs by walking up from the
+	 * `code` element looking for a class, so the answer can sit on `<body>` and no
+	 * code box has to carry anything. That is what keeps this out of `Renderer`,
+	 * which is the plugin's WordPress-free core and has no business reading a site
+	 * wide setting — and it hands a site owner a per post opt-out for nothing, since
+	 * the walk stops at the nearest `no-match-braces` ancestor.
+	 *
+	 * The classes go on whether or not the page has a snippet, because `body_class`
+	 * is answered in the head and nothing has rendered by then. A class naming a
+	 * script which was never loaded does nothing at all.
+	 *
+	 * **`match-braces` goes on when either setting is on**, because it is the class
+	 * which makes the script do anything: the `brace-level-N` classes the rainbow
+	 * rules colour are added inside the same hook the class gates, so the colours
+	 * without it would be a setting which does nothing.
+	 *
+	 * **`no-brace-hover` and `no-brace-select` are what keep the two settings apart**
+	 * in that case. The plugin defaults both interactions on and turns them off by
+	 * exactly those two names, so without them switching the colours on would switch
+	 * the hover and the click on with them.
+	 *
+	 * @param mixed $classes Classes the body element has so far.
+	 *
+	 * @return mixed
+	 */
+	public function get_body_classes( mixed $classes ): mixed {
+
+		$classes = ( is_array( $classes ) ) ? $classes : [];
+
+		$matching = Shortcode_Handler::is_plugin_option_on( 'match_braces', 'yes' );
+		$rainbow  = Shortcode_Handler::is_plugin_option_on( 'rainbow_braces', 'no' );
+
+		if ( ! $matching && ! $rainbow ) {
+			return $classes;
+		}
+
+		$classes[] = 'match-braces';
+
+		if ( $rainbow ) {
+			$classes[] = 'rainbow-braces';
+		}
+
+		if ( ! $matching ) {
+			$classes[] = 'no-brace-hover';
+			$classes[] = 'no-brace-select';
+		}
+
+		return $classes;
+
+	}    //end get_body_classes()
 
 	/**
 	 * Method to signal that a snippet is present on the page.
@@ -325,10 +381,10 @@ class Asset_Manager {
 	 *
 	 * **Every plugin is enqueued, whatever the settings say.** The front end loads
 	 * only what its page needs, because a reader cannot change the settings from it.
-	 * The preview's whole purpose is that the toolbar, the copy button and the line
-	 * numbers can be switched on and off in front of the reader without a reload, so
-	 * all of them have to be on the page already; which of them is *shown* is decided
-	 * in the browser.
+	 * The preview's whole purpose is that the toolbar, the copy button, the line
+	 * numbers and the brace matching can be switched on and off in front of the
+	 * reader without a reload, so all of them have to be on the page already; which
+	 * of them is *shown* is decided in the browser.
 	 *
 	 * @param string $theme Slug of the theme to load, or the "no theme" value.
 	 * @param string $font  Slug of the font to load, or the "no font" value.
@@ -346,6 +402,7 @@ class Asset_Manager {
 		static::_enqueue_toolbar();
 		static::_enqueue_copy_button();
 		static::_enqueue_line_numbers();
+		static::_enqueue_match_braces();
 
 		$this->_enqueue_setup();
 
@@ -1068,6 +1125,17 @@ class Asset_Manager {
 			static::_enqueue_line_numbers();
 		}
 
+		/*
+		 * Either setting needs the script. The spans the rainbow colours are painted
+		 * on are the ones this script creates, so the stylesheet alone paints nothing.
+		 */
+		if (
+			Shortcode_Handler::is_plugin_option_on( 'match_braces', 'yes' )
+			|| Shortcode_Handler::is_plugin_option_on( 'rainbow_braces', 'no' )
+		) {
+			static::_enqueue_match_braces();
+		}
+
 		if ( $this->_needs_line_highlight ) {
 
 			wp_enqueue_style(
@@ -1173,6 +1241,39 @@ class Asset_Manager {
 		);
 
 	}    //end _enqueue_line_numbers()
+
+	/**
+	 * Method to enqueue the brace matching plugin.
+	 *
+	 * It carries its own stylesheet, which holds the outline drawn around a hovered
+	 * or selected pair and the twelve nesting colours. Four of the bundled themes
+	 * colour the nesting themselves and win wherever they are loaded, because they
+	 * say `.token.token.punctuation.brace-level-N` at 0-4-0 against this file's
+	 * 0-3-0 — deliberately, and the doubled class is upstream's own doing. The
+	 * `opacity` this file sets goes on applying, since a theme sets only the colour.
+	 *
+	 * @return void
+	 */
+	protected static function _enqueue_match_braces(): void {
+
+		$version = static::_get_version();
+
+		wp_enqueue_style(
+			static::_handle( 'match-braces' ),
+			static::_get_library_url( 'plugins/match-braces/prism-match-braces.min.css' ),
+			[],
+			$version
+		);
+
+		wp_enqueue_script(
+			static::_handle( 'match-braces' ),
+			static::_get_library_url( 'plugins/match-braces/prism-match-braces.min.js' ),
+			[ static::_handle( 'engine' ) ],
+			$version,
+			true
+		);
+
+	}    //end _enqueue_match_braces()
 
 	/**
 	 * Method to enqueue the plugin's own front end script.
