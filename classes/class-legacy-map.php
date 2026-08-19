@@ -171,7 +171,7 @@ class Legacy_Map {
 
 		$tags = static::_get_tag_alternation();
 
-		if ( '' === $tags ) {
+		if ( empty( $tags ) ) {
 			return $code;
 		}
 
@@ -220,7 +220,7 @@ class Legacy_Map {
 
 		$tags = static::_get_tag_alternation();
 
-		if ( '' === $tags ) {
+		if ( empty( $tags ) ) {
 			return $code;
 		}
 
@@ -272,7 +272,7 @@ class Legacy_Map {
 
 		$tags = static::get_tags();
 
-		if ( $tags === static::$_alternation_tags && '' !== static::$_alternation ) {
+		if ( $tags === static::$_alternation_tags && ! empty( static::$_alternation ) ) {
 			return static::$_alternation;
 		}
 

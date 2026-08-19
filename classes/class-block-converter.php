@@ -716,6 +716,9 @@ class Block_Converter {
 		 * which would show a reader nothing either and would leave noise behind in the
 		 * post content.
 		 */
+		//`'' ===` and not `empty()`, and this is the one where it matters most: `0` is code,
+		//`empty( '0' )` is TRUE, and this method dropping a block means the snippet leaves the
+		//post for good. The other two guards of this shape only fail to paint something
 		if ( '' === $code ) {
 			return '';
 		}
@@ -754,13 +757,13 @@ class Block_Converter {
 			Snippet::parse_line_ranges( $attributes['highlightLines'] ?? '' )
 		);
 
-		if ( '' !== $highlight ) {
+		if ( ! empty( $highlight ) ) {
 			$atts['highlight'] = $highlight;
 		}
 
 		$file = static::_sanitize_label( (string) ( $attributes['file'] ?? '' ) );
 
-		if ( '' !== $file ) {
+		if ( ! empty( $file ) ) {
 			$atts['file'] = $file;
 		}
 
@@ -807,7 +810,7 @@ class Block_Converter {
 		 * by an empty shortcode, which would show a reader nothing either and would leave
 		 * noise behind in the post content.
 		 */
-		if ( '' === $id ) {
+		if ( empty( $id ) ) {
 			return '';
 		}
 
@@ -967,7 +970,7 @@ class Block_Converter {
 
 		$raw = trim( $raw );
 
-		if ( '' === $raw ) {
+		if ( empty( $raw ) ) {
 			return [];    //a block with no attributes is still a block
 		}
 

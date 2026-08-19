@@ -135,7 +135,7 @@ trait Hook_Test_Helpers {
 
 			$this->assertNotEmpty(
 				$priorities,
-				( '' !== $message ) ? $message : sprintf( 'The callback is registered on %s.', $hook )
+				( ! empty( $message ) ) ? $message : sprintf( 'The callback is registered on %s.', $hook )
 			);
 
 			return;
@@ -145,7 +145,7 @@ trait Hook_Test_Helpers {
 		$this->assertContains(
 			$priority,
 			$priorities,
-			( '' !== $message ) ? $message : sprintf( 'The callback is registered on %1$s at priority %2$d.', $hook, $priority )
+			( ! empty( $message ) ) ? $message : sprintf( 'The callback is registered on %1$s at priority %2$d.', $hook, $priority )
 		);
 
 	}
@@ -167,7 +167,7 @@ trait Hook_Test_Helpers {
 		$this->assertSame(
 			[],
 			$this->_hooked_priorities( $hook, $callback ),
-			( '' !== $message ) ? $message : sprintf( 'The callback is not registered on %s.', $hook )
+			( ! empty( $message ) ) ? $message : sprintf( 'The callback is not registered on %s.', $hook )
 		);
 
 	}

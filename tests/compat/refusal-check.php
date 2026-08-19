@@ -161,7 +161,7 @@ function ig_syntax_hiliter_compat_wp_version( $fallback ) {
 
 	$from_environment = getenv( 'IGSH_COMPAT_WP_VERSION' );
 
-	if ( false !== $from_environment && '' !== $from_environment ) {
+	if ( false !== $from_environment && ! empty( $from_environment ) ) {
 		return $from_environment;
 	}
 

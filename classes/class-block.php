@@ -186,6 +186,8 @@ class Block {
 		);
 
 		// An empty snippet renders as nothing on the shortcode path; the two must agree.
+		// `'' ===` and not `empty()`, for the reason `Content_Protector::_render_entry()`
+		// gives: `0` is code, and `empty( '0' )` is TRUE.
 		if ( '' === trim( $snippet->code ) ) {
 			return '';
 		}
@@ -224,7 +226,7 @@ class Block {
 		$url        = $attributes['url'] ?? '';
 		$url        = ( is_scalar( $url ) ) ? trim( (string) $url ) : '';
 
-		if ( '' === $url ) {
+		if ( empty( $url ) ) {
 			return '';
 		}
 
@@ -274,7 +276,7 @@ class Block {
 
 		$handle = $block_type->editor_script_handles[0] ?? '';
 
-		if ( '' === $handle ) {
+		if ( empty( $handle ) ) {
 			return;
 		}
 
@@ -342,7 +344,7 @@ class Block {
 			$alias = strtolower( trim( (string) $alias ) );
 			$id    = strtolower( trim( (string) $id ) );
 
-			if ( '' === $alias ) {
+			if ( empty( $alias ) ) {
 				continue;
 			}
 

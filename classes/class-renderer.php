@@ -146,7 +146,7 @@ class Renderer {
 
 		$label = wp_strip_all_tags( $snippet->file );
 
-		if ( '' === $label ) {
+		if ( empty( $label ) ) {
 			return $markup;
 		}
 
@@ -255,7 +255,7 @@ class Renderer {
 		// own charset still decides how the bytes are read.
 		$escaped = _wp_specialchars( $text, ENT_QUOTES, false, true );
 
-		if ( '' !== $escaped || '' === $text ) {
+		if ( ! empty( $escaped ) || empty( $text ) ) {
 			return $escaped;
 		}
 
@@ -295,7 +295,7 @@ class Renderer {
 
 		$language = strtolower( trim( $language ) );
 
-		if ( '' === $language || Language_Registry::NO_LANGUAGE === $language ) {
+		if ( empty( $language ) || Language_Registry::NO_LANGUAGE === $language ) {
 			return Language_Registry::NO_LANGUAGE;
 		}
 

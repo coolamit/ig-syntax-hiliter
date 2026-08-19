@@ -411,6 +411,11 @@ class Shortcode_Handler {
 
 		$value = Option::get_instance()->get( $name );
 
+		//`'' ===` and not `empty()`, which is the rule everywhere else in this plugin.
+		//A stored `0` is a real value here and means *off* — `Validate::to_yesno()` exists to
+		//read the booleans versions up to 3.5 wrote — and `empty( '0' )` is TRUE, so an
+		//`empty()` would hand back the fallback before `to_yesno()` ever saw the value. For
+		//`hilite_comments` that fallback is `yes`, so a setting stored off would read as on
 		if ( ! is_string( $value ) || '' === trim( $value ) ) {
 			return $fallback;
 		}

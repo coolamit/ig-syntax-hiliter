@@ -262,7 +262,7 @@ class Asset_Manager {
 
 		$language_id = strtolower( trim( (string) $language_id ) );
 
-		if ( '' !== $language_id && Language_Registry::NO_LANGUAGE !== $language_id ) {
+		if ( ! empty( $language_id ) && Language_Registry::NO_LANGUAGE !== $language_id ) {
 			$this->_languages[ $language_id ] = $language_id;
 		}
 
@@ -799,7 +799,7 @@ class Asset_Manager {
 
 		$declarations = static::_get_font_declarations( $slug );
 
-		if ( '' === $declarations ) {
+		if ( empty( $declarations ) ) {
 			return '';
 		}
 

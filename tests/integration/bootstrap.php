@@ -24,7 +24,7 @@ if ( ! defined( 'IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR' ) ) {
  */
 $ig_syntax_hiliter_wp_phpunit_dir = (string) getenv( 'WP_PHPUNIT__DIR' );
 
-if ( '' === $ig_syntax_hiliter_wp_phpunit_dir ) {
+if ( empty( $ig_syntax_hiliter_wp_phpunit_dir ) ) {
 	$ig_syntax_hiliter_wp_phpunit_dir = IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/vendor/wp-phpunit/wp-phpunit';
 }
 

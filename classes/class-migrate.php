@@ -82,7 +82,7 @@ class Migrate {
 
 		$this->_db_version = $this->_get_last_version();
 
-		if ( '' !== $this->_db_version && version_compare( $this->_db_version, static::_normalize_version( $this->_get_plugin_version() ), '>=' ) ) {
+		if ( ! empty( $this->_db_version ) && version_compare( $this->_db_version, static::_normalize_version( $this->_get_plugin_version() ), '>=' ) ) {
 
 			$this->_maybe_rewrite_stored_version();
 
@@ -90,7 +90,7 @@ class Migrate {
 
 		}
 
-		if ( '' === $this->_db_version ) {
+		if ( empty( $this->_db_version ) ) {
 
 			$this->_initialize_on_fresh_install();
 
@@ -142,7 +142,7 @@ class Migrate {
 
 		$version = $this->_get_plugin_version();
 
-		if ( '' === $version || static::_normalize_version( $version ) !== $this->_db_version ) {
+		if ( empty( $version ) || static::_normalize_version( $version ) !== $this->_db_version ) {
 			return;    //some other version is stored, it is not this one's to rewrite
 		}
 
@@ -175,7 +175,7 @@ class Migrate {
 
 		$version = ( is_scalar( $version ) ) ? trim( (string) $version ) : '';
 
-		if ( '' === $version ) {
+		if ( empty( $version ) ) {
 			return '';
 		}
 
@@ -214,7 +214,7 @@ class Migrate {
 
 		$db_version = static::_normalize_version( get_option( Base::PLUGIN_ID . '-version', '' ) );
 
-		if ( '' === $db_version && $this->_is_updating_from_35() ) {
+		if ( empty( $db_version ) && $this->_is_updating_from_35() ) {
 			$db_version = '3.5.0';
 		}
 

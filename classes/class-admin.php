@@ -278,7 +278,7 @@ class Admin extends Base {
 
 			$file = Asset_Manager::get_theme_file( $slug );
 
-			$urls[ $slug ] = ( '' === $file ) ? '' : Helper::get_asset_url( $file );
+			$urls[ $slug ] = ( empty( $file ) ) ? '' : Helper::get_asset_url( $file );
 
 		}
 
@@ -854,7 +854,7 @@ PREVIEW;
 		$old_version = get_option( static::PLUGIN_ID . '-migrated-from', '' );
 		$old_version = ( is_scalar( $old_version ) ) ? trim( (string) $old_version ) : '';
 
-		if ( '' === $old_version ) {
+		if ( empty( $old_version ) ) {
 			return;
 		}
 

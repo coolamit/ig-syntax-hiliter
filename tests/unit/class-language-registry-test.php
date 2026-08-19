@@ -34,7 +34,7 @@ class Language_Registry_Test extends TestCase {
 	 */
 	protected function tearDown(): void {
 
-		if ( '' !== $this->temp_dir && is_dir( $this->temp_dir ) ) {
+		if ( ! empty( $this->temp_dir ) && is_dir( $this->temp_dir ) ) {
 
 			foreach ( (array) glob( $this->temp_dir . '/*' ) as $file ) {
 				unlink( (string) $file );

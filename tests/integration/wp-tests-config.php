@@ -28,7 +28,7 @@ declare( strict_types = 1 );
 function ig_syntax_hiliter_tests_env( string $name, string $fallback ): string {
 	$value = getenv( $name );
 
-	if ( false === $value || '' === trim( $value ) ) {
+	if ( false === $value || empty( trim( $value ) ) ) {
 		return $fallback;
 	}
 

@@ -51,7 +51,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 
 		Cache::create( self::KEY )->delete();
 
-		if ( '' !== $this->_registry_cache_key ) {
+		if ( ! empty( $this->_registry_cache_key ) ) {
 
 			Cache::create( $this->_registry_cache_key )->delete();
 

@@ -47,7 +47,7 @@ require_once $ig_syntax_hiliter_autoloader;
 function ig_syntax_hiliter_get_test_suite(): string {
 	$suite = (string) getenv( 'IG_SYNTAX_HILITER_TEST_SUITE' );
 
-	if ( '' !== $suite ) {
+	if ( ! empty( $suite ) ) {
 		return strtolower( trim( $suite ) );
 	}
 
@@ -86,7 +86,7 @@ switch ( $ig_syntax_hiliter_suite ) {
 			STDERR,
 			sprintf(
 				'The %s test tier needs its own bootstrap, so a suite must be named.%s',
-				( '' === $ig_syntax_hiliter_suite ) ? 'each' : sprintf( '"%s"', $ig_syntax_hiliter_suite ),
+				( empty( $ig_syntax_hiliter_suite ) ) ? 'each' : sprintf( '"%s"', $ig_syntax_hiliter_suite ),
 				PHP_EOL
 			)
 		);

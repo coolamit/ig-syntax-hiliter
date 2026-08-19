@@ -109,7 +109,7 @@ class Snippet {
 		$language = trim( $language );
 
 		$this->code              = $code;
-		$this->language          = ( '' === $language ) ? static::DEFAULT_LANGUAGE : $language;
+		$this->language          = ( empty( $language ) ) ? static::DEFAULT_LANGUAGE : $language;
 		$this->show_line_numbers = $show_line_numbers;
 		$this->first_line        = max( 1, $first_line );
 		$this->highlight_lines   = static::normalize_line_numbers( $highlight_lines );
@@ -135,8 +135,8 @@ class Snippet {
 		$atts = static::_normalize_atts( is_array( $atts ) ? $atts : [] );
 
 		$language = static::_get_att( $atts, 'language' );
-		$language = ( '' === $language ) ? static::_get_att( $atts, 'lang' ) : $language;
-		$language = ( '' === $language ) ? static::DEFAULT_LANGUAGE : $language;
+		$language = ( empty( $language ) ) ? static::_get_att( $atts, 'lang' ) : $language;
+		$language = ( empty( $language ) ) ? static::DEFAULT_LANGUAGE : $language;
 
 		$first_line = max(
 			1,
@@ -218,7 +218,7 @@ class Snippet {
 
 			$part = trim( (string) $part );
 
-			if ( '' === $part ) {
+			if ( empty( $part ) ) {
 				continue;
 			}
 

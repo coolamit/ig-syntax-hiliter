@@ -319,7 +319,7 @@ class Content_Protector {
 			return false;
 		}
 
-		return ( '' === $run['filter'] || doing_filter( $run['filter'] ) );
+		return ( empty( $run['filter'] ) || doing_filter( $run['filter'] ) );
 
 	}    //end is_protecting()
 
@@ -416,7 +416,7 @@ class Content_Protector {
 
 		$pattern = $this->_get_shortcode_pattern();
 
-		if ( '' === $pattern || ! str_contains( $content, '[' ) ) {
+		if ( empty( $pattern ) || ! str_contains( $content, '[' ) ) {
 			return $content;
 		}
 
@@ -796,6 +796,9 @@ class Content_Protector {
 			return $entry['html'];
 		}
 
+		//`'' ===` and not `empty()`: `0` is code. `empty( '0' )` is TRUE, so an `empty()`
+		//here reads a snippet whose whole content is the digit zero as an empty snippet and
+		//renders it as nothing. `Block::render()` carries the same guard for the same reason
 		if ( '' === trim( $entry['code'] ) ) {
 			return '';
 		}
@@ -881,7 +884,7 @@ class Content_Protector {
 	 */
 	protected function _get_salt(): string {
 
-		if ( '' === $this->_salt ) {
+		if ( empty( $this->_salt ) ) {
 			$this->_salt = wp_generate_password( 32, false, false );
 		}
 
@@ -902,7 +905,7 @@ class Content_Protector {
 
 		$tags = Legacy_Map::get_tags();
 
-		if ( $tags === $this->_tags && '' !== $this->_pattern ) {
+		if ( $tags === $this->_tags && ! empty( $this->_pattern ) ) {
 			return $this->_pattern;
 		}
 

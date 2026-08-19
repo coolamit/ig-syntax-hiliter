@@ -122,7 +122,7 @@ class Language_Registry {
 
 			$id = strtolower( trim( (string) $id ) );
 
-			if ( '' === $id || ! is_array( $language ) ) {
+			if ( empty( $id ) || ! is_array( $language ) ) {
 				continue;
 			}
 
@@ -137,7 +137,7 @@ class Language_Registry {
 			$alias = strtolower( trim( (string) $alias ) );
 			$id    = strtolower( trim( (string) $id ) );
 
-			if ( '' === $alias || ! isset( $this->_languages[ $id ] ) ) {
+			if ( empty( $alias ) || ! isset( $this->_languages[ $id ] ) ) {
 				continue;
 			}
 
@@ -286,7 +286,7 @@ class Language_Registry {
 			$id   = strtolower( trim( (string) $id ) );
 			$file = sprintf( 'prism-%s.min.js', $id );
 
-			if ( '' === $id || ! is_readable( sprintf( '%s/%s', $components_dir, $file ) ) ) {
+			if ( empty( $id ) || ! is_readable( sprintf( '%s/%s', $components_dir, $file ) ) ) {
 				continue;
 			}
 
@@ -309,7 +309,7 @@ class Language_Registry {
 
 				$alias = strtolower( trim( (string) $alias ) );
 
-				if ( '' === $alias ) {
+				if ( empty( $alias ) ) {
 					continue;
 				}
 
@@ -381,7 +381,7 @@ class Language_Registry {
 
 		$lang = strtolower( trim( $lang ) );
 
-		if ( '' === $lang ) {
+		if ( empty( $lang ) ) {
 			return null;
 		}
 

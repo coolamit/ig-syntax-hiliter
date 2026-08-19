@@ -299,7 +299,7 @@ class Renderer_Test extends TestCase {
 				sprintf( 'Language "%s" should have left the box styled.', $language )
 			);
 
-			if ( '' === $language || Language_Registry::NO_LANGUAGE === $language ) {
+			if ( empty( $language ) || Language_Registry::NO_LANGUAGE === $language ) {
 				continue;
 			}
 

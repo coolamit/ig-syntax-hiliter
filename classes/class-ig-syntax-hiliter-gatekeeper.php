@@ -184,7 +184,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 		$version = preg_replace( '/[^0-9.].*$/', '', trim( strval( $version ) ) );
 		$version = trim( strval( $version ), '.' );
 
-		if ( '' === $version ) {
+		if ( empty( $version ) ) {
 			return '0.0.0';
 		}
 

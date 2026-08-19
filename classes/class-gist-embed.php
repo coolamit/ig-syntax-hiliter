@@ -211,7 +211,7 @@ class Gist_Embed {
 
 		$id = static::resolve_id( $atts );
 
-		if ( '' === $id ) {
+		if ( empty( $id ) ) {
 			return '';
 		}
 
