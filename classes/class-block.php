@@ -73,9 +73,23 @@ class Block {
 	const PRIORITY_REGISTER = 11;
 
 	/**
-	 * Class constructor, which is where this class hooks itself up to WordPress.
+	 * Class constructor.
 	 */
 	protected function __construct() {
+
+		$this->_register_hooks();
+
+	}    //end __construct()
+
+	/**
+	 * Method to hook this class up to WordPress.
+	 *
+	 * The block registers on `init` at `PRIORITY_REGISTER`, which is one step behind
+	 * the priority the plugin itself boots on. The constant carries the reasoning.
+	 *
+	 * @return void
+	 */
+	protected function _register_hooks(): void {
 
 		add_action( 'init', [ $this, 'register_block' ], static::PRIORITY_REGISTER );
 
@@ -88,7 +102,7 @@ class Block {
 		 */
 		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_font' ] );
 
-	}    //end __construct()
+	}    //end _register_hooks()
 
 	/**
 	 * Method to put the chosen font on the block while it is being edited.

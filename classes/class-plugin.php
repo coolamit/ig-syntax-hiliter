@@ -15,10 +15,12 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  * Boots the plugin's services once the Gatekeeper has cleared the environment.
  *
  * Booting a service is the whole of what this class does. Each one hooks itself up
- * to WordPress from its own constructor, so building it is all that is asked of it
- * here and the singleton is the only guard any of them needs. They each carried a
- * `register_hooks()` and a `_hooked` flag before, which existed purely because the
- * caller was external and could call twice.
+ * to WordPress from its own constructor, which calls a `_register_hooks()` of its
+ * own, so building it is all that is asked of it here and the singleton is the only
+ * guard any of them needs. That method used to be a public `register_hooks()` this
+ * class called, with a `_hooked` flag beside it — the flag existed purely because
+ * the caller was external and could call twice, and being non-public is what makes
+ * it unnecessary.
  *
  * Nothing here is gated on `is_admin()`. A REST request is not an admin request,
  * so the settings and revert routes would never be registered; and `Admin` is the

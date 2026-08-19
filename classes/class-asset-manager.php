@@ -211,7 +211,16 @@ class Asset_Manager {
 	protected bool $_editor_font_styled = false;
 
 	/**
-	 * Class constructor, which is where this class hooks itself up to WordPress.
+	 * Class constructor.
+	 */
+	protected function __construct() {
+
+		$this->_register_hooks();
+
+	}    //end __construct()
+
+	/**
+	 * Method to hook this class up to WordPress.
 	 *
 	 * Assets are decided at `wp_footer` priority 1, late enough for the whole page to
 	 * have rendered and so for the snippet signal to be trustworthy, and early enough
@@ -223,13 +232,15 @@ class Asset_Manager {
 	 * that way used to end up on the page with no highlighting at all and no way of
 	 * ever getting any. `enqueue()` is idempotent, so the second pass costs a few
 	 * no-op calls when there is nothing new to add.
+	 *
+	 * @return void
 	 */
-	protected function __construct() {
+	protected function _register_hooks(): void {
 
 		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE );
 		add_action( 'wp_footer', [ $this, 'enqueue' ], static::PRIORITY_DECIDE_AGAIN );
 
-	}    //end __construct()
+	}    //end _register_hooks()
 
 	/**
 	 * Method to signal that a snippet is present on the page.

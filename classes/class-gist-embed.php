@@ -77,12 +77,23 @@ class Gist_Embed {
 	protected bool $_has_embeds = false;
 
 	/**
-	 * Class constructor, which is where this class hooks itself up to WordPress.
+	 * Class constructor.
+	 */
+	protected function __construct() {
+
+		$this->_register_hooks();
+
+	}    //end __construct()
+
+	/**
+	 * Method to hook this class up to WordPress.
 	 *
 	 * `gist_in_comments` is read here rather than at filter time, because it decides
 	 * whether `comment_text` gets an embed or a link.
+	 *
+	 * @return void
 	 */
-	protected function __construct() {
+	protected function _register_hooks(): void {
 
 		$embed_filters = [ 'the_content' ];
 
@@ -110,7 +121,7 @@ class Gist_Embed {
 		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE );
 		add_action( 'wp_footer', [ $this, 'enqueue' ], Asset_Manager::PRIORITY_DECIDE_AGAIN );
 
-	}    //end __construct()
+	}    //end _register_hooks()
 
 	/**
 	 * Method to enqueue the Gist stylesheet, if the page has an embed on it.

@@ -88,12 +88,23 @@ class Admin extends Base {
 	 *
 	 * It would fail silently, and it would fail on upgrade.
 	 *
-	 * It also has to come first, ahead of the hooks below: a migration has to have
-	 * finished before anything this class registers can be reached.
+	 * It also has to come first, ahead of the hooks: a migration has to have finished
+	 * before anything this class registers can be reached.
 	 */
 	protected function __construct() {
 
 		parent::__construct();
+
+		$this->_register_hooks();
+
+	}    //end __construct()
+
+	/**
+	 * Method to hook this class up to WordPress.
+	 *
+	 * @return void
+	 */
+	protected function _register_hooks(): void {
 
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 		add_action( 'admin_menu', [ $this, 'add_menu' ] );
@@ -102,7 +113,7 @@ class Admin extends Base {
 
 		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
 
-	}    //end __construct()
+	}    //end _register_hooks()
 
 	/**
 	 * Method to decide whether the current user may use the plugin's REST routes.

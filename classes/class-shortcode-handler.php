@@ -95,13 +95,24 @@ class Shortcode_Handler {
 	];
 
 	/**
-	 * Class constructor, which is where this class hooks itself up to WordPress.
-	 *
-	 * Two of the settings are read here rather than at filter time, because they
-	 * decide which filters there are: `hilite_comments` moves `comment_text` between
-	 * the display list and the strip list.
+	 * Class constructor.
 	 */
 	protected function __construct() {
+
+		$this->_register_hooks();
+
+	}    //end __construct()
+
+	/**
+	 * Method to hook this class up to WordPress.
+	 *
+	 * `hilite_comments` is read here rather than at filter time, because it decides
+	 * which filters there are: it moves `comment_text` between the display list and
+	 * the strip list.
+	 *
+	 * @return void
+	 */
+	protected function _register_hooks(): void {
 
 		$hilite_comments = static::is_plugin_option_on( 'hilite_comments', 'yes' );
 
@@ -132,7 +143,7 @@ class Shortcode_Handler {
 			add_filter( $filter, [ $this, 'restore_save' ], static::PRIORITY_RESTORE );
 		}
 
-	}    //end __construct()
+	}    //end _register_hooks()
 
 	/**
 	 * Method to lift snippets out of content on its way to the browser.
