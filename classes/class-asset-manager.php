@@ -287,6 +287,12 @@ class Asset_Manager {
 	 * reader without a reload, so all of them have to be on the page already; which
 	 * of them is *shown* is decided in the browser.
 	 *
+	 * Line highlighting is the one of the five with no setting beside it, and it is
+	 * loaded for the opposite reason: it is decided per code box, by the block's
+	 * highlight field or the shortcode's `highlight` attribute, so the preview
+	 * snippet asks for it and it is shown from the moment the page opens. A reader
+	 * who cannot switch it is exactly the reader who has never seen it.
+	 *
 	 * @param string $theme Slug of the theme to load, or the "no theme" value.
 	 * @param string $font  Slug of the font to load, or the "no font" value.
 	 *
@@ -303,6 +309,7 @@ class Asset_Manager {
 		static::_enqueue_toolbar();
 		static::_enqueue_copy_button();
 		static::_enqueue_line_numbers();
+		static::_enqueue_line_highlight();
 		static::_enqueue_match_braces();
 
 		$this->_enqueue_setup();
@@ -512,8 +519,6 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_plugins(): void {
 
-		$version = static::_get_version();
-
 		if ( Shortcode_Handler::is_plugin_option_on( 'toolbar', 'yes' ) ) {
 
 			static::_enqueue_toolbar();
@@ -543,22 +548,7 @@ class Asset_Manager {
 		}
 
 		if ( $this->_needs_line_highlight ) {
-
-			wp_enqueue_style(
-				static::_handle( 'line-highlight' ),
-				static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.css' ),
-				[],
-				$version
-			);
-
-			wp_enqueue_script(
-				static::_handle( 'line-highlight' ),
-				static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.js' ),
-				[ static::_handle( 'line-numbers' ) ],
-				$version,
-				true
-			);
-
+			static::_enqueue_line_highlight();
 		}
 
 	}    //end _enqueue_plugins()
@@ -647,6 +637,37 @@ class Asset_Manager {
 		);
 
 	}    //end _enqueue_line_numbers()
+
+	/**
+	 * Method to enqueue the line highlight plugin.
+	 *
+	 * The script asks for the line numbers handle rather than the engine's, because
+	 * the plugin reads the rendered numbers to place its band when a box carries
+	 * them. Every caller loads the line numbers plugin first, so this is a statement
+	 * of the order and not a way of arranging it.
+	 *
+	 * @return void
+	 */
+	protected static function _enqueue_line_highlight(): void {
+
+		$version = static::_get_version();
+
+		wp_enqueue_style(
+			static::_handle( 'line-highlight' ),
+			static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.css' ),
+			[],
+			$version
+		);
+
+		wp_enqueue_script(
+			static::_handle( 'line-highlight' ),
+			static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.js' ),
+			[ static::_handle( 'line-numbers' ) ],
+			$version,
+			true
+		);
+
+	}    //end _enqueue_line_highlight()
 
 	/**
 	 * Method to enqueue the brace matching plugin.

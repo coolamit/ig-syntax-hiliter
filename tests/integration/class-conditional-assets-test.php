@@ -148,6 +148,86 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The line highlight plugin loads for a snippet which highlights lines, and for no
+	 * other kind of page.
+	 *
+	 * The negative half of this is already covered, and covered exactly: the control
+	 * above asserts the whole handle list for an ordinary snippet, and neither of the
+	 * two handles below is in it. So this asserts the whole list as well rather than
+	 * the presence of the two, which is what makes the pair of tests say "these two and
+	 * only these two arrived".
+	 *
+	 * The stylesheet is named beside the script for the same reason the settings page
+	 * test names it: the band over a highlighted line is painted by the CSS, and a page
+	 * with the script alone would highlight nothing a reader could see.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_enqueues_the_line_highlight_plugin_for_a_snippet_which_highlights(): void {
+
+		$markup = $this->_render_page( "[php highlight=\"2,4-6\"]\necho 1;\necho 2;\necho 3;\necho 4;\necho 5;\necho 6;\n[/php]" );
+
+		$this->assertStringContainsString(
+			'data-line="2,4-6"',
+			$markup,
+			'The snippet asked for line highlighting and the renderer said nothing about it.'
+		);
+
+		$this->assertSame(
+			[
+				'script:ig-syntax-hiliter-autoloader',
+				'script:ig-syntax-hiliter-copy-to-clipboard',
+				'script:ig-syntax-hiliter-engine',
+				'script:ig-syntax-hiliter-line-highlight',
+				'script:ig-syntax-hiliter-line-numbers',
+				'script:ig-syntax-hiliter-match-braces',
+				'script:ig-syntax-hiliter-setup',
+				'script:ig-syntax-hiliter-show-language',
+				'script:ig-syntax-hiliter-toolbar',
+				'style:ig-syntax-hiliter-chrome',
+				'style:ig-syntax-hiliter-line-highlight',
+				'style:ig-syntax-hiliter-line-numbers',
+				'style:ig-syntax-hiliter-match-braces',
+				'style:ig-syntax-hiliter-theme',
+				'style:ig-syntax-hiliter-toolbar',
+			],
+			$this->_plugin_asset_handles()
+		);
+
+	}
+
+	/**
+	 * The line highlight script waits for the line numbers script.
+	 *
+	 * It measures the rendered numbers to place its band when a box carries them, so
+	 * the order is not a preference. Both callers load the line numbers plugin, which
+	 * is what makes the dependency a statement of the order rather than the thing
+	 * arranging it — and a dependency naming a handle nobody registered would be
+	 * dropped by WordPress without a word.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_loads_line_highlighting_after_the_line_numbers_it_measures(): void {
+
+		$this->_render_page( "[php highlight=\"1\"]\necho 1;\n[/php]" );
+
+		$script = wp_scripts()->registered['ig-syntax-hiliter-line-highlight'] ?? null;
+
+		$this->assertNotNull( $script, 'The line highlight script is registered.' );
+		$this->assertSame( [ 'ig-syntax-hiliter-line-numbers' ], $script->deps );
+
+		$this->assertTrue(
+			wp_script_is( 'ig-syntax-hiliter-line-numbers', 'enqueued' ),
+			'The handle it depends on was never enqueued, so WordPress drops it.'
+		);
+
+	}
+
+	/**
 	 * A theme from the second theme directory is enqueued from that directory.
 	 *
 	 * The plugin ships themes from two places — Prism's own dist themes and the

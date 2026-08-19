@@ -68,6 +68,18 @@ class Admin extends Base {
 	protected const string _PREVIEW_LANGUAGE = 'php';
 
 	/**
+	 * Lines of the preview snippet drawn as highlighted.
+	 *
+	 * Written as the expression an author would type rather than as a list of line
+	 * numbers, because that is what it is an example of. `Snippet::parse_line_ranges()`
+	 * reads it and `Renderer::compact_line_ranges()` writes it back out, so what
+	 * reaches `data-line` is this string exactly.
+	 *
+	 * @var string
+	 */
+	protected const string _PREVIEW_HIGHLIGHT = '15-19,23';
+
+	/**
 	 * The settings schema, once it has been built in this request.
 	 *
 	 * @var array|null
@@ -757,6 +769,15 @@ class Admin extends Base {
 	 * `=>`, `&&`, `===` and `->`, because those are what the four fonts carrying code
 	 * ligatures draw differently from every other font on the list.
 	 *
+	 * **It also highlights lines, and that is the one thing shown here which has no
+	 * setting on the page.** Highlighting is decided per code box — the block's
+	 * highlight field, or the shortcode's `highlight` attribute — so there is nothing
+	 * for a site owner to switch and no other way for them to find out what it looks
+	 * like before writing one. The two ranges are `_PREVIEW_HIGHLIGHT` and they land
+	 * on the structure rather than anywhere: 15 to 19 is the whole of `__construct()`,
+	 * and 23 is the `if` on its own. Between them they show both halves of the
+	 * grammar, a run of lines and a single one.
+	 *
 	 * **The box scrolls in both directions and that is expected.** The snippet is
 	 * longer than the column is tall and one line of it is wider than the column is
 	 * wide, which is Amit's call: a preview showing a real class is worth more than one
@@ -808,7 +829,13 @@ add_action( 'init', fn() => new Foo );
 PREVIEW;
 
 		return Renderer::get_instance()->render_snippet(
-			new Snippet( $code, static::_PREVIEW_LANGUAGE, $show_line_numbers )
+			new Snippet(
+				$code,
+				static::_PREVIEW_LANGUAGE,
+				$show_line_numbers,
+				1,
+				Snippet::parse_line_ranges( static::_PREVIEW_HIGHLIGHT )
+			)
 		);
 
 	}    //end get_preview_markup()

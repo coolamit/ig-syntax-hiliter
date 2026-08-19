@@ -1028,12 +1028,27 @@
 	 * Line numbers are markup, not styling: Prism's plugin builds a row of numbers
 	 * when it highlights a box carrying the class. So switching them on means adding
 	 * the class and asking Prism to go over the box again, and switching them off
-	 * means taking the class off and taking the rows out.
+	 * means taking the class off, taking the rows out — the plugin only ever adds
+	 * them — and then asking Prism to go over the box again as well.
 	 *
 	 * Verified against the vendored plugin rather than assumed: its `complete` hook
 	 * builds the rows only where the class is active and no rows are there already,
 	 * so a second pass over a box which has them cannot produce a second set. The
 	 * toolbar plugin guards the same way against wrapping a box twice.
+	 *
+	 * **The pass on the way off is what keeps the highlighted lines honest**, and it
+	 * is why this is no longer a matter of a class and a `remove()`. The line
+	 * highlight plugin draws its band two different ways: with numbers it hangs the
+	 * band off the `pre` and measures the rendered rows, and without them it hangs it
+	 * off the `code`, works the position out from the line height, and writes
+	 * `data-start` on it — which is what draws the little line number badge, since
+	 * the plugin's own stylesheet suppresses that badge under a `.line-numbers`
+	 * ancestor. A box left carrying the first of those while showing the second is a
+	 * preview of something the front end never renders. Going through
+	 * `highlightElement()` rather than calling `Prism.plugins.lineHighlight` directly
+	 * is deliberate: the plugin's `before-sanity-check` hook deletes the old bands
+	 * outright, so each pass builds a fresh one and no stale `top`, `height` or
+	 * `data-start` is left behind on a reused element.
 	 *
 	 * @param box  The `pre` element of the preview.
 	 * @param show Whether line numbers are wanted.
@@ -1041,19 +1056,17 @@
 	function applyPreviewLineNumbers( box: HTMLElement, show: boolean ): void {
 		const LINE_NUMBERS = 'line-numbers';
 
-		if ( ! show ) {
+		if ( show === box.classList.contains( LINE_NUMBERS ) ) {
+			return;
+		}
+
+		if ( show ) {
+			box.classList.add( LINE_NUMBERS );
+		} else {
 			box.classList.remove( LINE_NUMBERS );
 
 			box.querySelector( '.line-numbers-rows' )?.remove();
-
-			return;
 		}
-
-		if ( box.classList.contains( LINE_NUMBERS ) ) {
-			return;
-		}
-
-		box.classList.add( LINE_NUMBERS );
 
 		const code = box.querySelector( 'code' );
 		const prism = window.Prism;

@@ -52,6 +52,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		'ig-syntax-hiliter-show-language',
 		'ig-syntax-hiliter-copy-to-clipboard',
 		'ig-syntax-hiliter-line-numbers',
+		'ig-syntax-hiliter-line-highlight',
 		'ig-syntax-hiliter-match-braces',
 		'ig-syntax-hiliter-setup',
 	];
@@ -223,6 +224,33 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '&lt;?php', $html, 'The preview code reached the page as markup rather than as text.' );
 		$this->assertStringNotContainsString( '<code class="language-php"><?php', $html );
+
+	}
+
+	/**
+	 * The preview snippet has lines highlighted in it.
+	 *
+	 * Line highlighting is the one thing a code box does which the settings page has
+	 * no control for, because it is decided per snippet. That makes the preview the
+	 * only place a site owner can ever see it, so a preview which does not show it
+	 * leaves the feature invisible until somebody writes one and publishes it.
+	 *
+	 * The ranges are asserted as the literal string rather than read back off the
+	 * class constant, which would only prove the constant equals itself. `15-19` is
+	 * the whole of the sample's `__construct()` and `23` is the `if` on its own, so
+	 * what is drawn is a run of lines and a single line — both halves of the grammar.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_highlights_lines_in_the_preview_snippet(): void {
+
+		$this->assertStringContainsString(
+			'data-line="15-19,23"',
+			Admin::get_preview_markup(),
+			'The preview box asks for no line highlighting, so a reader never sees any.'
+		);
 
 	}
 
@@ -543,6 +571,17 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-theme', 'enqueued' ), 'The preview loaded no theme stylesheet.' );
 		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-chrome', 'enqueued' ) );
+
+		/*
+		 * Asserted beside the script and not left to it. The band over a highlighted
+		 * line is painted entirely by this stylesheet, so the script alone would load,
+		 * run, place an element nobody can see, and pass this test while the preview
+		 * showed a site owner nothing.
+		 */
+		$this->assertTrue(
+			wp_style_is( 'ig-syntax-hiliter-line-highlight', 'enqueued' ),
+			'The preview loaded the line highlight script with no stylesheet to paint the band.'
+		);
 
 		$this->assertSame(
 			'ig-syntax-hiliter-theme-css',
