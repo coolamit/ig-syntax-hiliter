@@ -122,9 +122,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * loads is a file it ships; a font is not, and a plugin which quietly fetched one
 	 * from a third party would be making a decision that belongs to the site owner.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_page_fetches_no_font_unless_one_is_chosen(): void {
+	public function it_fetches_no_font_unless_one_is_chosen(): void {
 
 		$this->assertSame(
 			Asset_Manager::FONT_NONE,
@@ -158,9 +160,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * A chosen font is fetched exactly once, from that host and no other, and the
 	 * rule which applies it rides along with the plugin's own stylesheet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_chosen_font_is_fetched_once_and_applied(): void {
+	public function it_fetches_a_chosen_font_once_and_applies_it(): void {
 
 		Option::get_instance()->save( 'font', 'jetbrains-mono' );
 
@@ -212,9 +216,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * A font offered without a stylesheet would be a dropdown entry which does
 	 * nothing; one offered without a rule would fetch a family and then not use it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_offered_font_has_a_stylesheet_and_a_rule(): void {
+	public function it_gives_every_offered_font_a_stylesheet_and_a_rule(): void {
 
 		$choices = Admin::get_font_choices();
 
@@ -256,9 +262,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * The list is in order by name with "None" on the front, and nothing was lost
 	 * in the sorting.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_font_dropdown_puts_none_first_and_sorts_the_rest(): void {
+	public function it_puts_none_first_in_the_font_dropdown_and_sorts_the_rest(): void {
 
 		$choices = Admin::get_font_choices();
 
@@ -284,9 +292,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * A declaration on a family with no such lookups does nothing at all, which is
 	 * worse than useless: it reads as though the font supports something it does not.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_only_the_fonts_which_have_ligatures_ask_for_them(): void {
+	public function it_asks_for_ligatures_only_for_the_fonts_which_have_them(): void {
 
 		$asking = [];
 
@@ -322,9 +332,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * this plugin has no business changing how a theme sets type where nothing of ours
 	 * depends on it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_letter_spacing_is_zeroed_for_ligature_fonts_and_no_others(): void {
+	public function it_zeroes_the_letter_spacing_for_ligature_fonts_and_no_others(): void {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
@@ -362,9 +374,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * thing worse than the wrong typeface is a request to another host that nobody
 	 * asked for.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_font_this_plugin_does_not_offer_loads_nothing(): void {
+	public function it_loads_nothing_for_a_font_this_plugin_does_not_offer(): void {
 
 		$this->assertSame( '', Asset_Manager::get_font_url( 'comic-sans-ms' ) );
 		$this->assertSame( '', Asset_Manager::get_font_css( 'comic-sans-ms' ) );
@@ -388,9 +402,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	/**
 	 * Every slug goes into a URL as it stands, so every slug has to be safe there.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_font_slug_is_safe_in_a_url(): void {
+	public function it_keeps_every_font_slug_safe_in_a_url(): void {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
@@ -411,9 +427,11 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * for one that is not there fails silently and the browser synthesises the face.
 	 * These are the weights read out of the served files.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_font_asks_for_a_weight_its_family_ships(): void {
+	public function it_asks_for_a_weight_every_fonts_family_ships(): void {
 
 		$weights = [
 			'azeret-mono'       => 300,

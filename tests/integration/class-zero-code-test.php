@@ -70,9 +70,11 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	/**
 	 * The shortcode path renders it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_shortcode_whose_code_is_zero_renders_a_code_box(): void {
+	public function it_renders_a_code_box_for_a_shortcode_whose_code_is_zero(): void {
 
 		$rendered = $this->_filter( 'the_content', sprintf( '[php]%s[/php]', static::_ZERO ) );
 
@@ -93,9 +95,11 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	/**
 	 * The block path renders it, and renders the same thing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_whose_code_is_zero_renders_a_code_box(): void {
+	public function it_renders_a_code_box_for_a_block_whose_code_is_zero(): void {
 
 		$rendered = $this->_filter(
 			'the_content',
@@ -129,9 +133,11 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 * tool that did it is the one a site owner reaches for precisely because they want
 	 * their code to survive the plugin being switched off.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_revert_tool_keeps_a_block_whose_code_is_zero(): void {
+	public function it_keeps_a_block_whose_code_is_zero_in_the_revert_tool(): void {
 
 		$block = static::_block(
 			[
@@ -179,9 +185,11 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 * three cases above look like the same question and get the opposite answer. What
 	 * separates them is that `0` is a plausible *file*, and never a plausible *language*.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_language_named_zero_is_not_kept(): void {
+	public function it_does_not_keep_a_language_named_zero(): void {
 
 		$rendered = $this->_filter( 'the_content', sprintf( '[sourcecode language="%s"]echo 1;[/sourcecode]', static::_ZERO ) );
 
@@ -206,9 +214,11 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 * this, every assertion here would be satisfied by a plugin which had simply
 	 * stopped checking for an empty snippet at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_genuinely_empty_snippet_still_renders_nothing(): void {
+	public function it_still_renders_nothing_for_a_genuinely_empty_snippet(): void {
 
 		$this->assertStringNotContainsString(
 			'<pre ',

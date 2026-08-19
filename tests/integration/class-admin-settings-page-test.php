@@ -76,9 +76,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * The screen renders for an administrator, raising no PHP diagnostic and printing
 	 * a control for every setting the plugin has.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_settings_page_renders_for_an_administrator(): void {
+	public function it_renders_the_settings_page_for_an_administrator(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -115,9 +117,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * The settings GeSHi took with it are gone from the screen, and so are the two
 	 * this version dropped. The revert tool is on it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_screen_shows_the_v6_settings_and_not_the_v5_ones(): void {
+	public function it_shows_the_v6_settings_and_not_the_v5_ones(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -140,9 +144,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * The theme dropdown offers Okaidia as the default, and names the Prism theme
 	 * after itself.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_theme_dropdown_offers_the_bundled_themes(): void {
+	public function it_offers_the_bundled_themes_in_the_theme_dropdown(): void {
 
 		$choices = Admin::get_theme_choices();
 
@@ -160,9 +166,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * screen sorts them. "None" is not a theme at all and goes on top rather than at
 	 * the end of a list it is not part of.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_theme_dropdown_puts_none_first_and_sorts_the_rest(): void {
+	public function it_puts_none_first_in_the_theme_dropdown_and_sorts_the_rest(): void {
 
 		$choices = Admin::get_theme_choices();
 		$slugs   = array_keys( $choices );
@@ -191,9 +199,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * plugin's own renderer, so it is the same markup a reader gets, and the sample
 	 * is source code which has to arrive as text rather than as markup.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_screen_shows_a_preview_code_box(): void {
+	public function it_shows_a_preview_code_box(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -220,9 +230,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * glyphs. A sample carrying none of those sequences would make the whole point of
 	 * picking one of those three invisible in the one place it is meant to be seen.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_preview_snippet_shows_what_a_ligature_font_does(): void {
+	public function it_shows_what_a_ligature_font_does_in_the_preview_snippet(): void {
 
 		$markup = Admin::get_preview_markup();
 		$code   = html_entity_decode( wp_strip_all_tags( $markup ), ENT_QUOTES, 'UTF-8' );
@@ -246,9 +258,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * for the font to sit below the theme, so that is asserted where it is decided
 	 * rather than left to whoever next edits the list.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_font_control_sits_below_the_theme_control(): void {
+	public function it_puts_the_font_control_below_the_theme_control(): void {
 
 		$names = array_keys( Admin::get_settings_schema() );
 
@@ -273,9 +287,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * this on is adding a third party request to every page carrying code, and they
 	 * should not have to read the source to find that out.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_font_setting_says_a_font_is_fetched_from_another_host(): void {
+	public function it_says_a_font_is_fetched_from_another_host(): void {
 
 		$schema = Admin::get_settings_schema();
 
@@ -297,9 +313,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * registry and that list is not — which would show a site owner a theme that does
 	 * nothing when they pick it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_offered_theme_has_a_stylesheet_for_the_preview(): void {
+	public function it_gives_every_offered_theme_a_stylesheet_for_the_preview(): void {
 
 		$urls = Admin::get_theme_urls();
 
@@ -347,9 +365,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * in the corner of the switch: every toggle on this screen could only be
 	 * operated through its label, and no test tier saw it for fifteen sessions.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_toggle_is_a_button_and_not_a_checkbox(): void {
+	public function it_draws_a_toggle_as_a_button_and_not_a_checkbox(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -374,9 +394,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * unrecognised value behaves as off — and the screen said on. A control which
 	 * already looks right is one nobody puts right.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_stored_value_outside_the_schema_draws_the_setting_default(): void {
+	public function it_draws_the_setting_default_for_a_stored_value_outside_the_schema(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -421,9 +443,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * ours and no library, which is what keeps this page cheap. Nothing else may
 	 * be added to either list without a reason good enough to write down here.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_screen_asks_for_no_jquery(): void {
+	public function it_asks_for_no_jquery(): void {
 
 		$admin = Admin::get_instance();
 
@@ -479,9 +503,11 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * has gone stale is a 404 in wp-admin and nothing else — no PHP notice, no
 	 * failing request, just a settings page that quietly stops working.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_screen_assets_exist_where_they_are_enqueued_from(): void {
+	public function it_enqueues_the_screen_assets_from_paths_which_exist(): void {
 
 		$root = untrailingslashit( IG_SYNTAX_HILITER_ROOT );
 

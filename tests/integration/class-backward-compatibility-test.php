@@ -156,6 +156,8 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * whole legacy surface: a script tag, HTML entities, PHP open and close tags
 	 * and mixed HTML/JS.
 	 *
+	 * @test
+	 *
 	 * @dataProvider shipped_tag_provider
 	 *
 	 * @param string $tag      Legacy shortcode tag.
@@ -163,7 +165,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_a_shipped_tag_renders_from_unconverted_post_content( string $tag, string $language ): void {
+	public function it_renders_a_shipped_tag_from_unconverted_post_content( string $tag, string $language ): void {
 
 		$code = implode(
 			"\n",
@@ -187,9 +189,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	/**
 	 * `[sourcecode]` renders from unconverted content.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_generic_tag_renders_from_unconverted_post_content(): void {
+	public function it_renders_the_generic_tag_from_unconverted_post_content(): void {
 
 		$stored = $this->_store( '[sourcecode language="python" firstline="3"]print( "hi" )[/sourcecode]' );
 		$output = $this->_filter( 'the_content', $stored );
@@ -204,9 +208,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * Comments have no block path, so the shortcode pipeline must run on them while
 	 * `hilite_comments` is on.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_are_highlighted_while_the_option_is_on(): void {
+	public function it_highlights_comments_while_the_option_is_on(): void {
 
 		$this->assertSame( 'yes', Option::get_instance()->get( 'hilite_comments' ) );
 
@@ -220,9 +226,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	/**
 	 * Comments are stripped instead while `hilite_comments` is off.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_are_stripped_while_the_option_is_off(): void {
+	public function it_strips_comments_while_the_option_is_off(): void {
 
 		$this->_rewire_with_option( 'hilite_comments', 'no' );
 
@@ -244,9 +252,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	/**
 	 * Excerpts strip code rather than rendering it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_excerpts_strip_code_rather_than_rendering_it(): void {
+	public function it_strips_code_from_excerpts_rather_than_rendering_it(): void {
 
 		foreach ( Shortcode_Handler::EXCERPT_FILTERS as $filter ) {
 
@@ -269,9 +279,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * edit, and the edit after that would store what the author wrote as an example as
 	 * a real snippet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_escaped_shortcode_is_stored_byte_for_byte(): void {
+	public function it_stores_an_escaped_shortcode_byte_for_byte(): void {
 
 		$content = '[[php]echo 1;[/php]]';
 
@@ -293,9 +305,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * escape of a whole shortcode and not the plugin's doubled brackets; core's
 	 * `do_shortcode_tag()` is what unwraps it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_escaped_shortcode_survives_repeated_edits(): void {
+	public function it_keeps_an_escaped_shortcode_through_repeated_edits(): void {
 
 		$content = '[[php]echo 1;[/php]]';
 		$post_id = self::factory()->post->create(
@@ -339,9 +353,11 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * author's source as prose. Stripping the escape along with the snippets is what
 	 * leaves the second pass nothing to find.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_escaped_shortcode_leaves_a_clean_automatic_excerpt(): void {
+	public function it_leaves_a_clean_automatic_excerpt_for_an_escaped_shortcode(): void {
 
 		$post_id = self::factory()->post->create(
 			[

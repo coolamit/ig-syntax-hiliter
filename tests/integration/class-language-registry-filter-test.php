@@ -125,9 +125,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * before any callback can run, so a callback asking for it gets the same object
 	 * back instead of starting a second build.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_filter_callback_may_ask_the_registry_what_it_holds(): void {
+	public function it_lets_a_filter_callback_ask_the_registry_what_it_holds(): void {
 
 		$entries = 0;
 		$seen    = null;
@@ -170,9 +172,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * filter is applied — which also means the callback is shown the dataset as the
 	 * cache produced it, unfiltered, exactly as it was shown before.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_filter_callback_may_read_from_the_registry(): void {
+	public function it_lets_a_filter_callback_read_from_the_registry(): void {
 
 		$entries = 0;
 		$answer  = null;
@@ -214,9 +218,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * same callback is in the middle of adding — which is why the filtered registry
 	 * is read into the published instance rather than swapped in as a second object.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_registry_taken_during_the_filter_is_the_filtered_one(): void {
+	public function it_hands_a_callback_which_took_a_registry_the_filtered_one(): void {
 
 		$entries = 0;
 
@@ -274,6 +280,8 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * back 200 with the code in it, only plain. Ignoring the return is the far cheaper
 	 * reading of a callback which plainly did not mean to replace anything.
 	 *
+	 * @test
+	 *
 	 * @dataProvider useless_return_provider
 	 *
 	 * @param mixed  $handed_back What the callback hands back.
@@ -281,7 +289,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_a_filter_returning_something_useless_is_ignored( $handed_back, string $description ): void {
+	public function it_ignores_a_filter_returning_something_useless( $handed_back, string $description ): void {
 
 		$this->_remember_cache_key();
 
@@ -335,9 +343,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * outlive it by up to a day, which is a site rendering snippets against a grammar
 	 * nothing is loading any more.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_language_added_by_the_filter_is_not_cached(): void {
+	public function it_does_not_cache_a_language_added_by_the_filter(): void {
 
 		$callback = static function ( array $registry ): array {
 
@@ -376,9 +386,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * once per request. A cache entry which stopped being read would be invisible —
 	 * the registry would be right, and every page would be slower.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_registry_is_served_from_the_cache_on_a_later_request(): void {
+	public function it_serves_the_registry_from_the_cache_on_a_later_request(): void {
 
 		$this->_remember_cache_key();
 

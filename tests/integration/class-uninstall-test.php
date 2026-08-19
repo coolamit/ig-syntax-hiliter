@@ -24,9 +24,11 @@ class Uninstall_Test extends WP_UnitTestCase {
 	 * Every option this plugin has ever written is gone afterwards, including the
 	 * cache options whose names are an MD5 and can only be matched by prefix.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_uninstalling_removes_every_option_the_plugin_stores(): void {
+	public function it_removes_every_option_the_plugin_stores_on_uninstall(): void {
 
 		update_option( Base::PLUGIN_ID . '-options', [ 'theme' => 'prism' ] );
 		update_option( Base::PLUGIN_ID . '-version', IG_SYNTAX_HILITER_VERSION );

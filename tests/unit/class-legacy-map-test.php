@@ -76,9 +76,11 @@ class Legacy_Map_Test extends TestCase {
 	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing
 	 * else. A tag the plugin never shipped is another plugin's to claim.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_claims_exactly_the_shipped_tags(): void {
+	public function it_claims_exactly_the_shipped_tags(): void {
 
 		$expected = array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES, [ 'sourcecode' ] );
 		$actual   = Legacy_Map::get_default_tags();
@@ -93,9 +95,11 @@ class Legacy_Map_Test extends TestCase {
 	/**
 	 * Tag matching is case insensitive and tolerant of stray whitespace.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_tag_matching_is_forgiving(): void {
+	public function it_matches_a_tag_case_insensitively_and_through_stray_whitespace(): void {
 
 		$this->assertSame( 'php', Legacy_Map::to_language_id( '  PhP ' ) );
 
@@ -104,9 +108,11 @@ class Legacy_Map_Test extends TestCase {
 	/**
 	 * Every shipped tag and every alias resolves to a language id.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_shipped_tag_resolves(): void {
+	public function it_resolves_every_shipped_tag(): void {
 
 		foreach ( array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES ) as $tag ) {
 
@@ -124,9 +130,11 @@ class Legacy_Map_Test extends TestCase {
 	/**
 	 * The two tags which never highlighted anything still do not.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_plain_tags_map_to_no_language(): void {
+	public function it_maps_a_plain_tag_to_no_language(): void {
 		/*
 		 * The value and not only the constant. The editor mirrors this literal in
 		 * `src/block/attributes.ts`, where PHP sends the constant over precisely so
@@ -144,9 +152,11 @@ class Legacy_Map_Test extends TestCase {
 	/**
 	 * The renamings that stored content depends on.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_known_language_translations(): void {
+	public function it_translates_the_renamings_stored_content_depends_on(): void {
 
 		$expected = [
 			'as'            => 'actionscript',
@@ -183,9 +193,11 @@ class Legacy_Map_Test extends TestCase {
 	 * Catches a library upgrade renaming or dropping a language out from under
 	 * stored content.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_mapped_language_exists_in_the_library(): void {
+	public function it_maps_every_language_to_one_the_library_has(): void {
 
 		$library  = dirname( __DIR__, 2 ) . '/assets/lib/prism';
 		$registry = new Language_Registry(
@@ -218,9 +230,11 @@ class Legacy_Map_Test extends TestCase {
 	 * are written with doubled brackets, and reading them back gives the author's
 	 * bytes again.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_quoted_tag_survives_a_round_trip(): void {
+	public function it_keeps_a_quoted_tag_through_a_round_trip(): void {
 
 		$code = "[sourcecode language=\"php\"]\n[php]echo 1;[/php]\n[/sourcecode]";
 
@@ -241,9 +255,11 @@ class Legacy_Map_Test extends TestCase {
 	 * and reading it back takes exactly that level off again. Anything else and an
 	 * author who wrote about the escape itself would lose a bracket per conversion.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_already_escaped_tag_gains_one_level(): void {
+	public function it_gives_an_already_escaped_tag_one_more_level(): void {
 
 		$escaped = Legacy_Map::escape_tags( 'a [[/php]] b' );
 
@@ -256,9 +272,11 @@ class Legacy_Map_Test extends TestCase {
 	 * WordPress's own escape for a whole shortcode is a different construct, and the
 	 * round trip has to hand it back exactly as it was found.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_wordpresss_own_escape_survives_a_round_trip(): void {
+	public function it_keeps_wordpresss_own_escape_through_a_round_trip(): void {
 
 		$code = '[[php]echo 1;[/php]]';
 
@@ -270,9 +288,11 @@ class Legacy_Map_Test extends TestCase {
 	 * A tag this plugin never shipped belongs to somebody else, and neither half of
 	 * the escape may touch it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_tag_which_is_not_ours_is_left_alone(): void {
+	public function it_leaves_a_tag_which_is_not_ours_alone(): void {
 
 		$this->assertSame( '[email]x[/email]', Legacy_Map::escape_tags( '[email]x[/email]' ) );
 		$this->assertSame( '[[email]]', Legacy_Map::unescape_tags( '[[email]]' ) );
@@ -284,9 +304,11 @@ class Legacy_Map_Test extends TestCase {
 	 * Code with no bracket in it is handed straight back, which is what keeps the
 	 * pattern off the overwhelming majority of snippets.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_code_without_a_bracket_is_untouched(): void {
+	public function it_leaves_code_without_a_bracket_untouched(): void {
 
 		$code = "function f() {\n\treturn 1;\n}";
 

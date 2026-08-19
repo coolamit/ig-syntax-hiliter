@@ -221,9 +221,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	/**
 	 * The legacy surface renders in a single post view, escaped once.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_legacy_surface_renders_in_a_single_post_view(): void {
+	public function it_renders_the_legacy_surface_in_a_single_post_view(): void {
 
 		$output = $this->_render_single( $this->_create_fixture_post() );
 
@@ -241,9 +243,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	/**
 	 * An archive loop is wired to the same pipeline.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_renders_in_an_archive_loop(): void {
+	public function it_renders_a_snippet_in_an_archive_loop(): void {
 
 		self::factory()->post->create(
 			[
@@ -277,9 +281,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	 * The RSS feed is wired to it too, where a snippet is code rather than markup
 	 * the reader executes.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_feed_renders_a_snippet_as_code_not_markup(): void {
+	public function it_renders_a_snippet_in_the_feed_as_code_and_not_markup(): void {
 
 		$post_id = self::factory()->post->create(
 			[
@@ -303,9 +309,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	/**
 	 * The attribute grammar survives the display chain.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_attribute_grammar_survives_the_display_chain(): void {
+	public function it_carries_the_attribute_grammar_through_the_display_chain(): void {
 
 		$output = $this->_render_single( $this->_create_fixture_post() );
 
@@ -332,9 +340,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	/**
 	 * A manual excerpt carries no code, and no leftover shortcode either.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_manual_excerpt_carries_no_code(): void {
+	public function it_leaves_no_code_in_a_manual_excerpt(): void {
 
 		$post_id = $this->_create_fixture_post( 'Summary with [php]$secret = 1;[/php] in it.' );
 		$excerpt = get_the_excerpt( $post_id );
@@ -349,9 +359,11 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 	/**
 	 * An automatic excerpt carries no code either.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_automatic_excerpt_carries_no_code(): void {
+	public function it_leaves_no_code_in_an_automatic_excerpt(): void {
 
 		$post_id = self::factory()->post->create(
 			[

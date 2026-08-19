@@ -53,9 +53,11 @@ class Gatekeeper_Versions_Test extends TestCase {
 	/**
 	 * Supported combinations are let through.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_supported_environments_are_allowed(): void {
+	public function it_allows_a_supported_environment(): void {
 
 		$this->assertTrue( $this->_gate( '8.4.0', '6.9.0' )->is_environment_supported() );
 		$this->assertTrue( $this->_gate( '8.4.12', '6.9.3' )->is_environment_supported() );
@@ -67,9 +69,11 @@ class Gatekeeper_Versions_Test extends TestCase {
 	/**
 	 * Too old a PHP is refused, whatever the WordPress version is.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_php_below_the_floor_is_refused(): void {
+	public function it_refuses_php_below_the_floor(): void {
 
 		$this->assertFalse( $this->_gate( '8.3.99', '7.0.3' )->is_environment_supported() );
 		$this->assertFalse( $this->_gate( '8.0.0', '6.9.0' )->is_environment_supported() );
@@ -81,9 +85,11 @@ class Gatekeeper_Versions_Test extends TestCase {
 	/**
 	 * Too old a WordPress is refused, whatever the PHP version is.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_wordpress_below_the_floor_is_refused(): void {
+	public function it_refuses_wordpress_below_the_floor(): void {
 
 		$this->assertFalse( $this->_gate( '8.5.0', '6.8.3' )->is_environment_supported() );
 		$this->assertFalse( $this->_gate( '8.4.0', '6.8.0' )->is_environment_supported() );
@@ -97,9 +103,11 @@ class Gatekeeper_Versions_Test extends TestCase {
 	 * publishes the first release of a branch as `6.9`, PHP ships `8.5.0RC1` and
 	 * `8.4.0-dev`, and an unreadable version is refused rather than waved through.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_real_world_version_shapes_compare_sanely(): void {
+	public function it_compares_real_world_version_shapes_sanely(): void {
 
 		$this->assertTrue( $this->_gate( '8.4', '6.9' )->is_environment_supported() );
 		$this->assertTrue( $this->_gate( '8.5.0RC1', '6.9-beta1' )->is_environment_supported() );

@@ -86,9 +86,11 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	 * This is the criterion: no request for a language file that is not there, so no
 	 * 404. The check is against what was actually registered, not against markup.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_no_component_is_enqueued_for_an_unknown_language(): void {
+	public function it_enqueues_no_component_for_an_unknown_language(): void {
 
 		$this->_filter( 'the_content', '[sourcecode language="madeuplang"]xyz[/sourcecode]' );
 
@@ -117,9 +119,11 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	 * asks for what the registry confirmed. Enqueuing components eagerly would put
 	 * the 404 risk straight back.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_known_language_is_left_to_the_runtime_loader(): void {
+	public function it_leaves_a_known_language_to_the_runtime_loader(): void {
 
 		$this->_filter( 'the_content', '[php]echo 1;[/php]' );
 
@@ -139,9 +143,11 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	 * A site can claim extra tags through the tag filter. A claimed tag whose name
 	 * means nothing to the registry must degrade rather than invent a language.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_tag_claimed_through_the_filter_degrades_rather_than_inventing_a_language(): void {
+	public function it_degrades_a_tag_claimed_through_the_filter_rather_than_inventing_a_language(): void {
 
 		add_filter( Legacy_Map::FILTER_TAGS, [ $this, 'claim_unshipped_tag' ] );
 

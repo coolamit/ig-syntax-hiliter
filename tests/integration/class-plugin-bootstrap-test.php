@@ -27,9 +27,11 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * These drift apart easily and a mismatch fails the release build, so it is
 	 * caught here instead.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_version_is_consistent_across_the_plugin_header_and_readme(): void {
+	public function it_keeps_the_version_consistent_across_the_plugin_header_and_readme(): void {
 
 		$header = get_file_data(
 			IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/ig-syntax-hiliter.php',
@@ -102,9 +104,11 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * would show up as an asset URL with no cache buster on it and as a migration
 	 * which read the install as fresh.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_paths_do_not_assume_the_plugin_folder_name(): void {
+	public function it_builds_paths_without_assuming_the_plugin_folder_name(): void {
 
 		$this->assertTrue( defined( 'IG_SYNTAX_HILITER_VERSION' ), 'The version constant is what every version answer in the plugin comes from.' );
 
@@ -120,9 +124,11 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * The loader is hooked where v5 hooked it, and running it again prints nothing
 	 * and raises no PHP diagnostic of any kind.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_loading_the_plugin_is_silent(): void {
+	public function it_loads_silently(): void {
 
 		$this->assertSame( 10, has_action( 'init', 'ig_syntax_hiliter_loader' ) );
 
@@ -157,9 +163,11 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * The v5 engine is gone: no GeSHi class or library, no Frontend class, none of
 	 * the front end assets that went with them.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_v5_engine_is_gone(): void {
+	public function it_ships_none_of_the_v5_engine(): void {
 
 		$this->assertFalse( class_exists( 'GeSHi', false ) );
 		$this->assertFalse( class_exists( '\iG\Syntax_Hiliter\Frontend', false ) );

@@ -65,9 +65,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * around a `gist="…"` URL before this pipeline can parse it, which is what broke
 	 * that attribute for the whole of v5. Priority 9 is the fix, so it is pinned.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_hooks_are_registered_ahead_of_texturize(): void {
+	public function it_registers_its_hooks_ahead_of_texturize(): void {
 
 		$gist = Gist_Embed::get_instance();
 
@@ -88,9 +90,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * An id becomes an embed script.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_id_becomes_an_embed(): void {
+	public function it_turns_an_id_into_an_embed(): void {
 
 		$output = $this->_filter( 'the_content', '[github id="abc123"]' );
 
@@ -106,9 +110,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * the quotes at priority 10 before this pipeline could read them, leaving
 	 * `https://gist.github.com/.js`. The embed now runs at 9, so the URL survives.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_url_wins_over_an_id(): void {
+	public function it_lets_a_url_win_over_an_id(): void {
 
 		$output = $this->_filter( 'the_content', '[github id="ignored" gist="https://gist.github.com/someone/def456/"]' );
 
@@ -124,9 +130,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * id is what GitHub actually hands out, so it is the shape pinned here, on the
 	 * embed path and the link path both.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_documented_forms_render_as_they_always_did(): void {
+	public function it_renders_the_documented_forms_as_they_always_did(): void {
 
 		$id = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
 
@@ -155,9 +163,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * a URL this plugin then printed. Both paths are checked because the embed and
 	 * the link are two different pieces of markup built from that one URL.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_traversal_never_reaches_the_gist_url(): void {
+	public function it_never_lets_a_traversal_reach_the_gist_url(): void {
 
 		$inputs = [
 			'[github gist="https://gist.github.com/someone/../evil"]',
@@ -186,9 +196,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * Not a URL with the offending characters taken out of it: an id with characters
 	 * removed names a different Gist, so a refusal is the only honest answer.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_id_that_cannot_be_a_gist_id_prints_nothing(): void {
+	public function it_prints_nothing_for_an_id_that_cannot_be_a_gist_id(): void {
 
 		$inputs = [
 			'[github id=".."]',
@@ -217,9 +229,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * a shortcode with no attributes used to be handed. WordPress hands callbacks an
 	 * array from 6.5 onwards, so the string is asserted against directly.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_bare_github_tag_renders_nothing_and_does_not_fatal(): void {
+	public function it_renders_nothing_for_a_bare_github_tag_and_does_not_fatal(): void {
 
 		$output = $this->_filter( 'the_content', 'before [github] after' );
 
@@ -235,9 +249,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * Where a script cannot go, a link goes instead.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_excerpt_gets_a_link_instead_of_a_script(): void {
+	public function it_gives_an_excerpt_a_link_instead_of_a_script(): void {
 
 		$output = $this->_filter( 'the_excerpt', '[github id="abc123"]' );
 
@@ -250,9 +266,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * Comments get the link form while `gist_in_comments` is off.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_get_a_link_while_the_option_is_off(): void {
+	public function it_gives_comments_a_link_while_the_option_is_off(): void {
 
 		$output = $this->_filter( 'comment_text', '[github id="abc123"]' );
 
@@ -264,9 +282,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * The Gist pipeline borrows the shortcode registry and gives it back.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_shortcode_registry_is_left_as_it_was(): void {
+	public function it_leaves_the_shortcode_registry_as_it_was(): void {
 
 		add_shortcode( 'ig_sh_test_tag', '__return_empty_string' );
 
@@ -299,9 +319,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * claim is that this method changes nothing — and the rest of the chain, texturize
 	 * and `wpautop` included, changes plenty.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_content_without_the_tag_comes_back_untouched(): void {
+	public function it_returns_content_without_the_tag_untouched(): void {
 
 		$embed = Gist_Embed::get_instance();
 
@@ -337,9 +359,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * otherwise, so this is the only thing that puts one on it — and a page with no
 	 * embed must not pay for it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_gist_stylesheet_loads_only_where_a_gist_was_embedded(): void {
+	public function it_loads_the_gist_stylesheet_only_where_a_gist_was_embedded(): void {
 
 		$gist = Gist_Embed::get_instance();
 
@@ -360,9 +384,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * A link is not an embed, so it needs no stylesheet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_gist_rendered_as_a_link_loads_no_stylesheet(): void {
+	public function it_loads_no_stylesheet_for_a_gist_rendered_as_a_link(): void {
 
 		$gist = Gist_Embed::get_instance();
 
@@ -377,9 +403,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * With the setting off, the embed is unchanged and nothing is loaded for it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_stylesheet_is_not_loaded_while_the_setting_is_off(): void {
+	public function it_does_not_load_the_stylesheet_while_the_setting_is_off(): void {
 
 		$option   = Option::get_instance();
 		$property = new ReflectionProperty( Option::class, '_options' );
@@ -408,9 +436,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * the twenty year old shortcode agreeing on the id sanitising, on the link form
 	 * and on what a comment may carry.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_gist_block_renders_through_this_pipeline(): void {
+	public function it_renders_the_gist_block_through_this_pipeline(): void {
 
 		$block = Block::get_instance();
 
@@ -429,9 +459,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * A Gist reference inside a snippet is code, not a Gist.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_gist_tag_inside_a_snippet_is_left_as_code(): void {
+	public function it_leaves_a_gist_tag_inside_a_snippet_as_code(): void {
 
 		Shortcode_Handler::get_instance();
 

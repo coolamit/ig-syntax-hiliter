@@ -131,13 +131,15 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * strips an opening tag it thinks is self closing and leaves the code behind, so
 	 * this plugin has to take the snippet off the body itself.
 	 *
+	 * @test
+	 *
 	 * @dataProvider unclosed_angle_bracket_provider
 	 *
 	 * @param string $code Code the snippet carries, with one `%s` for the marker.
 	 *
 	 * @return void
 	 */
-	public function test_a_snippet_carrying_an_unclosed_angle_bracket_leaves_a_clean_excerpt( string $code ): void {
+	public function it_leaves_a_clean_excerpt_for_a_snippet_carrying_an_unclosed_angle_bracket( string $code ): void {
 
 		$post_id = $this->_create_post( static::_content_around( sprintf( $code, static::_MARKER ) ) );
 
@@ -153,9 +155,11 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * swallows the snippet's opening tag, so core strips nothing at all and the whole
 	 * body arrives at `wp_trim_words()` with the code in it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_prose_carrying_an_unclosed_angle_bracket_leaves_a_clean_excerpt(): void {
+	public function it_leaves_a_clean_excerpt_for_prose_carrying_an_unclosed_angle_bracket(): void {
 
 		$post_id = $this->_create_post(
 			static::_content_around(
@@ -177,9 +181,11 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * Both halves of one request: no code in the excerpts, and all of it still in the
 	 * single post view rendered after them.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_archive_of_excerpts_leaves_the_single_post_which_follows_alone(): void {
+	public function it_leaves_the_single_post_which_follows_an_archive_of_excerpts_alone(): void {
 
 		$post_id = $this->_create_post();
 
@@ -222,9 +228,11 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * priority 1 and the restore pass at priority 100, which is where request scoped
 	 * state left switched on would do its damage.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_excerpt_taken_midway_through_a_render_does_not_blank_it(): void {
+	public function it_does_not_blank_a_render_an_excerpt_was_taken_midway_through(): void {
 
 		$post_id = $this->_create_post();
 		$excerpt = '';

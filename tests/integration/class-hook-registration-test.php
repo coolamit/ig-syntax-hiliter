@@ -91,9 +91,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * registration at `PRIORITY_DECIDE_AGAIN` goes missing. Core prints the footer
 	 * scripts at 20, so 19 is the last moment which still reaches the page.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_asset_manager_registers_its_hooks(): void {
+	public function it_registers_the_asset_managers_hooks(): void {
 
 		$assets = Asset_Manager::get_instance();
 
@@ -127,9 +129,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * lose quietly, and it is the earlier of the two strips the automatic excerpt
 	 * needs — core's own `strip_shortcodes()` cannot be trusted with source code.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_shortcode_handler_registers_its_hooks(): void {
+	public function it_registers_the_shortcode_handlers_hooks(): void {
 
 		$handler = Shortcode_Handler::get_instance();
 
@@ -205,9 +209,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * registered `comment_text` on both lists would pass, and a comment would be
 	 * stripped and rendered at once.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_render_code_when_the_setting_is_on(): void {
+	public function it_renders_code_in_comments_when_the_setting_is_on(): void {
 
 		$handler = $this->_rewire_handler_with( 'hilite_comments', 'yes' );
 
@@ -236,9 +242,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * With `hilite_comments` off, comments are stripped and render nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_are_stripped_when_the_setting_is_off(): void {
+	public function it_strips_comments_when_the_setting_is_off(): void {
 
 		$handler = $this->_rewire_handler_with( 'hilite_comments', 'no' );
 
@@ -274,9 +282,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * same reason. A page carrying nothing but a Gist loads no stylesheet of this
 	 * plugin's otherwise, which is why this class does its own enqueuing at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_gist_embed_registers_its_hooks(): void {
+	public function it_registers_the_gist_embeds_hooks(): void {
 
 		$gist = Gist_Embed::get_instance();
 
@@ -317,9 +327,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * With `gist_in_comments` on, a comment gets an embed rather than a link.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_embed_a_gist_when_the_setting_is_on(): void {
+	public function it_embeds_a_gist_in_comments_when_the_setting_is_on(): void {
 
 		$gist = $this->_rewire_gist_with( 'yes' );
 
@@ -339,9 +351,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * two branches is the property the constructor appends `comment_text` to, so this
 	 * case asserts the list rather than the number.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_comments_link_to_a_gist_when_the_setting_is_off(): void {
+	public function it_links_to_a_gist_from_comments_when_the_setting_is_off(): void {
 
 		$gist = $this->_rewire_gist_with( 'no' );
 
@@ -378,9 +392,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * running, which the loop never reaches: the block silently vanishes, which looks
 	 * exactly like a checkout that was never built.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_block_registers_its_hooks(): void {
+	public function it_registers_the_blocks_hooks(): void {
 
 		$block = Block::get_instance();
 
@@ -421,9 +437,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * takes two parameters, so a registration asking for one fatals on every admin
 	 * screen while the hook and the priority are both perfectly correct.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_admin_registers_its_hooks(): void {
+	public function it_registers_the_admins_hooks(): void {
 
 		$admin = Admin::get_instance();
 
@@ -477,9 +495,11 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * screen drives it entirely over REST, so without this the Uninstall section's
 	 * buttons answer 404 and a site cannot get its snippets back out of blocks.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_block_converter_registers_its_hooks(): void {
+	public function it_registers_the_block_converters_hooks(): void {
 
 		$converter = Block_Converter::get_instance();
 

@@ -84,9 +84,11 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 * out through the language registry, out through the renderer and out through
 	 * `the_content`, and the page it was rendering became a white screen.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_error_while_filling_the_cache_does_not_escape_it(): void {
+	public function it_does_not_let_an_error_while_filling_the_cache_escape(): void {
 
 		$result = Cache::create( self::_KEY )
 						->expires_in( DAY_IN_SECONDS )
@@ -109,9 +111,11 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 * that emptiness for a year. Every request after the one that went wrong was
 	 * answered with the failure rather than being allowed to try again.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_failed_build_is_not_written_down(): void {
+	public function it_does_not_write_a_failed_build_down(): void {
 
 		Cache::create( self::_KEY )
 			->expires_in( DAY_IN_SECONDS )
@@ -145,9 +149,11 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 * a site with a perfectly good cached registry lost it the first time anything
 	 * went wrong while it was being rebuilt.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_failed_refresh_leaves_the_last_good_dataset_in_place(): void {
+	public function it_leaves_the_last_good_dataset_in_place_after_a_failed_refresh(): void {
 
 		$good   = [ 'languages' => [ 'php', 'ruby' ] ];
 		$option = $this->_option_name( self::_KEY );
@@ -192,9 +198,11 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 * reading that back as an empty registry would mean no language on the site
 	 * resolving, every snippet rendering unhighlighted, until the year was up.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_registry_cache_entry_which_is_not_a_registry_is_rebuilt(): void {
+	public function it_rebuilds_a_registry_cache_entry_which_is_not_a_registry(): void {
 
 		$this->_set_singleton( Language_Registry::class, null );
 

@@ -63,9 +63,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * split is what makes the gap easy to miss, which is why it is asserted here
 	 * rather than trusted to review.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_editor_script_is_set_up_for_translation(): void {
+	public function it_sets_the_editor_script_up_for_translation(): void {
 
 		$handle = $this->_get_editor_handle();
 
@@ -86,9 +88,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * carrying a second copy of the list in JavaScript. If this never arrives the
 	 * language dropdown is empty and automatic conversion claims nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_editor_is_handed_the_tag_list_and_the_languages(): void {
+	public function it_hands_the_editor_the_tag_list_and_the_languages(): void {
 
 		$data = $this->_get_localised_editor_data();
 
@@ -106,9 +110,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * carries — where the control shows the first option instead and writing that
 	 * back destroys a language which was highlighting perfectly well.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_editor_is_handed_the_language_aliases(): void {
+	public function it_hands_the_editor_the_language_aliases(): void {
 
 		$data    = $this->_get_localised_editor_data();
 		$aliases = $data['languageAliases'] ?? [];
@@ -155,9 +161,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * on the site can highlight, and would throw away the author's own word in the
 	 * process — which the `ig_syntax_hiliter/languages` filter may yet have made good.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_no_alias_points_at_a_language_the_site_cannot_load(): void {
+	public function it_points_no_alias_at_a_language_the_site_cannot_load(): void {
 
 		$aliases  = $this->_get_localised_editor_data()['languageAliases'] ?? [];
 		$registry = Language_Registry::get_instance();
@@ -254,9 +262,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * The same promise the front end makes, and it has to be kept on a screen a site
 	 * owner opens far more often than they open their own posts.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_editor_fetches_no_font_unless_one_is_chosen(): void {
+	public function it_fetches_no_font_for_the_editor_unless_one_is_chosen(): void {
 
 		$this->_reset_editor_font();
 
@@ -285,9 +295,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * hook twice is not academic: core fires it a second time while it builds the
 	 * editor iframe, and the two passes share the registered style objects.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_chosen_font_reaches_the_block_and_nothing_else(): void {
+	public function it_sends_a_chosen_font_to_the_block_and_nothing_else(): void {
 
 		$this->_reset_editor_font();
 
@@ -338,9 +350,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * code which was never wrong. Putting them back here would look like tidying up an
 	 * inconsistency, so this is what says the inconsistency is deliberate.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_only_the_front_end_asks_for_ligatures(): void {
+	public function it_asks_for_ligatures_on_the_front_end_only(): void {
 
 		foreach ( Asset_Manager::get_fonts() as $slug => $title ) {
 
@@ -375,9 +389,11 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * `enqueue_block_assets` fires on the front end too, and the plugin's whole rule
 	 * about assets is that a page carrying no code box downloads nothing of ours.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_front_end_is_left_to_its_own_asset_decision(): void {
+	public function it_leaves_the_front_end_to_its_own_asset_decision(): void {
 
 		$this->_reset_editor_font();
 

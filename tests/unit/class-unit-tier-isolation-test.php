@@ -20,9 +20,11 @@ class Unit_Tier_Isolation_Test extends TestCase {
 	/**
 	 * WordPress is not loaded, and must never be, for this tier.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_wordpress_is_not_loaded(): void {
+	public function it_runs_with_no_wordpress_loaded(): void {
 
 		$this->assertFalse( function_exists( 'add_action' ), 'The unit tier must run with no WordPress loaded.' );
 		$this->assertFalse( class_exists( 'WP_UnitTestCase', false ), 'The unit tier must not load the WordPress test library.' );

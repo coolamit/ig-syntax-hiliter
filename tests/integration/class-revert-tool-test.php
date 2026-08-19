@@ -228,9 +228,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The rewrite is surgical. The block delimiter becomes a shortcode and every
 	 * other byte of the post is exactly where it was.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_only_the_block_delimiter_is_rewritten(): void {
+	public function it_rewrites_only_the_block_delimiter(): void {
 
 		$this->_become_administrator();
 
@@ -262,9 +264,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The shortcode the tool writes renders the same code box the block rendered.
 	 * A revert which changed what the reader sees would not be a revert.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_shortcode_renders_what_the_block_rendered(): void {
+	public function it_renders_the_same_from_the_shortcode_as_from_the_block(): void {
 
 		$this->_become_administrator();
 
@@ -305,9 +309,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * Every block attribute finds its shortcode attribute, and one the block never
 	 * set stays unset so that the site default goes on deciding.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_block_attributes_map_on_to_shortcode_attributes(): void {
+	public function it_maps_block_attributes_on_to_shortcode_attributes(): void {
 
 		$with_everything = Block_Converter::block_to_shortcode(
 			[
@@ -341,9 +347,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A file label carrying the characters that end a shortcode attribute, or the
 	 * shortcode itself, cannot break out of the shortcode it is written into.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_hostile_file_label_cannot_break_the_shortcode(): void {
+	public function it_does_not_let_a_hostile_file_label_break_the_shortcode(): void {
 
 		$shortcode = (string) Block_Converter::block_to_shortcode(
 			[
@@ -382,9 +390,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * of it — the name was kept, and what would have broken the shortcode was still
 	 * taken off.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_language_is_cleaned_up_even_when_pcre_has_given_up(): void {
+	public function it_cleans_a_language_up_even_when_pcre_has_given_up(): void {
 
 		$this->_make_pcre_give_up();
 
@@ -409,9 +419,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * and everything which makes the label safe has already happened. So the label
 	 * comes back untidy rather than not at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_file_label_survives_a_pattern_pcre_gave_up_on(): void {
+	public function it_keeps_a_file_label_through_a_pattern_pcre_gave_up_on(): void {
 
 		$this->_make_pcre_give_up();
 
@@ -439,9 +451,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * there. The tags are written with doubled brackets instead, which the matcher
 	 * steps over, so the block converts like any other.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_quoting_this_plugins_tags_converts_escaped(): void {
+	public function it_converts_a_snippet_quoting_this_plugins_tags_escaped(): void {
 
 		$this->_become_administrator();
 
@@ -478,9 +492,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * is invisible on the page. One code box, showing the tags the author typed, with
 	 * nothing of the outer shortcode left over after it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_escaped_snippet_renders_the_tags_the_author_typed(): void {
+	public function it_renders_the_tags_the_author_typed_from_an_escaped_snippet(): void {
 
 		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
 
@@ -514,9 +530,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * at the first closing tag in it. So a block whose code could not be escaped is
 	 * left exactly as it was found, and reported.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_whose_code_cannot_be_escaped_is_left_alone(): void {
+	public function it_leaves_a_block_whose_code_cannot_be_escaped_alone(): void {
 
 		$this->_make_pcre_give_up();
 
@@ -550,9 +568,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The whole route is exercised, post and all. A snippet this size has to reach the
 	 * database as a block, come back out, and go in again as a shortcode.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_far_too_big_for_a_pattern_is_converted(): void {
+	public function it_converts_a_snippet_far_too_big_for_a_pattern(): void {
 
 		$this->_become_administrator();
 
@@ -603,9 +623,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * As above, the rewrite is exercised on its own: a shortcode holding a delimiter in
 	 * its code does not survive `Content_Protector` on the way to the database.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_delimiter_lookalike_in_the_code_survives(): void {
+	public function it_keeps_a_delimiter_lookalike_in_the_code(): void {
 
 		$code = sprintf(
 			"function f() {\n\treturn { a: 1 };\n}\n// <!-- wp:%s {\"code\":\"gotcha\"} /--> and a bare --> as well\n",
@@ -638,9 +660,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * put it: rewriting a delimiter inside a shortcode nests one shortcode in another
 	 * one's code, and everything past the inner closing tag stops being the snippet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_second_run_leaves_the_snippet_the_first_run_wrote_alone(): void {
+	public function it_leaves_the_snippet_the_first_run_wrote_alone_on_a_second_run(): void {
 
 		$this->_become_administrator();
 
@@ -696,9 +720,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * be rewritten — which is the very damage this scan exists to prevent, on the
 	 * content most likely to provoke it. So a scan that gave up rewrites nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_scan_pcre_gave_up_on_rewrites_nothing(): void {
+	public function it_rewrites_nothing_on_a_scan_pcre_gave_up_on(): void {
 
 		$content = sprintf(
 			"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]\n\n",
@@ -729,9 +755,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * block, and the tool has to tell the two apart in the same post. Leaving the block
 	 * behind would be the fix for the case above overreaching.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_beside_a_snippet_which_quotes_one_still_converts(): void {
+	public function it_still_converts_a_block_beside_a_snippet_which_quotes_one(): void {
 
 		$this->_become_administrator();
 
@@ -772,9 +800,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * read this, so a post reported as done while its blocks are still blocks is the
 	 * one answer that costs them their code.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_post_whose_write_fails_is_reported_and_left_as_it_was(): void {
+	public function it_reports_a_post_whose_write_fails_and_leaves_it_as_it_was(): void {
 
 		$this->_become_administrator();
 
@@ -805,9 +835,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * through every branch or was counted twice would show up as a bar that never
 	 * arrives or one that overshoots.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_post_buckets_add_up_to_what_was_processed(): void {
+	public function it_adds_the_post_buckets_up_to_what_was_processed(): void {
 
 		$this->_become_administrator();
 
@@ -870,9 +902,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * chose to leave alone. The two mean different things to a site owner: one is
 	 * theirs to look at, the other is the tool working as intended.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_delimiter_that_cannot_be_read_is_a_failure_and_not_a_skip(): void {
+	public function it_counts_a_delimiter_that_cannot_be_read_as_a_failure_and_not_a_skip(): void {
 
 		$this->_become_administrator();
 
@@ -895,9 +929,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A delimiter which is not self closing is not this plugin's block, whatever its
 	 * name says, and is left exactly where it was found.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_delimiter_which_is_not_self_closing_is_left_byte_identical(): void {
+	public function it_leaves_a_delimiter_which_is_not_self_closing_byte_identical(): void {
 
 		$this->_become_administrator();
 
@@ -921,9 +957,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A block carrying no code has nothing to show a reader, so it is taken out
 	 * rather than written into the post as an empty shortcode.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_carrying_no_code_is_removed(): void {
+	public function it_removes_a_block_carrying_no_code(): void {
 
 		$this->_become_administrator();
 
@@ -946,9 +984,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The batching is cursor based, so it never slides over a post as the rows it
 	 * is walking stop matching.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_batching_gets_through_every_post(): void {
+	public function it_gets_through_every_post_in_batches(): void {
 
 		$this->_become_administrator();
 
@@ -993,9 +1033,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A run that stops halfway leaves the site in a state the next run picks up from,
 	 * and the posts it already finished are not touched a second time.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_interrupted_run_resumes_without_doing_anything_twice(): void {
+	public function it_resumes_an_interrupted_run_without_doing_anything_twice(): void {
 
 		$this->_become_administrator();
 
@@ -1054,9 +1096,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The scope is public post types and every status but the two which mean the
 	 * content is gone. Drafts and scheduled posts are in; the trash is not.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_scope_covers_drafts_but_not_the_trash(): void {
+	public function it_covers_drafts_but_not_the_trash(): void {
 
 		$this->_become_administrator();
 
@@ -1120,9 +1164,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The route which rewrites content is behind the same check as the one which
 	 * saves a setting, and a refusal changes nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_revert_route_refuses_anybody_who_may_not_manage_options(): void {
+	public function it_refuses_the_revert_route_to_anybody_who_may_not_manage_options(): void {
 
 		$content = static::_block(
 			[
@@ -1151,9 +1197,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The tool writes the generic tag and only ever the generic tag, whatever the
 	 * language was.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_tool_always_writes_the_generic_tag(): void {
+	public function it_always_writes_the_generic_tag(): void {
 
 		$shortcode = (string) Block_Converter::block_to_shortcode(
 			[
@@ -1173,9 +1221,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * is converted too. The address it becomes is the one the embed already resolved
 	 * it to, and every other byte of the post is where it was.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_gist_block_becomes_a_github_shortcode(): void {
+	public function it_turns_a_gist_block_into_a_github_shortcode(): void {
 
 		$this->_become_administrator();
 
@@ -1216,9 +1266,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * The shortcode the tool writes embeds the same Gist the block embedded. A revert
 	 * which changed what the reader sees would not be a revert.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_github_shortcode_embeds_what_the_gist_block_embedded(): void {
+	public function it_embeds_the_same_from_the_github_shortcode_as_from_the_gist_block(): void {
 
 		$this->_become_administrator();
 
@@ -1245,9 +1297,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A post holding one of each converts both, and it is still one post converted:
 	 * the buckets count posts and only the blocks inside them are of two kinds.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_post_holding_both_blocks_converts_both(): void {
+	public function it_converts_both_blocks_in_a_post_holding_both(): void {
 
 		$this->_become_administrator();
 
@@ -1283,9 +1337,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * today, so it is taken out rather than written into the post as a shortcode
 	 * that would show them nothing either.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_gist_block_naming_no_gist_is_removed(): void {
+	public function it_removes_a_gist_block_naming_no_gist(): void {
 
 		$this->_become_administrator();
 
@@ -1312,9 +1368,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * A Gist delimiter written inside a snippet is somebody documenting this plugin,
 	 * not a block, so it is left exactly where it was found.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_gist_delimiter_inside_a_snippet_is_left_alone(): void {
+	public function it_leaves_a_gist_delimiter_inside_a_snippet_alone(): void {
 
 		$content = sprintf(
 			"[sourcecode language=\"html\"]\n<!-- wp:%s {\"url\":\"https://gist.github.com/9a1b2c3d4e5f\"} /-->\n[/sourcecode]",
@@ -1334,9 +1392,11 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * two reasons to be edited, and a rename in one that missed the other would
 	 * quietly stop the tool converting anything.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_converter_and_the_block_name_the_same_gist_block(): void {
+	public function it_names_the_same_gist_block_in_the_converter_and_in_the_block(): void {
 
 		$this->assertSame( Block::GIST_NAME, Block_Converter::GIST_BLOCK_NAME );
 		$this->assertSame( Gist_Embed::TAG, Block_Converter::GIST_SHORTCODE_TAG );

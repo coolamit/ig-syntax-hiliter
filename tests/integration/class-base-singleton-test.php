@@ -35,9 +35,11 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 	 * Two children of Base get two different objects, each of its own class, and
 	 * each of them stable.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_each_subclass_gets_its_own_stable_instance(): void {
+	public function it_gives_each_subclass_its_own_stable_instance(): void {
 
 		$alpha = Singleton_Fixture_Alpha::get_instance();
 		$beta  = Singleton_Fixture_Beta::get_instance();
@@ -76,9 +78,11 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 	 * have helped: nullable is not defaulted, and `?Option $_option;` throws exactly the
 	 * same `Error`.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_parent_constructor_still_runs(): void {
+	public function it_still_runs_the_parent_constructor(): void {
 
 		$property = new ReflectionProperty( Singleton_Fixture_Alpha::class, '_option' );
 

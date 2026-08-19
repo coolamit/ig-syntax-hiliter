@@ -20,9 +20,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * With no attributes at all, the defaults apply.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_defaults_match_v5(): void {
+	public function it_applies_the_v5_defaults_when_no_attributes_are_given(): void {
 
 		$snippet = Snippet::from_shortcode_atts( [], 'echo 1;' );
 
@@ -39,9 +41,11 @@ class Snippet_Test extends TestCase {
 	 * The language is kept exactly as the author typed it and never resolved here,
 	 * the legacy `lang` spelling is read, and `language` wins when both are given.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_language_attribute_grammar(): void {
+	public function it_reads_the_language_attribute_grammar(): void {
 
 		$this->assertSame( 'js', Snippet::from_shortcode_atts( [ 'language' => 'js' ], 'x' )->language );
 		$this->assertSame( 'html4strict', Snippet::from_shortcode_atts( [ 'language' => 'html4strict' ], 'x' )->language );
@@ -64,9 +68,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * Attribute names are matched without regard to case.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_attribute_names_are_case_insensitive(): void {
+	public function it_reads_attribute_names_case_insensitively(): void {
 
 		$snippet = Snippet::from_shortcode_atts(
 			[
@@ -84,9 +90,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * The first line number is `max( 1, num, firstline )`.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_first_line_grammar(): void {
+	public function it_reads_the_first_line_grammar(): void {
 
 		$this->assertSame( 5, Snippet::from_shortcode_atts( [ 'firstline' => '5' ], 'x' )->first_line );
 		$this->assertSame( 5, Snippet::from_shortcode_atts( [ 'num' => '5' ], 'x' )->first_line );
@@ -129,9 +137,11 @@ class Snippet_Test extends TestCase {
 	 * Both spellings of the number saturate, the same way one written past the top of
 	 * the range already did.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_first_line_at_the_bottom_of_the_integer_range(): void {
+	public function it_reads_a_first_line_at_the_bottom_of_the_integer_range(): void {
 
 		$saturated = Snippet::from_shortcode_atts( [ 'firstline' => '9223372036854775808' ], 'x' )->first_line;
 
@@ -168,9 +178,11 @@ class Snippet_Test extends TestCase {
 	 * The `"2,4-6"` range grammar is parsed into a sorted, unique list of lines,
 	 * and nonsense yields nothing rather than an error.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_highlight_range_grammar(): void {
+	public function it_reads_the_highlight_range_grammar(): void {
 
 		$this->assertSame( [ 2, 4, 5, 6 ], Snippet::from_shortcode_atts( [ 'highlight' => '2,4-6' ], 'x' )->highlight_lines );
 		$this->assertSame( [ 3 ], Snippet::from_shortcode_atts( [ 'highlight' => '3' ], 'x' )->highlight_lines );
@@ -188,9 +200,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * A range cannot be used to exhaust memory.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_highlight_range_is_capped(): void {
+	public function it_caps_a_highlight_range(): void {
 
 		$lines = Snippet::from_shortcode_atts( [ 'highlight' => '1-999999999' ], 'x' )->highlight_lines;
 
@@ -207,9 +221,11 @@ class Snippet_Test extends TestCase {
 	 * end render — for an answer which is ten thousand lines long whatever is asked
 	 * for. What is expanded is what is kept.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_whole_highlight_attribute_is_capped(): void {
+	public function it_caps_the_whole_highlight_attribute(): void {
 
 		$ranges = [];
 
@@ -231,9 +247,11 @@ class Snippet_Test extends TestCase {
 	 * against and does not advance again. Thirty nine bytes of attribute exhausted the
 	 * memory limit outright.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_range_at_the_top_of_the_integer_range_ends(): void {
+	public function it_ends_a_range_at_the_top_of_the_integer_range(): void {
 
 		$this->assertSame(
 			[ PHP_INT_MAX ],
@@ -248,9 +266,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * `gutter` is the per snippet line numbers switch, falling back to the site setting.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_gutter_overrides_the_site_setting(): void {
+	public function it_lets_gutter_override_the_site_setting(): void {
 
 		$this->assertFalse( Snippet::from_shortcode_atts( [ 'gutter' => 'no' ], 'x', true )->show_line_numbers );
 		$this->assertTrue( Snippet::from_shortcode_atts( [ 'gutter' => 'yes' ], 'x', false )->show_line_numbers );
@@ -266,9 +286,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * The attributes the plugin no longer acts on still parse, and change nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_retired_attributes_are_accepted_and_ignored(): void {
+	public function it_accepts_and_ignores_the_retired_attributes(): void {
 
 		$plain = Snippet::from_shortcode_atts( [ 'language' => 'php' ], 'x' );
 
@@ -292,9 +314,11 @@ class Snippet_Test extends TestCase {
 	 * WordPress hands a shortcode callback an empty string when it has no
 	 * attributes, and old content can carry attributes of any shape at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_malformed_attributes_do_not_fatal(): void {
+	public function it_does_not_fatal_on_malformed_attributes(): void {
 
 		$snippet = Snippet::from_shortcode_atts(
 			[
@@ -324,9 +348,11 @@ class Snippet_Test extends TestCase {
 	 * everything after an unbalanced `<`, while leaving the text of a script tag
 	 * sitting there looking like it had been dealt with.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_file_label_is_cleaned_up(): void {
+	public function it_cleans_a_file_label_up(): void {
 
 		$this->assertSame( 'wp-config.php', Snippet::from_shortcode_atts( [ 'file' => '  wp-config.php  ' ], 'x' )->file );
 		$this->assertSame( 'a b', Snippet::from_shortcode_atts( [ 'file' => "a\n\tb" ], 'x' )->file );
@@ -348,9 +374,11 @@ class Snippet_Test extends TestCase {
 	/**
 	 * Shortcode content is trimmed, and not otherwise touched.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_code_is_trimmed_but_not_altered(): void {
+	public function it_trims_code_but_does_not_alter_it(): void {
 
 		$code    = "<?php\n\techo '<b>&amp;</b>';\n";
 		$snippet = Snippet::from_shortcode_atts( [], "\n" . $code . "\n" );
@@ -364,9 +392,11 @@ class Snippet_Test extends TestCase {
 	 * Block attributes go through the same parser as shortcode attributes, and a
 	 * block which says nothing about line numbers inherits the site setting.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_block_attributes(): void {
+	public function it_reads_block_attributes_through_the_shortcode_parser(): void {
 
 		$snippet = Snippet::from_block_attributes(
 			[

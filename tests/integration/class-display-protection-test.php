@@ -87,9 +87,11 @@ class Display_Protection_Test extends WP_UnitTestCase {
 	 * as it was found, and a reader who sees the shortcode they wrote still has their
 	 * code.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_display_pass_the_matcher_gave_up_on_protects_nothing(): void {
+	public function it_protects_nothing_on_a_display_pass_the_matcher_gave_up_on(): void {
 
 		$content   = static::_matcher_killing_content();
 		$protector = Content_Protector::get_instance();
@@ -131,9 +133,11 @@ class Display_Protection_Test extends WP_UnitTestCase {
 	 * fixture's code names this plugin's own tags three thousand times over, which is
 	 * what the delimiter scan has to keep the matcher away from.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_post_far_past_pcres_ceiling_renders_intact(): void {
+	public function it_renders_a_post_far_past_pcres_ceiling_intact(): void {
 
 		$line = "function f() { return 1; }    // [php]echo 1;[/php] <>&\"'\n";
 		$code = str_repeat( $line, 3000 );

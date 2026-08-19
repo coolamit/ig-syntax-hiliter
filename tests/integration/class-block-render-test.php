@@ -160,9 +160,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * `Block::register_block()` returns quietly without it, which would otherwise look
 	 * exactly like drift.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_registered_block_is_the_one_the_pipeline_matches_on(): void {
+	public function it_registers_the_block_the_pipeline_matches_on(): void {
 
 		$this->assertFileExists(
 			Helper::get_path( Block::BUILD_DIR ) . '/block.json',
@@ -181,9 +183,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * attribute mappers, so the two are free to drift apart without anything
 	 * noticing. This is what notices.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_and_the_equivalent_shortcode_render_the_same_code_box(): void {
+	public function it_renders_the_same_code_box_for_a_block_and_the_equivalent_shortcode(): void {
 
 		$code = "function greet( \$name ) {\n\techo \"Hello, \$name\";\n}";
 
@@ -223,9 +227,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * the site gets to rewrite the code. The URL outside the block is the control:
 	 * it proves the hostile filter really ran.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_block_markup_survives_a_hostile_filter_at_priority_ten(): void {
+	public function it_keeps_block_markup_through_a_hostile_filter_at_priority_ten(): void {
 
 		$code    = '<script src="http://inside.test/y.js"></script>';  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
 		$outside = 'http://outside.test/a.js';
@@ -267,9 +273,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * of the delimiter rather than as shortcode content, which is the path along
 	 * which a second escape could be added without anyone noticing at the renderer.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_code_in_a_block_is_escaped_exactly_once(): void {
+	public function it_escapes_code_in_a_block_exactly_once(): void {
 
 		$code = "if ( \$a && \$b ) {\n\techo \"<b>\" . \$x . '</b>';\n}";
 
@@ -297,9 +305,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 *
 	 * A page with no snippet at all is `Conditional_Assets_Test`'s business.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_page_whose_only_snippet_is_a_block_enqueues_the_assets(): void {
+	public function it_enqueues_the_assets_for_a_page_whose_only_snippet_is_a_block(): void {
 
 		$this->_filter(
 			'the_content',
@@ -335,9 +345,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * `wp_trim_words()` a code box to strip the markup off and leave the code as
 	 * prose.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_allowed_into_an_excerpt_leaks_no_code(): void {
+	public function it_leaks_no_code_from_a_block_allowed_into_an_excerpt(): void {
 
 		$post_id = self::factory()->post->create(
 			[
@@ -376,9 +388,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * to read — a comment which the substitution can close early, taking the block
 	 * with it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_whose_code_contains_a_shortcode_still_renders(): void {
+	public function it_still_renders_a_block_whose_code_contains_a_shortcode(): void {
 
 		$code = 'Use [php]echo 1;[/php] in your post.';
 
@@ -407,9 +421,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * — leaves the run open. What must not follow is a code box replaced by a token
 	 * that never comes back.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_run_left_in_flight_does_not_swallow_a_later_code_box(): void {
+	public function it_does_not_let_a_run_left_in_flight_swallow_a_later_code_box(): void {
 
 		$protector = Content_Protector::get_instance();
 
@@ -446,9 +462,11 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * along which an arbitrary language name reaches the renderer, and it must end
 	 * in a plain box and no request for a language file which is not there.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_with_an_unresolvable_language_degrades_to_a_plain_box(): void {
+	public function it_degrades_a_block_with_an_unresolvable_language_to_a_plain_box(): void {
 
 		$output = $this->_filter(
 			'the_content',

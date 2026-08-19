@@ -87,9 +87,11 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	 * `make_clickable` on the content, while prose around the snippet is still
 	 * linked, so this is measuring the snippet and not a dead filter chain.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_urls_survive_make_clickable_on_the_content(): void {
+	public function it_keeps_urls_through_make_clickable_on_the_content(): void {
 
 		add_filter( 'the_content', 'make_clickable', 10 );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook, core callback, added the way a theme would.
 
@@ -109,9 +111,11 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	/**
 	 * The same holds in a comment, where core hangs `make_clickable` by default.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_urls_in_a_comment_snippet_stay_plain_text(): void {
+	public function it_keeps_urls_in_a_comment_snippet_as_plain_text(): void {
 
 		$priority = has_filter( 'comment_text', 'make_clickable' );
 
@@ -128,9 +132,11 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	/**
 	 * The Autolinker component is not bundled and is never loaded.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_autolinker_component_is_not_bundled_or_enqueued(): void {
+	public function it_neither_bundles_nor_enqueues_the_autolinker_component(): void {
 
 		$this->assertDirectoryDoesNotExist( dirname( __DIR__, 2 ) . '/assets/lib/prism/plugins/autolinker' );
 

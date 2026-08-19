@@ -53,9 +53,11 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	 * on — and it passing here also says the rest of the suite is exercising a
 	 * plugin that really did load.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_test_environment_is_supported(): void {
+	public function it_supports_the_test_environment(): void {
 
 		$this->assertTrue( ( new iG_Syntax_Hiliter_Gatekeeper() )->is_environment_supported() );
 
@@ -70,9 +72,11 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	 * of it. The output is captured rather than printed, because `phpunit.xml.dist`
 	 * fails a test which prints anything.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_refusal_notice_names_the_versions_it_judged(): void {
+	public function it_names_the_versions_it_judged_in_the_refusal_notice(): void {
 
 		$gate = $this->_gate( '7.4.33', '6.8' );
 

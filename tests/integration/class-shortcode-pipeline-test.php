@@ -84,9 +84,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * The plugin's hooks sit where they are supposed to sit, on both the display
 	 * filters and the save filters.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_hooks_are_registered_at_the_bracketing_priorities(): void {
+	public function it_registers_its_hooks_at_the_bracketing_priorities(): void {
 
 		$handler = Shortcode_Handler::get_instance();
 
@@ -134,9 +136,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * nor rendered nor stripped. `[sourcecode]` always is, whatever language it
 	 * names, and an unresolvable one degrades.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_tag_the_plugin_never_shipped_is_left_alone(): void {
+	public function it_leaves_a_tag_the_plugin_never_shipped_alone(): void {
 
 		$content = '[email]someone@example.com[/email]';
 
@@ -157,9 +161,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	/**
 	 * A shortcode with nothing in it renders nothing, exactly as it did before.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_empty_snippet_renders_nothing(): void {
+	public function it_renders_nothing_for_an_empty_snippet(): void {
 
 		$output = $this->_filter( 'the_content', 'before[php][/php]after' );
 
@@ -173,9 +179,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	/**
 	 * While the filter chain runs, the content holds no code.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_filter_chain_never_sees_the_code(): void {
+	public function it_never_shows_the_code_to_the_filter_chain(): void {
 
 		add_filter( 'the_content', [ $this, 'spy_filter' ], 50 );
 
@@ -198,9 +206,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * delimiters are therefore rewrites inside one, and whatever it puts there is
 	 * sitting in an HTML comment which `do_blocks()` has yet to read.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_shortcode_inside_another_plugins_block_delimiter_is_left_alone(): void {
+	public function it_leaves_a_shortcode_inside_another_plugins_block_delimiter_alone(): void {
 
 		$delimiter = '<!-- wp:acme/notice {"text":"Try [php]echo 1;[/php] today"} /-->';
 
@@ -218,9 +228,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * The production bug this pipeline exists for: a script tag inside a code box,
 	 * with a filter at priority 10 that strips scripts and autolinks URLs.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_script_tag_survives_a_hostile_filter(): void {
+	public function it_keeps_a_script_tag_through_a_hostile_filter(): void {
 
 		$code = '<script src="https://example.com/thing.js"></script>';  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
 
@@ -243,9 +255,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * A code box never ends up inside a paragraph, which is what would happen if the
 	 * placeholder were not block level by the time `wpautop` reached it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_code_box_is_not_wrapped_in_a_paragraph(): void {
+	public function it_does_not_wrap_a_code_box_in_a_paragraph(): void {
 
 		$output = $this->_filter( 'the_content', "Some text:\n[php]echo 1;[/php]\nMore text" );
 
@@ -265,9 +279,11 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * protected run is in flight, and stashes its markup when it is, gets the same
 	 * immunity a shortcode gets.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_render_callback_can_stash_its_markup(): void {
+	public function it_lets_a_render_callback_stash_its_markup(): void {
 
 		$protector = Content_Protector::get_instance();
 		$markup    = '<pre id="from-a-render-callback"><code>fetch( "https://example.com/x.js" );</code></pre>';

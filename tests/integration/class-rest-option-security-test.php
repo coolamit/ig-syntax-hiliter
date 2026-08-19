@@ -136,9 +136,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	/**
 	 * A request with nobody behind it is refused with 401 and changes nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_logged_out_request_is_refused_and_saves_nothing(): void {
+	public function it_refuses_a_logged_out_request_and_saves_nothing(): void {
 
 		wp_set_current_user( 0 );
 
@@ -154,9 +156,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * A logged in user without `manage_options` is refused with 403 and changes
 	 * nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_subscriber_request_is_refused_and_saves_nothing(): void {
+	public function it_refuses_a_subscriber_request_and_saves_nothing(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
 
@@ -172,9 +176,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * The route saves this plugin's settings and nothing else. A name it does not
 	 * own is refused, so it can never become a way of writing an arbitrary option.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_option_this_plugin_does_not_own_is_refused(): void {
+	public function it_refuses_an_option_this_plugin_does_not_own(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -193,9 +199,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * A value the setting does not accept is refused, and the setting keeps the value
 	 * it had.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_value_outside_the_schema_is_refused(): void {
+	public function it_refuses_a_value_outside_the_schema(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -216,9 +224,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * makes the body unparseable: the screen then reports a generic failure instead
 	 * of saying what was wrong with the request.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_setting_name_which_is_not_a_string_is_refused_without_a_php_diagnostic(): void {
+	public function it_refuses_a_setting_name_which_is_not_a_string_without_a_php_diagnostic(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -261,9 +271,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * get the setting saved. Without this, every refusal here could be passing
 	 * because the route does not work at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_administrator_saves_a_setting(): void {
+	public function it_lets_an_administrator_save_a_setting(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -293,9 +305,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * same capability as the settings themselves. The two refusals are told apart
 	 * because a caller which is merely logged out has something to do about it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_theme_refresh_is_refused_to_anybody_who_may_not_change_settings(): void {
+	public function it_refuses_the_theme_refresh_to_anybody_who_may_not_change_settings(): void {
 
 		wp_set_current_user( 0 );
 
@@ -321,9 +335,11 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 * list would have passed, because the assertion would have read that same stale
 	 * list.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_theme_refresh_answers_with_the_rebuilt_list(): void {
+	public function it_answers_the_theme_refresh_with_the_rebuilt_list(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 

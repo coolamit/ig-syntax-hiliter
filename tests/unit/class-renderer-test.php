@@ -88,9 +88,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * The shape of the markup, in full.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_markup_shape(): void {
+	public function it_renders_the_whole_markup_shape(): void {
 
 		$markup = $this->renderer->render_snippet(
 			new Snippet( 'echo 1;', 'php', true, 5, [ 2, 4, 5, 6 ], 'index.php' )
@@ -112,9 +114,11 @@ class Renderer_Test extends TestCase {
 	 * an element: every theme, and every site's own CSS, selects on what was there
 	 * before.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_without_a_file_label_is_not_wrapped(): void {
+	public function it_does_not_wrap_a_snippet_without_a_file_label(): void {
 
 		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php' ) );
 
@@ -127,9 +131,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Only the attributes a snippet actually needs are written.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_optional_attributes_are_omitted(): void {
+	public function it_writes_only_the_attributes_a_snippet_needs(): void {
 
 		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php', false ) );
 
@@ -152,9 +158,11 @@ class Renderer_Test extends TestCase {
 	 * re-encoded, so the fix which makes `&amp;` in an author's text come out as
 	 * `&amp;amp;` must not also turn their `<` into `&amp;amp;lt;`.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_code_is_escaped_exactly_once(): void {
+	public function it_escapes_code_exactly_once(): void {
 
 		$code   = "<?php\n\$x = '<script src=\"http://example.com/x.js\"></script>';\n// A & B\n";  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test data, not a script the plugin loads.
 		$markup = $this->renderer->render_snippet( new Snippet( $code, 'php' ) );
@@ -176,9 +184,11 @@ class Renderer_Test extends TestCase {
 	 * one that does not. Byte for byte, because the way an entity is spelled is part
 	 * of the snippet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_entities_the_author_typed_are_never_decoded_or_respelled(): void {
+	public function it_never_decodes_or_respells_the_entities_the_author_typed(): void {
 
 		$cases = [
 			'&amp;lt;b&amp;gt;'       => '&amp;amp;lt;b&amp;amp;gt;',
@@ -207,9 +217,11 @@ class Renderer_Test extends TestCase {
 	 * reader is served gives their bytes back. That is the property the escaping
 	 * exists for, and it holds down both paths into the renderer.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_reader_sees_exactly_what_the_author_typed(): void {
+	public function it_shows_the_reader_exactly_what_the_author_typed(): void {
 
 		$code = "&amp; &lt;b&gt; &nbsp; &#60; & < > \" ' <b>bold</b>\n\$x = 'a' . \"b\";";
 
@@ -252,9 +264,11 @@ class Renderer_Test extends TestCase {
 	 * A file label is a label, not markup, so an entity in it is shown rather than
 	 * decoded — the same rule the code itself is held to.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_file_label_keeps_the_entities_the_author_typed(): void {
+	public function it_keeps_the_entities_the_author_typed_in_a_file_label(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -279,9 +293,11 @@ class Renderer_Test extends TestCase {
 	 * bundled theme selects on `pre[class*="language-"]` and without it a plain box
 	 * is never painted.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_unknown_language_falls_back(): void {
+	public function it_falls_back_for_an_unknown_language(): void {
 
 		foreach ( [ 'madeuplang', '', 'none', 'typescript', 'code', 'text' ] as $language ) {
 
@@ -318,9 +334,11 @@ class Renderer_Test extends TestCase {
 	 * registry's own aliases — each case insensitive and whitespace tolerant. The
 	 * legacy map's own table belongs to `Legacy_Map_Test`.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_language_resolution(): void {
+	public function it_resolves_a_language_through_all_three_stages(): void {
 
 		$expected = [
 			'php'         => 'php',
@@ -341,9 +359,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A language the legacy map knows but the registry does not still falls back.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_mapped_language_missing_from_the_registry_falls_back(): void {
+	public function it_falls_back_for_a_mapped_language_missing_from_the_registry(): void {
 
 		// The fixture registry has no `apacheconf`, which is what `apache` maps to.
 		$this->assertSame( 'none', $this->renderer->resolve_language( 'apache' ) );
@@ -353,9 +373,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * The same snippet rendered twice gets two different DOM ids.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_repeated_snippets_get_unique_ids(): void {
+	public function it_gives_repeated_snippets_unique_ids(): void {
 
 		$snippet = new Snippet( 'echo 1;', 'php' );
 
@@ -372,9 +394,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A file label is escaped like everything else, and cannot break out.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_file_label_is_escaped(): void {
+	public function it_escapes_a_file_label(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -403,9 +427,11 @@ class Renderer_Test extends TestCase {
 	 * The cost is stated rather than hidden: a type parameter goes with the tags, so
 	 * `vector<int>.cpp` is shown as `vector.cpp`. 5.1 did the same.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_file_label_which_looks_like_markup_is_stripped(): void {
+	public function it_strips_a_file_label_which_looks_like_markup(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -429,9 +455,11 @@ class Renderer_Test extends TestCase {
 	 * the box is the bare one a snippet without a label has always had. An empty
 	 * element would be a wrapper and a gap above every such snippet.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_file_label_which_is_only_markup_leaves_the_box_bare(): void {
+	public function it_leaves_the_box_bare_for_a_file_label_which_is_only_markup(): void {
 
 		$markup = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -455,9 +483,11 @@ class Renderer_Test extends TestCase {
 	 * what 5.1 did — the tail is what is kept, because the end of a path is the part
 	 * that names the file.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_long_file_label_is_cut_and_the_whole_of_it_is_the_tooltip(): void {
+	public function it_cuts_a_long_file_label_and_makes_the_whole_of_it_the_tooltip(): void {
 
 		$label = 'aaaaaaaaaa/bbbbbbbbbb/cccccccccc/dd.php';
 
@@ -479,9 +509,11 @@ class Renderer_Test extends TestCase {
 	 * A label that fits is written whole and gets no tooltip. A tooltip repeating
 	 * what is already on screen teaches a reader that hovering it is pointless.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_label_which_fits_is_written_whole_with_no_tooltip(): void {
+	public function it_writes_a_label_which_fits_whole_with_no_tooltip(): void {
 
 		$label = str_repeat( 'a', 26 ) . '.php';
 
@@ -502,9 +534,11 @@ class Renderer_Test extends TestCase {
 	 * The cut counts characters and not bytes. Cutting a UTF-8 label by bytes ends it
 	 * on half a character, which the browser draws as a replacement glyph.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_multibyte_label_is_not_cut_through_a_character(): void {
+	public function it_does_not_cut_a_multibyte_label_through_a_character(): void {
 
 		$label = str_repeat( 'é', 35 );
 
@@ -532,9 +566,11 @@ class Renderer_Test extends TestCase {
 	 * code box — and it emptied the file label the same way. The failure mode of an
 	 * escape has to be "changed nothing", never "matched everything".
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_byte_the_charset_cannot_read_does_not_empty_the_box(): void {
+	public function it_does_not_empty_the_box_for_a_byte_the_charset_cannot_read(): void {
 
 		// Valid ISO-8859-1, invalid UTF-8: the shape a pre-4.2 latin1 column still holds.
 		$code = "\xA9 " . 'if ( $a < $b ) { echo "x"; }';
@@ -563,9 +599,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Line numbers are squeezed back into the range notation they came from.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_line_ranges_are_compacted(): void {
+	public function it_compacts_the_line_ranges(): void {
 
 		$this->assertSame( '', Renderer::compact_line_ranges( [] ) );
 		$this->assertSame( '3', Renderer::compact_line_ranges( [ 3 ] ) );
@@ -579,9 +617,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A shortcode and a block describing the same snippet render identically.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_shortcode_and_block_paths_agree(): void {
+	public function it_renders_the_same_on_the_shortcode_and_block_paths(): void {
 
 		$from_shortcode = $this->renderer->render_snippet(
 			Snippet::from_shortcode_atts(
@@ -630,9 +670,11 @@ class Renderer_Test extends TestCase {
 	 * This case is here because the attribute looks redundant beside `data-start` and
 	 * reads like something to tidy away.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_starting_elsewhere_tells_the_highlighter_the_offset(): void {
+	public function it_tells_the_highlighter_the_offset_for_a_snippet_starting_elsewhere(): void {
 
 		$markup = $this->renderer->render_snippet(
 			new Snippet( 'echo 1;', 'php', true, 5, [ 11, 12, 13 ] )
@@ -656,9 +698,11 @@ class Renderer_Test extends TestCase {
 	 * Asserted rather than left to a reading of the value object, because a second
 	 * attribute now rests on that clamp.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_first_line_below_one_produces_no_offset(): void {
+	public function it_produces_no_offset_for_a_first_line_below_one(): void {
 
 		foreach ( [ 0, -7 ] as $first_line ) {
 

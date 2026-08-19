@@ -97,9 +97,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	/**
 	 * A v5.1 install lands on the v6 option set with the mapped values.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_v51_install_maps_its_settings_to_the_v6_option_set(): void {
+	public function it_maps_a_v51_installs_settings_to_the_v6_option_set(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
 		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
@@ -129,9 +131,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * The style setting is the only one whose mapping branches, so both of its
 	 * outcomes are checked.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_v5_style_setting_maps_to_the_default_theme_when_it_was_on(): void {
+	public function it_maps_the_v5_style_setting_to_the_default_theme_when_it_was_on(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
 		update_option(
@@ -158,9 +162,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * The migration is triggered on every page load, so running twice would mean
 	 * rewriting the site's settings on every request.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_migration_does_not_run_again_on_a_subsequent_load(): void {
+	public function it_does_not_migrate_again_on_a_subsequent_load(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
 		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
@@ -184,9 +190,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * A v3.5 install is recognised by its own option name, which is read, mapped
 	 * and then deleted. Its "plain text" setting became the copy button in v6.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_v35_install_maps_its_legacy_options_and_deletes_them(): void {
+	public function it_maps_a_v35_installs_legacy_options_and_deletes_them(): void {
 
 		update_option(
 			Migrate::V35_OPTION_NAME,
@@ -216,9 +224,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * integers or the strings some other hand put there. `0` means the setting off,
 	 * and off is the one answer this must never turn into the v6 default of on.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_v35_install_which_stored_its_flags_as_integers_keeps_its_settings(): void {
+	public function it_keeps_the_settings_of_a_v35_install_which_stored_its_flags_as_integers(): void {
 
 		update_option(
 			Migrate::V35_OPTION_NAME,
@@ -244,9 +254,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * because everything downstream compares a setting against `yes` and anything
 	 * else is silently off.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_v35_value_which_is_not_a_flag_lands_on_the_v6_default(): void {
+	public function it_lands_a_v35_value_which_is_not_a_flag_on_the_v6_default(): void {
 
 		update_option(
 			Migrate::V35_OPTION_NAME,
@@ -270,9 +282,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * one, so the migration correctly does nothing — and used to leave that spelling
 	 * in the option for good.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_non_canonical_stored_version_is_rewritten_to_the_running_one(): void {
+	public function it_rewrites_a_non_canonical_stored_version_to_the_running_one(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
@@ -299,9 +313,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * a site upgrading from a beta would go on being served the previous build's
 	 * theme list until the cache ran out or somebody pressed refresh.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_rewritten_version_clears_the_caches(): void {
+	public function it_clears_the_caches_when_it_rewrites_the_version(): void {
 
 		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
 
@@ -328,9 +344,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * does is an ordinary page load, and an ordinary page load must not throw the
 	 * caches away. This runs on every request the site serves.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_up_to_date_install_keeps_its_caches(): void {
+	public function it_keeps_the_caches_of_an_up_to_date_install(): void {
 
 		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
 		$cached    = [
@@ -354,9 +372,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * what it stored, and rewriting it would downgrade the install's record of
 	 * itself.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_version_from_the_future_is_left_alone(): void {
+	public function it_leaves_a_version_from_the_future_alone(): void {
 
 		foreach ( [ '7.0.0', '7.0.0-rc1', '7.1' ] as $version ) {
 
@@ -375,9 +395,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	/**
 	 * A fresh install writes the defaults and no upgrade notice.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_fresh_install_lands_on_the_v6_defaults(): void {
+	public function it_lands_a_fresh_install_on_the_v6_defaults(): void {
 
 		$this->_migrate();
 
@@ -391,9 +413,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * The language list and its timestamp described the GeSHi file scan, which no
 	 * longer exists. Left behind, the cache would be served to the v6 registry.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_upgrade_deletes_the_language_cache_and_its_timestamp(): void {
+	public function it_deletes_the_language_cache_and_its_timestamp_on_upgrade(): void {
 
 		$cache_key = Cache::KEY_PREFIX . md5( Base::PLUGIN_ID . '-languages' );
 
@@ -425,9 +449,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * settings had been rewritten — and the one who did open it, three pages in,
 	 * reasonably read the notice as the migration happening only then.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_migration_notice_shows_on_whichever_admin_page_comes_first(): void {
+	public function it_shows_the_migration_notice_on_whichever_admin_page_comes_first(): void {
 
 		set_current_screen( 'dashboard' );
 

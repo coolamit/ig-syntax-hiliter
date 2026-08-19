@@ -95,9 +95,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * a slug mistyped in the map, or a file left out of the vendored tree, simply is
 	 * not offered and nothing says so. This is what says so.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_every_declared_theme_is_on_disk(): void {
+	public function it_keeps_every_declared_theme_on_disk(): void {
 
 		$declared = $this->_get_declared_themes();
 		$offered  = Asset_Manager::get_themes();
@@ -131,9 +133,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * A `url()` pointing at a data URI is fine and one theme has one: Pojoaque
 	 * carries its background as base64, which needs no request at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_no_bundled_theme_fetches_anything_from_another_host(): void {
+	public function it_fetches_nothing_from_another_host_for_any_bundled_theme(): void {
 
 		$files = [];
 
@@ -174,9 +178,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * directory, and it is exactly the sort of value a sanitiser reshapes into
 	 * something that no longer names a file.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_theme_slug_with_a_dot_survives_a_round_trip(): void {
+	public function it_keeps_a_theme_slug_with_a_dot_through_a_round_trip(): void {
 
 		$option = Option::get_instance();
 
@@ -202,9 +208,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * An empty string is what makes the caller's mistake visible. A path built anyway
 	 * would be enqueued and would 404.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_unknown_theme_has_no_file(): void {
+	public function it_gives_an_unknown_theme_no_file(): void {
 
 		$this->assertSame( '', Asset_Manager::get_theme_file( 'prism-not-a-theme' ) );
 		$this->assertSame( '', Asset_Manager::get_theme_file( '' ) );
@@ -220,9 +228,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * caller is handed, which is the saving; and that `yes` throws it away, which is
 	 * the refresh button and the only way out of a cache with a week to run.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_theme_list_is_cached_and_a_forced_rebuild_goes_back_to_the_disk(): void {
+	public function it_caches_the_theme_list_and_goes_back_to_the_disk_on_a_forced_rebuild(): void {
 
 		$real = Asset_Manager::build_themes();
 
@@ -263,9 +273,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * directories and takes nothing this test could point elsewhere. It is two lines
 	 * beside the ones asserted below and is stated in the docblock there.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_empty_cached_list_is_never_served(): void {
+	public function it_never_serves_an_empty_cached_list(): void {
 
 		$this->_plant_cached_themes( [] );
 
@@ -290,9 +302,11 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 * rebuild being triggered by a typo or by a caller passing something else
 	 * entirely.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_anything_that_is_not_a_flag_leaves_the_cache_alone(): void {
+	public function it_leaves_the_cache_alone_for_anything_that_is_not_a_flag(): void {
 
 		$planted = [ 'prism-not-a-theme' => 'Planted' ];
 

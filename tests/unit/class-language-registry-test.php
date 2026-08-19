@@ -95,9 +95,11 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * A manifest entry is kept only when its language file is actually there.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_manifest_is_intersected_with_the_files_on_disk(): void {
+	public function it_intersects_the_manifest_with_the_files_on_disk(): void {
 
 		$dir = $this->make_temp_dir();
 
@@ -127,9 +129,11 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * Aliases are read whether the manifest gives one or many.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_manifest_aliases_are_read(): void {
+	public function it_reads_the_manifest_aliases(): void {
 
 		$dir = $this->make_temp_dir();
 
@@ -169,9 +173,11 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * A manifest which is missing, empty or malformed yields an empty registry.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_unreadable_manifest_is_survivable(): void {
+	public function it_survives_an_unreadable_manifest(): void {
 
 		$dir = $this->make_temp_dir();
 
@@ -194,9 +200,11 @@ class Language_Registry_Test extends TestCase {
 	 * `ig_syntax_hiliter/languages` filter — the one way a site can still change what
 	 * the registry holds.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_overlay_replaces_the_bundled_languages(): void {
+	public function it_lets_an_overlay_replace_the_bundled_languages(): void {
 
 		$base = [
 			'languages' => [
@@ -242,9 +250,11 @@ class Language_Registry_Test extends TestCase {
 	 * That is the shape `build()` uses it in, and it is what keeps the registry from
 	 * carrying an alias which resolves to a language the browser cannot load.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_merging_nothing_still_tidies_the_registry(): void {
+	public function it_still_tidies_the_registry_when_merging_nothing(): void {
 
 		$merged = Language_Registry::merge(
 			[
@@ -277,9 +287,11 @@ class Language_Registry_Test extends TestCase {
 	 * at a language which is not there is one of those, having been discarded when
 	 * the registry was built.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_resolve(): void {
+	public function it_resolves_only_a_name_it_can_confirm(): void {
 
 		$registry = $this->get_fixture_registry();
 
@@ -300,9 +312,11 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * The registry answers the questions the renderer and asset manager ask of it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_language_lookups(): void {
+	public function it_answers_the_lookups_the_renderer_and_asset_manager_make(): void {
 
 		$registry = $this->get_fixture_registry();
 
@@ -335,9 +349,11 @@ class Language_Registry_Test extends TestCase {
 	 * aliases survive parsing, and that the two ids which are not languages are not
 	 * treated as though they were.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_bundled_manifest(): void {
+	public function it_parses_the_manifest_the_plugin_ships(): void {
 
 		$library  = dirname( __DIR__, 2 ) . '/assets/lib/prism';
 		$registry = new Language_Registry(

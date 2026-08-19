@@ -104,9 +104,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	/**
 	 * The filter pair is symmetric: what goes in comes out, slashes and all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_save_filters_are_a_round_trip(): void {
+	public function it_makes_the_save_filters_a_round_trip(): void {
 
 		$slashed = wp_slash( self::_HOSTILE_CONTENT );
 
@@ -121,9 +123,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * A contributor saves a script tag inside a snippet, the stored content is byte
 	 * identical to what was submitted, and saving it again changes nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_contributor_saves_byte_identical_content_and_resaves_with_no_diff(): void {
+	public function it_lets_a_contributor_save_byte_identical_content_and_resave_with_no_diff(): void {
 
 		$this->_become_contributor();
 
@@ -162,9 +166,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * Revisions run the same filters again, in the same request, and store the same
 	 * bytes.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_revisions_store_the_same_bytes(): void {
+	public function it_stores_the_same_bytes_in_revisions(): void {
 
 		$this->_become_contributor();
 
@@ -200,9 +206,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * do its job on it. This is also what proves KSES is live for the tests above,
 	 * rather than them passing because nothing was filtering in the first place.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_markup_outside_a_snippet_is_still_filtered(): void {
+	public function it_still_filters_markup_outside_a_snippet(): void {
 
 		$this->_become_contributor();
 
@@ -231,9 +239,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * and gets `<`, `'` and `&` entity encoded into the database — on multisite that
 	 * is everyone below super admin, site administrators included.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_contributor_saves_block_code_byte_identical_and_resaves_with_no_diff(): void {
+	public function it_lets_a_contributor_save_block_code_byte_identical_and_resave_with_no_diff(): void {
 
 		$this->_become_contributor();
 
@@ -256,9 +266,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * Another plugin's block is another plugin's business, and shielding it from KSES
 	 * would hand an author without `unfiltered_html` a way around it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_another_plugins_block_is_still_filtered_on_save(): void {
+	public function it_still_filters_another_plugins_block_on_save(): void {
 
 		$this->_become_contributor();
 
@@ -281,9 +293,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * how WP 6.9's block editor saves, and false for WP-CLI, cron and this plugin's
 	 * own revert tool.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_excerpt_is_stored_exactly_as_it_was_written(): void {
+	public function it_stores_an_excerpt_exactly_as_it_was_written(): void {
 
 		$excerpt = 'Summary with [php]echo 1;[/php] and [github id=42] in it.';
 
@@ -327,9 +341,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * is then never offered to the matcher at all. The snippet after it reaches KSES
 	 * unprotected and the author loses the lines KSES does not allow.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_naming_plugin_tags_does_not_swallow_a_later_snippet(): void {
+	public function it_does_not_let_a_block_naming_plugin_tags_swallow_a_later_snippet(): void {
 
 		$this->_become_contributor();
 
@@ -351,9 +367,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	/**
 	 * And the same two the other way round, which is the order that always worked.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_before_a_block_naming_plugin_tags_is_still_protected(): void {
+	public function it_still_protects_a_snippet_before_a_block_naming_plugin_tags(): void {
 
 		$this->_become_contributor();
 
@@ -383,9 +401,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * kind of content which runs to that size, and this is the only fixture in the
 	 * suite big enough to reach it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_post_far_past_pcres_ceiling_is_stored_intact(): void {
+	public function it_stores_a_post_far_past_pcres_ceiling_intact(): void {
 
 		$this->_become_contributor();
 
@@ -422,9 +442,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * code used to be. Whatever else giving up means, it has to mean the content was
 	 * left as it was found.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_save_pass_the_matcher_gave_up_on_protects_nothing(): void {
+	public function it_protects_nothing_on_a_save_pass_the_matcher_gave_up_on(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 
@@ -472,9 +494,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * PCRE is crippled between the two passes rather than for the whole request,
 	 * because the protect pass has to succeed for there to be anything to restore.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_restore_pass_that_gave_up_does_not_empty_the_post(): void {
+	public function it_does_not_empty_the_post_on_a_restore_pass_that_gave_up(): void {
 
 		$this->_become_contributor();
 
@@ -536,9 +560,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * snippet stashed with a placeholder already inside it would come out of the
 	 * database with that placeholder still in it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_block_delimiter_inside_a_snippet_survives_storage(): void {
+	public function it_keeps_a_block_delimiter_inside_a_snippet_through_storage(): void {
 
 		$this->_become_contributor();
 
@@ -559,9 +585,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * remains in fresh ones and escapes the orphaned tail — and no placeholder is
 	 * left for the restore pass to find, so the code is gone for good.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_inside_an_html_comment_survives_storage(): void {
+	public function it_keeps_a_snippet_inside_an_html_comment_through_storage(): void {
 
 		$this->_become_contributor();
 
@@ -577,9 +605,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 * Every key carries a per request salt, so nothing written by hand can ever name
 	 * a stashed entry.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_placeholder_an_author_typed_is_left_alone(): void {
+	public function it_leaves_a_placeholder_an_author_typed_alone(): void {
 
 		$content = sprintf( 'Before %s after.', Content_Protector::get_placeholder( str_repeat( 'a', 32 ) ) );
 
@@ -591,9 +621,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	/**
 	 * A user who can post unfiltered HTML still gets byte identical storage.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_administrator_also_saves_byte_identical_content(): void {
+	public function it_also_lets_an_administrator_save_byte_identical_content(): void {
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
 

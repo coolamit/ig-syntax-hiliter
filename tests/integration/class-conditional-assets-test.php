@@ -57,9 +57,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * A post with no snippets enqueues nothing at all.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_page_without_snippets_enqueues_nothing(): void {
+	public function it_enqueues_nothing_for_a_page_without_snippets(): void {
 
 		$output = $this->_render_page( "An ordinary post.\n\nWith an ordinary second paragraph." );
 
@@ -73,9 +75,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * Content which only looks like a snippet enqueues nothing either: a post
 	 * talking about the shortcodes, or an escaped one, which is text.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_content_which_only_looks_like_a_snippet_enqueues_nothing(): void {
+	public function it_enqueues_nothing_for_content_which_only_looks_like_a_snippet(): void {
 
 		$this->_render_page( 'Wrap your code in [php] and the plugin will highlight it.' );
 
@@ -93,9 +97,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * An empty snippet renders nothing, so it needs nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_page_with_an_empty_snippet_enqueues_nothing(): void {
+	public function it_enqueues_nothing_for_a_page_with_an_empty_snippet(): void {
 
 		$this->_render_page( 'before [php][/php] after' );
 
@@ -108,9 +114,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * The control: a page which does have a snippet loads the assets, so the tests
 	 * above are measuring something.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_page_with_a_snippet_does_enqueue(): void {
+	public function it_enqueues_for_a_page_with_a_snippet(): void {
 
 		$this->_render_page( "[php]\necho 1;\n[/php]" );
 
@@ -143,9 +151,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * which of the two a theme was resolved out of. A page rendering a snippet is
 	 * where that resolution is used, so it is where it is measured.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_theme_from_the_collection_is_enqueued_from_its_own_directory(): void {
+	public function it_enqueues_a_theme_from_the_collection_out_of_its_own_directory(): void {
 
 		$option = Option::get_instance();
 
@@ -294,9 +304,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * with no stylesheet, no theme and no highlighter, and nothing left on the page
 	 * able to put that right.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_rendered_late_in_the_footer_still_gets_its_assets(): void {
+	public function it_still_gives_a_snippet_rendered_late_in_the_footer_its_assets(): void {
 
 		$post_id = self::factory()->post->create(
 			[
@@ -342,9 +354,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * Deciding a second time does not lower the bar: a page with no code on it,
 	 * footer and all, still loads nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_second_decision_still_needs_a_snippet_to_have_rendered(): void {
+	public function it_still_needs_a_snippet_to_have_rendered_before_a_second_decision(): void {
 
 		$footer = $this->_fire_footer_around(
 			static function (): void {
@@ -361,9 +375,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * A comment with a snippet on an otherwise code-free post counts too.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_snippet_in_a_comment_enqueues_the_assets(): void {
+	public function it_enqueues_the_assets_for_a_snippet_in_a_comment(): void {
 
 		$post_id = self::factory()->post->create(
 			[
@@ -402,9 +418,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 *
 	 * No tier here can see a rendered box, so the rule itself is what is checked.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_stylesheet_says_a_code_box_does_not_wrap(): void {
+	public function it_says_in_the_stylesheet_that_a_code_box_does_not_wrap(): void {
 
 		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
 
@@ -426,9 +444,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * the fallback for ever, and a site owner would report that picking a font does
 	 * nothing.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_stylesheet_reads_what_the_font_setting_sets(): void {
+	public function it_reads_what_the_font_setting_sets_into_the_stylesheet(): void {
 
 		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
 
@@ -452,9 +472,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * itself. Adding the inline values twice only prints them twice, which is what the
 	 * front end did until this was guarded.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_font_values_are_printed_once(): void {
+	public function it_prints_the_font_values_once(): void {
 
 		$option = Option::get_instance();
 

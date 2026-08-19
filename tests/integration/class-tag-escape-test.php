@@ -59,9 +59,11 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 * for as long as the plugin exists, and the one place it fell behind would be a
 	 * shortcode bounded differently here from the way `do_shortcode()` bounds it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_pattern_is_cores_with_one_addition(): void {
+	public function it_builds_cores_pattern_with_one_addition(): void {
 
 		$tags = Legacy_Map::get_tags();
 		$core = get_shortcode_regex( $tags );
@@ -81,9 +83,11 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 * The reader's half. One code box, showing the tags the author typed, and
 	 * nothing of the outer shortcode left over after it.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_escaped_tag_renders_as_the_text_it_stands_for(): void {
+	public function it_renders_an_escaped_tag_as_the_text_it_stands_for(): void {
 
 		$rendered = (string) apply_filters( 'the_content', self::_CONTENT );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
 
@@ -104,9 +108,11 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 * transformed is ever stored, so the escape has to survive being saved over and
 	 * over — an author who edits the post ten times must not lose a bracket a time.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_escape_survives_being_saved_again_and_again(): void {
+	public function it_keeps_the_escape_through_being_saved_again_and_again(): void {
 
 		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( self::_CONTENT ) ] );
 
@@ -134,9 +140,11 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 * has. The escape is an addition and not a change: content written before it
 	 * existed goes on being read the way it was read when it was written.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_an_unescaped_closing_tag_still_ends_the_snippet(): void {
+	public function it_still_ends_the_snippet_at_an_unescaped_closing_tag(): void {
 
 		$rendered = (string) apply_filters( 'the_content', '[php]echo 1;[/php] and then [/php] again' );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- As above.
 

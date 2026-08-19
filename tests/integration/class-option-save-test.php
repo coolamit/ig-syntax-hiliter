@@ -103,9 +103,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * having read the settings before either of them wrote. Neither may undo the
 	 * other: both report success, so a discarded write is one nobody is told about.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_two_overlapping_saves_do_not_discard_one_another(): void {
+	public function it_does_not_let_two_overlapping_saves_discard_one_another(): void {
 
 		$first  = $this->_new_reader();
 		$second = $this->_new_reader();
@@ -128,9 +130,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * Saving one setting leaves the other six exactly as they were stored, including
 	 * any this version does not know about being dropped as it always has been.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_saving_one_setting_leaves_the_rest_of_the_stored_array_alone(): void {
+	public function it_leaves_the_rest_of_the_stored_array_alone_when_saving_one_setting(): void {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
@@ -157,9 +161,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * A setting stored as NULL is still one of this plugin's settings. Left
 	 * unsavable, it answers 500 to every attempt to put it right, for good.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_setting_stored_as_null_can_still_be_saved(): void {
+	public function it_still_saves_a_setting_stored_as_null(): void {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
@@ -178,9 +184,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * Every reader of a setting expects a value it can compare against, so NULL is
 	 * read as that setting's default rather than handed on.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_setting_stored_as_null_reads_as_its_default(): void {
+	public function it_reads_a_setting_stored_as_null_as_its_default(): void {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
@@ -204,9 +212,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * The guard on the whole of the above: a name this plugin does not own is not a
 	 * setting, whatever is in the array in hand, and is neither saved nor read.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_name_this_plugin_does_not_own_is_neither_saved_nor_read(): void {
+	public function it_neither_saves_nor_reads_a_name_this_plugin_does_not_own(): void {
 
 		$option = $this->_new_reader();
 
@@ -225,6 +235,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * to the server — devtools, an extension, anything not the settings screen — could
 	 * put an arbitrary value into the settings that way.
 	 *
+	 * @test
+	 *
 	 * @dataProvider unacceptable_value_provider
 	 *
 	 * @param mixed  $value       Value as it arrives.
@@ -232,7 +244,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_a_value_a_setting_does_not_accept_lands_on_its_default( $value, string $description ): void {
+	public function it_lands_a_value_a_setting_does_not_accept_on_its_default( $value, string $description ): void {
 
 		$option = $this->_new_reader();
 
@@ -265,6 +277,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * stored real booleans and 4.0 onwards stored the words, so both turn up in the
 	 * wild.
 	 *
+	 * @test
+	 *
 	 * @dataProvider flag_spelling_provider
 	 *
 	 * @param mixed  $value    Value as it arrives.
@@ -272,7 +286,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_every_spelling_of_a_flag_is_stored_as_yes_or_no( $value, string $expected ): void {
+	public function it_stores_every_spelling_of_a_flag_as_yes_or_no( $value, string $expected ): void {
 
 		$this->_new_reader()->save( 'gist_in_comments', $value );
 
@@ -311,9 +325,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * The theme setting takes a bundled theme or nothing at all. It is the one setting
 	 * whose value becomes a file path, so it is the one worth being sure about.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_a_theme_this_plugin_does_not_ship_lands_on_the_default_theme(): void {
+	public function it_lands_a_theme_this_plugin_does_not_ship_on_the_default_theme(): void {
 
 		$option = $this->_new_reader();
 
@@ -338,9 +354,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * by name. Asserting the two sequences match would be asserting that the dropdown
 	 * is ordered by whatever the allowlist happens to be built from.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_settings_screen_offers_exactly_what_can_be_stored(): void {
+	public function it_offers_exactly_what_can_be_stored_on_the_settings_screen(): void {
 
 		$validate = Validate::get_instance();
 
@@ -361,9 +379,11 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * Spelled out here rather than read from the class under test, because the whole
 	 * point is to notice one of them moving.
 	 *
+	 * @test
+	 *
 	 * @return void
 	 */
-	public function test_the_shipped_defaults_are_what_they_have_always_been(): void {
+	public function it_ships_the_defaults_it_has_always_shipped(): void {
 		$this->assertSame( Default_Settings::V6, Validate::get_instance()->get_option_defaults() );
 	}
 
@@ -381,6 +401,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 * quietly answered the same thing for both would fail rather than pass half the
 	 * time.
 	 *
+	 * @test
+	 *
 	 * @dataProvider stored_flag_provider
 	 *
 	 * @param mixed  $hilite      What `hilite_comments`, whose default is `yes`, is stored as.
@@ -391,7 +413,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function test_a_stored_flag_reads_as_what_it_means( $hilite, $gist, bool $expect_hilite, bool $expect_gist, string $description ): void {
+	public function it_reads_a_stored_flag_as_what_it_means( $hilite, $gist, bool $expect_hilite, bool $expect_gist, string $description ): void {
 
 		update_option(
 			Base::PLUGIN_ID . '-options',
