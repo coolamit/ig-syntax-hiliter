@@ -60,22 +60,40 @@ $igsh-radius: 3px;
 
 	/*
 	 * Square, so it reads as an action on the control beside it rather than as a
-	 * second setting. The height is wp-admin's own for a `.button` next to a
-	 * `select`, and the width is set to match it rather than left to the icon.
+	 * second setting. 40px is wp-admin's own `min-height` for both a `.button` and
+	 * a `select`, so the two sit flush; the width is set to match rather than left
+	 * to the icon, and 20px is the grid dashicons are drawn on.
+	 *
+	 * **The `.wp-core-ui` and `.button` in this selector are load-bearing. Do not
+	 * simplify it back to a single class.** wp-admin styles `.wp-core-ui .button`
+	 * at 0-2-0 and `.wp-core-ui .button .dashicons` at 0-3-0. `&__refresh`
+	 * alone is 0-1-0, so core won every property both set — `display`,
+	 * `padding`,
+	 * `min-height`, `line-height` — and the centring below was inert from the day
+	 * it was written. The button was not a flex container at all. That went unseen
+	 * for as long as it did because core's button used to be shorter with less
+	 * padding, which left an 18px icon looking roughly centred by accident;
+	 * WordPress 7.0 grew the padding to 16px and the icon ended up hard
+	 * against the right
+	 * border. This selector is 0-3-0, and the icon's is 0-4-0.
+	 *
+	 * No test tier can see any of this. It is CSS, and the suites only ever assert
+	 * what the server sends.
 	 */
-	&__refresh {
+	.wp-core-ui &__refresh.button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 30px;
-		min-width: 30px;
-		height: 30px;
+		width: 40px;
+		min-width: 40px;
+		height: 40px;
+		min-height: 40px;
 		padding: 0;
 
 		.dashicons {
-			width: 18px;
-			height: 18px;
-			font-size: 18px;
+			width: 20px;
+			height: 20px;
+			font-size: 20px;
 			line-height: 1;
 		}
 
@@ -84,6 +102,10 @@ $igsh-radius: 3px;
 		 * the click handler rather than by the page lock, because the lock
 		 * disables every control on the page during any request and only this
 		 * one is doing the work.
+		 *
+		 * This lands at 0-5-0, so the `prefers-reduced-motion` block at the foot of
+		 * this file has to match it. The two move together or the reduced motion
+		 * override silently stops winning.
 		 */
 		&.is-busy .dashicons {
 			animation: igsh-spin 1s linear infinite;
@@ -320,8 +342,13 @@ $igsh-radius: 3px;
 	 * The refresh spinner rotates for as long as the request takes, which is the
 	 * one animation in this plugin with no end of its own. The button still says
 	 * it is working, through being disabled and through the message beside it.
+	 *
+	 * The selector matches the one which sets the animation, specificity for
+	 * specificity, and wins on source order because it is further down this file.
+	 * Anything less and the spinner keeps turning for a reader who asked it
+	 * not to.
 	 */
-	.igsh-settings__refresh.is-busy .dashicons {
+	.wp-core-ui .igsh-settings__refresh.button.is-busy .dashicons {
 		animation: none;
 	}
 }
