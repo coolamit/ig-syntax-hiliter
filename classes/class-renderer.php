@@ -26,7 +26,7 @@ class Renderer {
 	 *
 	 * @var string
 	 */
-	const string ID_PREFIX = 'ig-sh-';
+	public const string ID_PREFIX = 'ig-sh-';
 
 	/**
 	 * How many characters of a file label are put on the page.
@@ -36,14 +36,14 @@ class Renderer {
 	 *
 	 * @var int
 	 */
-	const int FILE_LABEL_LENGTH = 30;
+	protected const int _FILE_LABEL_LENGTH = 30;
 
 	/**
 	 * What stands in front of a label which was cut.
 	 *
 	 * @var string
 	 */
-	const string FILE_LABEL_ELLIPSIS = '…';
+	protected const string _FILE_LABEL_ELLIPSIS = '…';
 
 	/**
 	 * The registry consulted to validate a language.
@@ -188,14 +188,14 @@ class Renderer {
 
 		$length = ( function_exists( 'mb_strlen' ) ) ? mb_strlen( $label, 'UTF-8' ) : strlen( $label );
 
-		if ( static::FILE_LABEL_LENGTH >= $length ) {
+		if ( static::_FILE_LABEL_LENGTH >= $length ) {
 			return $label;
 		}
 
-		$keep = static::FILE_LABEL_LENGTH - 1;    //the ellipsis takes one of them
+		$keep = static::_FILE_LABEL_LENGTH - 1;    //the ellipsis takes one of them
 		$tail = ( function_exists( 'mb_substr' ) ) ? mb_substr( $label, -$keep, null, 'UTF-8' ) : substr( $label, -$keep );
 
-		return static::FILE_LABEL_ELLIPSIS . $tail;
+		return static::_FILE_LABEL_ELLIPSIS . $tail;
 
 	}    //end shorten_file_label()
 

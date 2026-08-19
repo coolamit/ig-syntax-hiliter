@@ -30,14 +30,19 @@ abstract class Base {
 	 *
 	 * @var string
 	 */
-	const string PLUGIN_ID = 'ig-syntax-hiliter';
+	public const string PLUGIN_ID = 'ig-syntax-hiliter';
 
 	/**
 	 * Plugin name, for display.
 	 *
+	 * `public` although only the `Admin` subclass reads it, where `protected` would
+	 * do. Its twin above cannot be narrowed — `Migrate`, `Option` and the test tiers
+	 * all reach for `Base::PLUGIN_ID` by name — and two constants which are the same
+	 * kind of thing, declared together, should not disagree about their visibility.
+	 *
 	 * @var string
 	 */
-	const string PLUGIN_NAME = 'iG:Syntax Hiliter';
+	public const string PLUGIN_NAME = 'iG:Syntax Hiliter';
 
 	/**
 	 * Plugin options.

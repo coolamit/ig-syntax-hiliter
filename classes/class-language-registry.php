@@ -29,21 +29,21 @@ class Language_Registry {
 	 *
 	 * @var string
 	 */
-	const string NO_LANGUAGE = 'none';
+	public const string NO_LANGUAGE = 'none';
 
 	/**
 	 * Filter applied to the finished registry.
 	 *
 	 * @var string
 	 */
-	const string FILTER_LANGUAGES = 'ig_syntax_hiliter/languages';
+	public const string FILTER_LANGUAGES = 'ig_syntax_hiliter/languages';
 
 	/**
 	 * Path of the highlighter library, relative to the plugin directory.
 	 *
 	 * @var string
 	 */
-	const string LIBRARY_DIR = 'assets/lib/prism';
+	protected const string _LIBRARY_DIR = 'assets/lib/prism';
 
 	/**
 	 * How long a built registry is cached for, in seconds.
@@ -54,7 +54,7 @@ class Language_Registry {
 	 *
 	 * @var int
 	 */
-	const int CACHE_EXPIRY = 86400;
+	protected const int _CACHE_EXPIRY = 86400;
 
 	/**
 	 * Whether the dataset has been loaded.
@@ -178,7 +178,7 @@ class Language_Registry {
 
 		$registry = Cache::create( static::_get_cache_key() )
 						->updates_with( [ static::class, 'build' ] )
-						->expires_in( static::CACHE_EXPIRY )
+						->expires_in( static::_CACHE_EXPIRY )
 						->get();
 
 		if ( ! is_array( $registry ) ) {
@@ -235,7 +235,7 @@ class Language_Registry {
 	 */
 	public static function build(): array {
 
-		$library_dir = sprintf( '%s/%s', dirname( __DIR__ ), static::LIBRARY_DIR );
+		$library_dir = sprintf( '%s/%s', dirname( __DIR__ ), static::_LIBRARY_DIR );
 
 		return static::merge(
 			static::parse_manifest(

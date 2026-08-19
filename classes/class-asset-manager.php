@@ -28,21 +28,27 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string HANDLE_PREFIX = 'ig-syntax-hiliter';
+	public const string HANDLE_PREFIX = 'ig-syntax-hiliter';
 
 	/**
 	 * Filter which supplies the URL the language files are fetched from.
 	 *
+	 * `public` although nothing outside this class reads it, which is the one place
+	 * that rule is bent on purpose. This is one of the plugin's four extension points,
+	 * and the other three are public because a test happens to name them — so making
+	 * this one protected would leave a single filter that a caller cannot reference
+	 * symbolically, for no reason a caller could ever discover.
+	 *
 	 * @var string
 	 */
-	const string FILTER_COMPONENTS_URL = 'ig_syntax_hiliter/prism_components_url';
+	public const string FILTER_COMPONENTS_URL = 'ig_syntax_hiliter/prism_components_url';
 
 	/**
 	 * Path of the highlighter library, relative to the assets directory.
 	 *
 	 * @var string
 	 */
-	const string LIBRARY_PATH = 'lib/prism';
+	protected const string _LIBRARY_PATH = 'lib/prism';
 
 	/**
 	 * Path of the extra theme collection, relative to the assets directory.
@@ -54,21 +60,21 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string THEMES_PATH = 'lib/prism-themes';
+	protected const string _THEMES_PATH = 'lib/prism-themes';
 
 	/**
 	 * The theme used when the site has not chosen one.
 	 *
 	 * @var string
 	 */
-	const string DEFAULT_THEME = 'prism-okaidia';
+	public const string DEFAULT_THEME = 'prism-okaidia';
 
 	/**
 	 * Theme setting value which means "load no theme stylesheet at all".
 	 *
 	 * @var string
 	 */
-	const string THEME_NONE = 'none';
+	public const string THEME_NONE = 'none';
 
 	/**
 	 * Cache key the built theme list is stored under.
@@ -80,7 +86,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
+	public const string THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
 
 	/**
 	 * How long the built theme list is cached for, in seconds. Seven days.
@@ -92,7 +98,7 @@ class Asset_Manager {
 	 *
 	 * @var int
 	 */
-	const int THEMES_CACHE_LIFE = 604800;
+	protected const int _THEMES_CACHE_LIFE = 604800;
 
 	/**
 	 * Font setting value which means "load no webfont at all".
@@ -103,7 +109,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string FONT_NONE = 'none';
+	public const string FONT_NONE = 'none';
 
 	/**
 	 * Where the webfont stylesheets are fetched from.
@@ -114,7 +120,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string FONTS_URL = 'https://fonts.bunny.net/css';
+	protected const string _FONTS_URL = 'https://fonts.bunny.net/css';
 
 	/**
 	 * What a chosen font falls back to.
@@ -125,14 +131,14 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const string FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
+	public const string FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
 
 	/**
 	 * `wp_footer` priority at which the assets are first decided.
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_DECIDE = 1;
+	public const int PRIORITY_DECIDE = 1;
 
 	/**
 	 * `wp_footer` priority at which the decision is taken again.
@@ -142,7 +148,7 @@ class Asset_Manager {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_DECIDE_AGAIN = 19;
+	public const int PRIORITY_DECIDE_AGAIN = 19;
 
 	/**
 	 * The theme map, once it has been built in this request.
@@ -419,7 +425,7 @@ class Asset_Manager {
 	public function get_components_url(): string {
 
 		$url = trailingslashit(
-			Helper::get_asset_url( sprintf( '%s/components', static::LIBRARY_PATH ) )
+			Helper::get_asset_url( sprintf( '%s/components', static::_LIBRARY_PATH ) )
 		);
 
 		/**
@@ -454,7 +460,7 @@ class Asset_Manager {
 
 		static::$_theme_titles = [
 
-			static::LIBRARY_PATH . '/themes' => [
+			static::_LIBRARY_PATH . '/themes' => [
 				'prism'                => 'Prism',
 				'prism-coy'            => 'Coy',
 				'prism-dark'           => 'Dark',
@@ -465,7 +471,7 @@ class Asset_Manager {
 				'prism-twilight'       => 'Twilight',
 			],
 
-			static::THEMES_PATH              => [
+			static::_THEMES_PATH              => [
 				'prism-a11y-dark'                       => 'a11y Dark',
 				'prism-atom-dark'                       => 'Atom Dark',
 				'prism-base16-ateliersulphurpool.light' => 'Ateliersulphurpool-light',
@@ -629,7 +635,7 @@ class Asset_Manager {
 		}
 
 		$themes = $cache->updates_with( [ static::class, 'build_themes' ] )
-						->expires_in( static::THEMES_CACHE_LIFE )
+						->expires_in( static::_THEMES_CACHE_LIFE )
 						->get();
 
 		if ( ! is_array( $themes ) || empty( $themes ) ) {
@@ -772,7 +778,7 @@ class Asset_Manager {
 		 */
 		return sprintf(
 			'%s?family=%s:%d&display=swap',
-			static::FONTS_URL,
+			static::_FONTS_URL,
 			$slug,
 			$fonts[ $slug ]['weight']
 		);
@@ -1232,7 +1238,7 @@ class Asset_Manager {
 	protected static function _get_library_url( string $path ): string {
 
 		return Helper::get_asset_url(
-			sprintf( '%s/%s', static::LIBRARY_PATH, ltrim( $path, '/' ) )
+			sprintf( '%s/%s', static::_LIBRARY_PATH, ltrim( $path, '/' ) )
 		);
 
 	}    //end _get_library_url()

@@ -49,14 +49,14 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const string BLOCK_NAME = Block::NAME;
+	public const string BLOCK_NAME = Block::NAME;
 
 	/**
 	 * The string a post's content must contain for it to hold a code block.
 	 *
 	 * @var string
 	 */
-	const string BLOCK_MARKER = '<!-- wp:' . self::BLOCK_NAME;
+	public const string BLOCK_MARKER = '<!-- wp:' . self::BLOCK_NAME;
 
 	/**
 	 * Name of the Gist block.
@@ -69,14 +69,18 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const string GIST_BLOCK_NAME = Block::GIST_NAME;
+	public const string GIST_BLOCK_NAME = Block::GIST_NAME;
 
 	/**
 	 * The string a post's content must contain for it to hold a Gist block.
 	 *
+	 * Protected while `self::BLOCK_MARKER` beside it is public, which looks like an
+	 * oversight and is not: the code block's marker is read by `Revert_Tool_Test` and
+	 * this one is not. The pair is split by who reads it, not by what it is.
+	 *
 	 * @var string
 	 */
-	const string GIST_BLOCK_MARKER = '<!-- wp:' . self::GIST_BLOCK_NAME;
+	protected const string _GIST_BLOCK_MARKER = '<!-- wp:' . self::GIST_BLOCK_NAME;
 
 	/**
 	 * Shortcode tag every converted code block is written as.
@@ -85,14 +89,14 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const string SHORTCODE_TAG = Legacy_Map::GENERIC_TAG;
+	public const string SHORTCODE_TAG = Legacy_Map::GENERIC_TAG;
 
 	/**
 	 * Shortcode tag every converted Gist block is written as.
 	 *
 	 * @var string
 	 */
-	const string GIST_SHORTCODE_TAG = Gist_Embed::TAG;
+	public const string GIST_SHORTCODE_TAG = Gist_Embed::TAG;
 
 	/**
 	 * Post statuses which are never touched.
@@ -103,21 +107,25 @@ class Block_Converter {
 	 *
 	 * @var array
 	 */
-	const array EXCLUDED_STATUSES = [ 'trash', 'auto-draft' ];
+	protected const array _EXCLUDED_STATUSES = [ 'trash', 'auto-draft' ];
 
 	/**
 	 * Number of posts examined per batch.
 	 *
+	 * This bound and `self::_MAX_BATCH_SIZE` are the class's own business, while the
+	 * filter which overrides them is the extension point and stays public. That is
+	 * the line between the three, and it is why they do not share a visibility.
+	 *
 	 * @var int
 	 */
-	const int DEFAULT_BATCH_SIZE = 20;
+	protected const int _DEFAULT_BATCH_SIZE = 20;
 
 	/**
 	 * The characters the block grammar counts as whitespace, which is PCRE's `\s`.
 	 *
 	 * @var string
 	 */
-	const string DELIMITER_WHITESPACE = " \t\n\r\f\v";
+	protected const string _DELIMITER_WHITESPACE = " \t\n\r\f\v";
 
 	/**
 	 * The characters a language name may carry into a shortcode attribute.
@@ -127,21 +135,21 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const string LANGUAGE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_+#.-';
+	protected const string _LANGUAGE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_+#.-';
 
 	/**
 	 * Largest batch the plugin will accept, whatever the filter asks for.
 	 *
 	 * @var int
 	 */
-	const int MAX_BATCH_SIZE = 200;
+	protected const int _MAX_BATCH_SIZE = 200;
 
 	/**
 	 * Filter which sets how many posts are examined per batch.
 	 *
 	 * @var string
 	 */
-	const string FILTER_BATCH_SIZE = 'ig_syntax_hiliter/revert_batch_size';
+	public const string FILTER_BATCH_SIZE = 'ig_syntax_hiliter/revert_batch_size';
 
 	/**
 	 * Class constructor.
@@ -369,7 +377,7 @@ class Block_Converter {
 			'failed'    => 0,
 		];
 
-		if ( ! str_contains( $content, static::BLOCK_MARKER ) && ! str_contains( $content, static::GIST_BLOCK_MARKER ) ) {
+		if ( ! str_contains( $content, static::BLOCK_MARKER ) && ! str_contains( $content, static::_GIST_BLOCK_MARKER ) ) {
 			return $result;
 		}
 
@@ -584,7 +592,7 @@ class Block_Converter {
 	protected static function _read_delimiter( string $content, int $offset ): ?array {
 
 		$after = $offset + 4;    //past the `<!--`
-		$gap   = strspn( $content, static::DELIMITER_WHITESPACE, $after );
+		$gap   = strspn( $content, static::_DELIMITER_WHITESPACE, $after );
 
 		if ( 1 > $gap ) {
 			return null;
@@ -597,7 +605,7 @@ class Block_Converter {
 		}
 
 		$body = $after + $gap + strlen( $block ) + 3;    //the name, plus the `wp:` in front of it
-		$gap  = strspn( $content, static::DELIMITER_WHITESPACE, $body );
+		$gap  = strspn( $content, static::_DELIMITER_WHITESPACE, $body );
 
 		if ( 1 > $gap ) {
 			return null;    //a longer block name which merely begins with this one
@@ -645,7 +653,7 @@ class Block_Converter {
 
 			$end = $close - 1;    //the `/`
 
-			while ( $end > $start && false !== strpos( static::DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
+			while ( $end > $start && false !== strpos( static::_DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
 				--$end;
 			}
 
@@ -876,9 +884,9 @@ class Block_Converter {
 		 *
 		 * @param int $batch_size Number of posts per batch.
 		 */
-		$batch_size = (int) apply_filters( static::FILTER_BATCH_SIZE, static::DEFAULT_BATCH_SIZE );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
+		$batch_size = (int) apply_filters( static::FILTER_BATCH_SIZE, static::_DEFAULT_BATCH_SIZE );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
-		return max( 1, min( static::MAX_BATCH_SIZE, $batch_size ) );
+		return max( 1, min( static::_MAX_BATCH_SIZE, $batch_size ) );
 
 	}    //end get_batch_size()
 
@@ -939,7 +947,7 @@ class Block_Converter {
 		}
 
 		$types    = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
-		$statuses = implode( ', ', array_fill( 0, count( static::EXCLUDED_STATUSES ), '%s' ) );
+		$statuses = implode( ', ', array_fill( 0, count( static::_EXCLUDED_STATUSES ), '%s' ) );
 
 		return [
 			'sql'    => sprintf(
@@ -950,10 +958,10 @@ class Block_Converter {
 			'values' => array_merge(
 				[
 					'%' . $wpdb->esc_like( static::BLOCK_MARKER ) . '%',
-					'%' . $wpdb->esc_like( static::GIST_BLOCK_MARKER ) . '%',
+					'%' . $wpdb->esc_like( static::_GIST_BLOCK_MARKER ) . '%',
 				],
 				$post_types,
-				static::EXCLUDED_STATUSES
+				static::_EXCLUDED_STATUSES
 			),
 		];
 
@@ -1007,7 +1015,7 @@ class Block_Converter {
 
 		for ( $index = 0; $index < $length; $index++ ) {
 
-			if ( str_contains( static::LANGUAGE_CHARS, $language[ $index ] ) ) {
+			if ( str_contains( static::_LANGUAGE_CHARS, $language[ $index ] ) ) {
 				$safe .= $language[ $index ];
 			}
 		}

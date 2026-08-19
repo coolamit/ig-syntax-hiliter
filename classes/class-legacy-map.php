@@ -21,14 +21,14 @@ class Legacy_Map {
 	 *
 	 * @var string
 	 */
-	const string FILTER_TAGS = 'ig_syntax_hiliter/shortcode_tags';
+	public const string FILTER_TAGS = 'ig_syntax_hiliter/shortcode_tags';
 
 	/**
 	 * The generic tag, which is ours whatever its `language` attribute says.
 	 *
 	 * @var string
 	 */
-	const string GENERIC_TAG = 'sourcecode';
+	public const string GENERIC_TAG = 'sourcecode';
 
 	/**
 	 * The tag list the alternation below was built from.

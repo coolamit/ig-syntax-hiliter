@@ -29,14 +29,14 @@ class Cache {
 	 *
 	 * @var string
 	 */
-	const string KEY_PREFIX = 'igsh-cache-';
+	public const string KEY_PREFIX = 'igsh-cache-';
 
 	/**
 	 * Shortest expiry, in seconds, that `expires_in()` will set. Two minutes.
 	 *
 	 * @var int
 	 */
-	const int MIN_EXPIRY = 120;
+	protected const int _MIN_EXPIRY = 120;
 
 	/**
 	 * Name of the option this dataset is stored under.
@@ -139,14 +139,14 @@ class Cache {
 	/**
 	 * This function accepts the cache expiry
 	 *
-	 * @param int $expiry How long the dataset stays fresh, in seconds. Anything below `self::MIN_EXPIRY` is raised to it, and zero or less is ignored, leaving whatever expiry is in place.
+	 * @param int $expiry How long the dataset stays fresh, in seconds. Anything below `self::_MIN_EXPIRY` is raised to it, and zero or less is ignored, leaving whatever expiry is in place.
 	 *
 	 * @return \iG\Syntax_Hiliter\Cache
 	 */
 	public function expires_in( int $expiry ): self {
 
 		if ( 0 < $expiry ) {
-			$this->_expiry = max( $expiry, self::MIN_EXPIRY );
+			$this->_expiry = max( $expiry, self::_MIN_EXPIRY );
 		}
 
 		return $this;

@@ -25,7 +25,7 @@ class Gist_Embed {
 	 *
 	 * @var string
 	 */
-	const string TAG = 'github';
+	public const string TAG = 'github';
 
 	/**
 	 * Priority at which a Gist becomes an embed.
@@ -38,21 +38,21 @@ class Gist_Embed {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_EMBED = 9;
+	public const int PRIORITY_EMBED = 9;
 
 	/**
 	 * Priority at which a Gist becomes a link.
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_LINK = 9;
+	public const int PRIORITY_LINK = 9;
 
 	/**
 	 * Handle the Gist stylesheet is registered under.
 	 *
 	 * @var string
 	 */
-	const string STYLE_HANDLE = 'ig-syntax-hiliter-gist';
+	public const string STYLE_HANDLE = 'ig-syntax-hiliter-gist';
 
 	/**
 	 * Filters which cannot carry an embed, and get a link instead.

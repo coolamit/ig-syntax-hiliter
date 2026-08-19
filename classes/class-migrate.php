@@ -35,7 +35,7 @@ class Migrate {
 	 *
 	 * @var string
 	 */
-	const string V35_OPTION_NAME = 'igsh_options';
+	public const string V35_OPTION_NAME = 'igsh_options';
 
 	/**
 	 * Version at which the plugin moved to the option array it still uses.
@@ -44,7 +44,7 @@ class Migrate {
 	 *
 	 * @var string
 	 */
-	const string V4_VERSION = '4.0.0';
+	protected const string _V4_VERSION = '4.0.0';
 
 	/**
 	 * Plugin options.
@@ -96,7 +96,7 @@ class Migrate {
 
 		} else {
 
-			if ( version_compare( $this->_db_version, static::V4_VERSION, '<' ) ) {
+			if ( version_compare( $this->_db_version, static::_V4_VERSION, '<' ) ) {
 				$this->_settings_from_35();
 			} else {
 				$this->_settings_from_5x();

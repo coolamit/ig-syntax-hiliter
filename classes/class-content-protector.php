@@ -41,21 +41,21 @@ class Content_Protector {
 	 *
 	 * @var string
 	 */
-	const string PLACEHOLDER_PREFIX = 'igshx';
+	public const string PLACEHOLDER_PREFIX = 'igshx';
 
 	/**
 	 * Characters `WP_Block_Parser` accepts as whitespace inside a block delimiter.
 	 *
 	 * @var string
 	 */
-	const string DELIMITER_WHITESPACE = " \t\n\r\f\v";
+	protected const string _DELIMITER_WHITESPACE = " \t\n\r\f\v";
 
 	/**
 	 * Characters a block name is built from.
 	 *
 	 * @var string
 	 */
-	const string BLOCK_NAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-/';
+	protected const string _BLOCK_NAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-/';
 
 	/**
 	 * Stashed snippets, keyed by placeholder key.
@@ -586,7 +586,7 @@ class Content_Protector {
 
 		$length = strlen( $content );
 		$cursor = $offset + 4;    //past the `<!--`
-		$gap    = strspn( $content, static::DELIMITER_WHITESPACE, $cursor );
+		$gap    = strspn( $content, static::_DELIMITER_WHITESPACE, $cursor );
 
 		if ( 1 > $gap ) {
 			return null;
@@ -603,7 +603,7 @@ class Content_Protector {
 		}
 
 		$cursor += 3;
-		$name    = strspn( $content, static::BLOCK_NAME_CHARS, $cursor );
+		$name    = strspn( $content, static::_BLOCK_NAME_CHARS, $cursor );
 
 		if ( 1 > $name ) {
 			return null;
@@ -611,7 +611,7 @@ class Content_Protector {
 
 		$block_name = substr( $content, $cursor, $name );
 		$cursor    += $name;
-		$gap        = strspn( $content, static::DELIMITER_WHITESPACE, $cursor );
+		$gap        = strspn( $content, static::_DELIMITER_WHITESPACE, $cursor );
 
 		if ( 1 > $gap ) {
 			return null;
@@ -654,7 +654,7 @@ class Content_Protector {
 			$end  = ( '/' === $content[ $close - 1 ] ) ? $close - 1 : $close;
 			$tail = $end;
 
-			while ( $end > $start && false !== strpos( static::DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
+			while ( $end > $start && false !== strpos( static::_DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
 				--$end;
 			}
 

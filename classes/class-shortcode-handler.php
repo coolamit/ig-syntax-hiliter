@@ -32,7 +32,7 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_PROTECT = 1;
+	public const int PRIORITY_PROTECT = 1;
 
 	/**
 	 * Priority at which content is restored.
@@ -42,14 +42,14 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_RESTORE = 100;
+	public const int PRIORITY_RESTORE = 100;
 
 	/**
 	 * Priority at which snippets are stripped out.
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_STRIP = 2;
+	public const int PRIORITY_STRIP = 2;
 
 	/**
 	 * Priority at which snippets leave the body an automatic excerpt is built from.
@@ -59,14 +59,14 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_STRIP_BODY = 0;
+	public const int PRIORITY_STRIP_BODY = 0;
 
 	/**
 	 * Filters whose content is saved rather than displayed.
 	 *
 	 * @var array
 	 */
-	const array SAVE_FILTERS = [
+	public const array SAVE_FILTERS = [
 		'content_save_pre',
 		'content_filtered_save_pre',
 	];
@@ -76,7 +76,7 @@ class Shortcode_Handler {
 	 *
 	 * @var string
 	 */
-	const string EXCERPT_FILTER = 'get_the_excerpt';
+	protected const string _EXCERPT_FILTER = 'get_the_excerpt';
 
 	/**
 	 * Filters which carry a summary, where a code box makes no sense.
@@ -88,8 +88,8 @@ class Shortcode_Handler {
 	 *
 	 * @var array
 	 */
-	const array EXCERPT_FILTERS = [
-		self::EXCERPT_FILTER,
+	public const array EXCERPT_FILTERS = [
+		self::_EXCERPT_FILTER,
 		'the_excerpt',
 		'the_excerpt_rss',
 	];
@@ -280,7 +280,7 @@ class Shortcode_Handler {
 	/**
 	 * Method to check whether WordPress is building an excerpt out of a post body.
 	 *
-	 * `wp_trim_excerpt()` is hooked to `self::EXCERPT_FILTER`, so every step it takes —
+	 * `wp_trim_excerpt()` is hooked to `self::_EXCERPT_FILTER`, so every step it takes —
 	 * the shortcode strip, the `the_content` chain, the word trim — runs with that
 	 * filter still on the stack. Core's own state therefore says which of its two jobs
 	 * `the_content` is doing, and it says so from a stack, so an excerpt taken part way
@@ -294,7 +294,7 @@ class Shortcode_Handler {
 	 * @return bool
 	 */
 	public static function is_generating_excerpt(): bool {
-		return doing_filter( static::EXCERPT_FILTER );
+		return doing_filter( static::_EXCERPT_FILTER );
 	}    //end is_generating_excerpt()
 
 	/**

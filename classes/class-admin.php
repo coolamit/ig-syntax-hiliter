@@ -37,35 +37,35 @@ class Admin extends Base {
 	 *
 	 * @var string
 	 */
-	const string REST_NAMESPACE = 'igsyntax-hiliter/v1';
+	public const string REST_NAMESPACE = 'igsyntax-hiliter/v1';
 
 	/**
 	 * Capability required to read or change anything this class exposes.
 	 *
 	 * @var string
 	 */
-	const string CAPABILITY = 'manage_options';
+	protected const string _CAPABILITY = 'manage_options';
 
 	/**
 	 * Menu slug of the settings page.
 	 *
 	 * @var string
 	 */
-	const string PAGE_SLUG = self::PLUGIN_ID . '-page';
+	protected const string _PAGE_SLUG = self::PLUGIN_ID . '-page';
 
 	/**
 	 * Hook suffix WordPress gives the settings page.
 	 *
 	 * @var string
 	 */
-	const string PAGE_HOOK = 'settings_page_' . self::PAGE_SLUG;
+	public const string PAGE_HOOK = 'settings_page_' . self::_PAGE_SLUG;
 
 	/**
 	 * Language the preview snippet is written in.
 	 *
 	 * @var string
 	 */
-	const string PREVIEW_LANGUAGE = 'php';
+	protected const string _PREVIEW_LANGUAGE = 'php';
 
 	/**
 	 * The settings schema, once it has been built in this request.
@@ -134,7 +134,7 @@ class Admin extends Base {
 			);
 		}
 
-		if ( ! current_user_can( static::CAPABILITY ) ) {
+		if ( ! current_user_can( static::_CAPABILITY ) ) {
 			return new WP_Error(
 				'ig_syntax_hiliter_rest_forbidden',
 				__( 'You are not allowed to change these settings.', 'igsyntax-hiliter' ),
@@ -543,8 +543,8 @@ class Admin extends Base {
 				static::PLUGIN_NAME
 			),
 			static::PLUGIN_NAME,
-			static::CAPABILITY,
-			static::PAGE_SLUG,
+			static::_CAPABILITY,
+			static::_PAGE_SLUG,
 			[ $this, 'render_page' ]
 		);
 
@@ -660,7 +660,7 @@ add_action( 'init', fn() => new Foo );
 PREVIEW;
 
 		return Renderer::get_instance()->render_snippet(
-			new Snippet( $code, static::PREVIEW_LANGUAGE, $show_line_numbers )
+			new Snippet( $code, static::_PREVIEW_LANGUAGE, $show_line_numbers )
 		);
 
 	}    //end get_preview_markup()
@@ -902,7 +902,7 @@ PREVIEW;
 			$links,
 			sprintf(
 				'<a href="%1$s" aria-label="%2$s">%3$s</a>',
-				esc_url( admin_url( sprintf( 'options-general.php?page=%s', static::PAGE_SLUG ) ) ),
+				esc_url( admin_url( sprintf( 'options-general.php?page=%s', static::_PAGE_SLUG ) ) ),
 				esc_attr(
 					sprintf(
 						/* translators: %s: plugin name. */

@@ -25,21 +25,21 @@ class Block {
 	 *
 	 * @var string
 	 */
-	const string NAME = 'igsyntax-hiliter/code';
+	public const string NAME = 'igsyntax-hiliter/code';
 
 	/**
 	 * Name of the Gist block.
 	 *
 	 * @var string
 	 */
-	const string GIST_NAME = 'igsyntax-hiliter/gist';
+	public const string GIST_NAME = 'igsyntax-hiliter/gist';
 
 	/**
 	 * Directory holding the built block, relative to the plugin directory.
 	 *
 	 * @var string
 	 */
-	const string BUILD_DIR = 'build/block';
+	public const string BUILD_DIR = 'build/block';
 
 	/**
 	 * Directory holding the built Gist block, relative to the plugin directory.
@@ -49,14 +49,14 @@ class Block {
 	 *
 	 * @var string
 	 */
-	const string GIST_BUILD_DIR = 'build/block/gist';
+	protected const string _GIST_BUILD_DIR = 'build/block/gist';
 
 	/**
 	 * Name of the JavaScript object carrying the editor's data.
 	 *
 	 * @var string
 	 */
-	const string EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
+	public const string EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
 
 	/**
 	 * Priority the block is registered at.
@@ -70,7 +70,7 @@ class Block {
 	 *
 	 * @var int
 	 */
-	const int PRIORITY_REGISTER = 11;
+	public const int PRIORITY_REGISTER = 11;
 
 	/**
 	 * Class constructor.
@@ -137,8 +137,8 @@ class Block {
 	public function register_block(): void {
 
 		$blocks = [
-			static::BUILD_DIR      => [ $this, 'render' ],
-			static::GIST_BUILD_DIR => [ $this, 'render_gist' ],
+			static::BUILD_DIR       => [ $this, 'render' ],
+			static::_GIST_BUILD_DIR => [ $this, 'render_gist' ],
 		];
 
 		foreach ( $blocks as $build_dir => $callback ) {

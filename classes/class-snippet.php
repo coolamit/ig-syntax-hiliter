@@ -20,7 +20,7 @@ class Snippet {
 	 *
 	 * @var string
 	 */
-	const string DEFAULT_LANGUAGE = 'code';
+	protected const string _DEFAULT_LANGUAGE = 'code';
 
 	/**
 	 * Largest number of lines a single `highlight` range may expand to.
@@ -29,7 +29,7 @@ class Snippet {
 	 *
 	 * @var int
 	 */
-	const int MAX_RANGE_LENGTH = 10000;
+	public const int MAX_RANGE_LENGTH = 10000;
 
 	/**
 	 * Largest number of lines the whole `highlight` attribute may expand to.
@@ -43,7 +43,7 @@ class Snippet {
 	 *
 	 * @var int
 	 */
-	const int MAX_HIGHLIGHT_LINES = 10000;
+	public const int MAX_HIGHLIGHT_LINES = 10000;
 
 	/**
 	 * The source code, pristine and unescaped.
@@ -99,7 +99,7 @@ class Snippet {
 	 */
 	public function __construct(
 		string $code,
-		string $language = self::DEFAULT_LANGUAGE,
+		string $language = self::_DEFAULT_LANGUAGE,
 		bool $show_line_numbers = true,
 		int $first_line = 1,
 		array $highlight_lines = [],
@@ -109,7 +109,7 @@ class Snippet {
 		$language = trim( $language );
 
 		$this->code              = $code;
-		$this->language          = ( empty( $language ) ) ? static::DEFAULT_LANGUAGE : $language;
+		$this->language          = ( empty( $language ) ) ? static::_DEFAULT_LANGUAGE : $language;
 		$this->show_line_numbers = $show_line_numbers;
 		$this->first_line        = max( 1, $first_line );
 		$this->highlight_lines   = static::normalize_line_numbers( $highlight_lines );
@@ -136,7 +136,7 @@ class Snippet {
 
 		$language = static::_get_att( $atts, 'language' );
 		$language = ( empty( $language ) ) ? static::_get_att( $atts, 'lang' ) : $language;
-		$language = ( empty( $language ) ) ? static::DEFAULT_LANGUAGE : $language;
+		$language = ( empty( $language ) ) ? static::_DEFAULT_LANGUAGE : $language;
 
 		$first_line = max(
 			1,
