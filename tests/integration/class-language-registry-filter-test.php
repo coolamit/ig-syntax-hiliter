@@ -35,7 +35,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const LANGUAGE = 'igshprobelang';
+	protected const string _LANGUAGE = 'igshprobelang';
 
 	/**
 	 * Registry cache keys written during a test, deleted afterwards.
@@ -236,7 +236,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 			Renderer::get_instance();
 
-			$registry['languages'][ self::LANGUAGE ] = [
+			$registry['languages'][ self::_LANGUAGE ] = [
 				'title' => 'Probe Lang',
 			];
 
@@ -251,7 +251,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 		$registry = Language_Registry::get_instance();
 
 		//asking it anything is what loads it, and this assertion is the asking
-		$this->assertTrue( $registry->has( self::LANGUAGE ), 'The filter did add a language.' );
+		$this->assertTrue( $registry->has( self::_LANGUAGE ), 'The filter did add a language.' );
 
 		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
 
@@ -259,7 +259,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 		$held     = ( new ReflectionProperty( Renderer::class, '_registry' ) )->getValue( $renderer );
 
 		$this->assertSame( $registry, $held, 'The renderer is not left holding a registry nothing else can reach.' );
-		$this->assertSame( self::LANGUAGE, $renderer->resolve_language( self::LANGUAGE ), 'A language added by the filter is one the renderer can resolve.' );
+		$this->assertSame( self::_LANGUAGE, $renderer->resolve_language( self::_LANGUAGE ), 'A language added by the filter is one the renderer can resolve.' );
 
 	}
 
@@ -341,7 +341,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$callback = static function ( array $registry ): array {
 
-			$registry['languages'][ self::LANGUAGE ] = [
+			$registry['languages'][ self::_LANGUAGE ] = [
 				'title' => 'Probe Lang',
 			];
 
@@ -353,7 +353,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$this->_remember_cache_key();
 
-		$this->assertTrue( Language_Registry::get_instance()->has( self::LANGUAGE ), 'The filter did add a language.' );
+		$this->assertTrue( Language_Registry::get_instance()->has( self::_LANGUAGE ), 'The filter did add a language.' );
 
 		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
 
@@ -361,7 +361,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 		$this->_reset_registry();
 
 		$this->assertFalse(
-			Language_Registry::get_instance()->has( self::LANGUAGE ),
+			Language_Registry::get_instance()->has( self::_LANGUAGE ),
 			'A language the filter added was written into the cache and outlived the callback.'
 		);
 
@@ -398,7 +398,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 		 */
 		$stored['data'] = [
 			'languages' => [
-				self::LANGUAGE => [
+				self::_LANGUAGE => [
 					'title' => 'Probe Lang',
 				],
 			],
@@ -411,7 +411,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
-		$this->assertTrue( $registry->has( self::LANGUAGE ), 'The registry was rebuilt rather than read from the cache.' );
+		$this->assertTrue( $registry->has( self::_LANGUAGE ), 'The registry was rebuilt rather than read from the cache.' );
 		$this->assertFalse( $registry->has( 'php' ), 'The registry was rebuilt rather than read from the cache.' );
 
 	}

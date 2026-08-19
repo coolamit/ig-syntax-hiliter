@@ -34,7 +34,7 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const UNSHIPPED_TAG = 'madeuptag';
+	protected const string _UNSHIPPED_TAG = 'madeuptag';
 
 	/**
 	 * Registers the pipeline once WordPress is up.
@@ -73,7 +73,7 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	 */
 	public function claim_unshipped_tag( $tags ) {
 
-		$tags[] = static::UNSHIPPED_TAG;
+		$tags[] = static::_UNSHIPPED_TAG;
 
 		return $tags;
 
@@ -145,14 +145,14 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 
 		add_filter( Legacy_Map::FILTER_TAGS, [ $this, 'claim_unshipped_tag' ] );
 
-		$this->assertContains( static::UNSHIPPED_TAG, Legacy_Map::get_tags() );
+		$this->assertContains( static::_UNSHIPPED_TAG, Legacy_Map::get_tags() );
 
-		$output = $this->_filter( 'the_content', sprintf( '[%1$s]xyz[/%1$s]', static::UNSHIPPED_TAG ) );
+		$output = $this->_filter( 'the_content', sprintf( '[%1$s]xyz[/%1$s]', static::_UNSHIPPED_TAG ) );
 
 		remove_filter( Legacy_Map::FILTER_TAGS, [ $this, 'claim_unshipped_tag' ] );
 
 		$this->assertStringContainsString( '<code class="language-none">', $output );
-		$this->assertStringNotContainsString( sprintf( 'language-%s', static::UNSHIPPED_TAG ), $output );
+		$this->assertStringNotContainsString( sprintf( 'language-%s', static::_UNSHIPPED_TAG ), $output );
 
 	}
 

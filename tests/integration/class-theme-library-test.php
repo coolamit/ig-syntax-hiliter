@@ -34,7 +34,7 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const DOTTED_SLUG = 'prism-base16-ateliersulphurpool.light';
+	protected const string _DOTTED_SLUG = 'prism-base16-ateliersulphurpool.light';
 
 	/**
 	 * The options object as the plugin booted it.
@@ -181,17 +181,17 @@ class Theme_Library_Test extends WP_UnitTestCase {
 		$option = Option::get_instance();
 
 		$this->assertArrayHasKey(
-			static::DOTTED_SLUG,
+			static::_DOTTED_SLUG,
 			Asset_Manager::get_themes(),
 			'The dotted slug is a theme the plugin ships.'
 		);
 
-		$this->assertTrue( $option->save( 'theme', static::DOTTED_SLUG ) );
-		$this->assertSame( static::DOTTED_SLUG, $option->get( 'theme' ) );
+		$this->assertTrue( $option->save( 'theme', static::_DOTTED_SLUG ) );
+		$this->assertSame( static::_DOTTED_SLUG, $option->get( 'theme' ) );
 
 		$this->assertSame(
-			'lib/prism-themes/' . static::DOTTED_SLUG . '.min.css',
-			Asset_Manager::get_theme_file( static::DOTTED_SLUG )
+			'lib/prism-themes/' . static::_DOTTED_SLUG . '.min.css',
+			Asset_Manager::get_theme_file( static::_DOTTED_SLUG )
 		);
 
 	}

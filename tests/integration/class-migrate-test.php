@@ -35,7 +35,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 *
 	 * @var array
 	 */
-	const V5_OPTIONS = [
+	protected const array _V5_OPTIONS = [
 		'fe-styles'         => 'no',
 		'strict_mode'       => 'always',
 		'non_strict_mode'   => [ 'php' ],
@@ -102,7 +102,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	public function test_a_v51_install_maps_its_settings_to_the_v6_option_set(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
 
 		$this->_migrate();
 
@@ -137,7 +137,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		update_option(
 			Base::PLUGIN_ID . '-options',
 			array_merge(
-				static::V5_OPTIONS,
+				static::_V5_OPTIONS,
 				[
 					'fe-styles'  => 'yes',
 					'plain_text' => 'yes',
@@ -163,7 +163,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	public function test_the_migration_does_not_run_again_on_a_subsequent_load(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
 
 		$this->_migrate();
 
@@ -398,7 +398,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		$cache_key = Cache::KEY_PREFIX . md5( Base::PLUGIN_ID . '-languages' );
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
 		update_option( Base::PLUGIN_ID . '-lang-time', time() );
 		update_option(
 			$cache_key,
@@ -432,7 +432,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		set_current_screen( 'dashboard' );
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
 
 		$this->_migrate();
 

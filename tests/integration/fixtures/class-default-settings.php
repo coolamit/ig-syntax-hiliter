@@ -30,7 +30,7 @@ class Default_Settings {
 	 *
 	 * @var array
 	 */
-	const V6 = [
+	public const array V6 = [
 		'theme'             => 'prism-okaidia',
 		'font'              => 'none',
 		'toolbar'           => 'yes',

@@ -48,7 +48,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const string ZERO = '0';
+	protected const string _ZERO = '0';
 
 	/**
 	 * Brings up the pipeline and the block, the way the two suites which own them do.
@@ -74,7 +74,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_shortcode_whose_code_is_zero_renders_a_code_box(): void {
 
-		$rendered = $this->_filter( 'the_content', sprintf( '[php]%s[/php]', static::ZERO ) );
+		$rendered = $this->_filter( 'the_content', sprintf( '[php]%s[/php]', static::_ZERO ) );
 
 		$this->assertStringContainsString(
 			'<pre ',
@@ -83,7 +83,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertStringContainsString(
-			'>' . static::ZERO . '<',
+			'>' . static::_ZERO . '<',
 			$rendered,
 			'The code box rendered, but the zero is not in it.'
 		);
@@ -101,7 +101,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 			'the_content',
 			static::_block(
 				[
-					'code'     => static::ZERO,
+					'code'     => static::_ZERO,
 					'language' => 'php',
 				]
 			)
@@ -114,7 +114,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertStringContainsString(
-			'>' . static::ZERO . '<',
+			'>' . static::_ZERO . '<',
 			$rendered,
 			'The code box rendered, but the zero is not in it.'
 		);
@@ -135,7 +135,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 
 		$block = static::_block(
 			[
-				'code'     => static::ZERO,
+				'code'     => static::_ZERO,
 				'language' => 'php',
 			]
 		);
@@ -145,7 +145,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 		$this->assertSame( 1, $result['converted'], 'The block was not converted.' );
 
 		$this->assertStringContainsString(
-			static::ZERO,
+			static::_ZERO,
 			$result['content'],
 			'The revert tool dropped the block, so the code is no longer in the post at all.'
 		);
@@ -159,7 +159,7 @@ class Zero_Code_Test extends WP_UnitTestCase {
 		$rendered = $this->_filter( 'the_content', $result['content'] );
 
 		$this->assertStringContainsString(
-			'>' . static::ZERO . '<',
+			'>' . static::_ZERO . '<',
 			$rendered,
 			'The shortcode the tool wrote does not render the code it was given.'
 		);
@@ -183,10 +183,10 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_language_named_zero_is_not_kept(): void {
 
-		$rendered = $this->_filter( 'the_content', sprintf( '[sourcecode language="%s"]echo 1;[/sourcecode]', static::ZERO ) );
+		$rendered = $this->_filter( 'the_content', sprintf( '[sourcecode language="%s"]echo 1;[/sourcecode]', static::_ZERO ) );
 
 		$this->assertStringNotContainsString(
-			'language-' . static::ZERO,
+			'language-' . static::_ZERO,
 			$rendered,
 			'A language named 0 was kept as the author typed it, which is the behaviour this pins the opposite of.'
 		);

@@ -31,14 +31,14 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const CONTENT = "[sourcecode language=\"php\"]\n[[sourcecode language=\"php\"]]\nfunction f() {}\n[[/sourcecode]]\n[/sourcecode]";
+	protected const string _CONTENT = "[sourcecode language=\"php\"]\n[[sourcecode language=\"php\"]]\nfunction f() {}\n[[/sourcecode]]\n[/sourcecode]";
 
 	/**
 	 * What a reader is to be shown inside the code box.
 	 *
 	 * @var string
 	 */
-	const QUOTED = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
+	protected const string _QUOTED = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
 
 	/**
 	 * Registers the pipeline.
@@ -85,12 +85,12 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 */
 	public function test_an_escaped_tag_renders_as_the_text_it_stands_for(): void {
 
-		$rendered = (string) apply_filters( 'the_content', self::CONTENT );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
+		$rendered = (string) apply_filters( 'the_content', self::_CONTENT );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
 
 		$this->assertSame( 1, substr_count( $rendered, '<pre ' ), 'The escaped closing tag ended the snippet, so the box was cut short.' );
 
 		$this->assertStringContainsString(
-			Renderer::escape_verbatim( self::QUOTED ),
+			Renderer::escape_verbatim( self::_QUOTED ),
 			$rendered,
 			'The reader was shown the doubled brackets rather than the tags the author wrote.'
 		);
@@ -108,12 +108,12 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	 */
 	public function test_the_escape_survives_being_saved_again_and_again(): void {
 
-		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( self::CONTENT ) ] );
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( self::_CONTENT ) ] );
 
 		for ( $round = 1; $round <= 3; $round++ ) {
 
 			$this->assertSame(
-				self::CONTENT,
+				self::_CONTENT,
 				(string) get_post_field( 'post_content', $post_id, 'raw' ),
 				sprintf( 'Round %d changed the bytes the author wrote.', $round )
 			);
@@ -121,7 +121,7 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 			wp_update_post(
 				[
 					'ID'           => $post_id,
-					'post_content' => wp_slash( self::CONTENT ),
+					'post_content' => wp_slash( self::_CONTENT ),
 				]
 			);
 

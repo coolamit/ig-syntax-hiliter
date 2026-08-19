@@ -30,7 +30,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const CODE_WITH_URLS = "\$api = 'https://example.com/v1/thing?a=1&b=2';\n// see http://example.org/docs\nwww.example.net/plain\nsomeone@example.com";
+	protected const string _CODE_WITH_URLS = "\$api = 'https://example.com/v1/thing?a=1&b=2';\n// see http://example.org/docs\nwww.example.net/plain\nsomeone@example.com";
 
 	/**
 	 * Registers the pipeline once WordPress is up.
@@ -95,13 +95,13 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 
 		$output = $this->_filter(
 			'the_content',
-			sprintf( "Read https://example.com/docs first.\n\n[php]\n%s\n[/php]", self::CODE_WITH_URLS )
+			sprintf( "Read https://example.com/docs first.\n\n[php]\n%s\n[/php]", self::_CODE_WITH_URLS )
 		);
 
 		remove_filter( 'the_content', 'make_clickable', 10 );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook, core callback.
 
 		$this->_assert_no_links_in_code( $output, 'make_clickable at 10' );
-		$this->assertStringContainsString( esc_html( self::CODE_WITH_URLS ), $output );
+		$this->assertStringContainsString( esc_html( self::_CODE_WITH_URLS ), $output );
 		$this->assertStringContainsString( '<a href="https://example.com/docs"', $output );
 
 	}
@@ -119,7 +119,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 		$this->assertGreaterThan( Shortcode_Handler::PRIORITY_PROTECT, $priority );
 		$this->assertLessThan( Shortcode_Handler::PRIORITY_RESTORE, $priority );
 
-		$output = $this->_filter( 'comment_text', sprintf( "[php]\n%s\n[/php]", self::CODE_WITH_URLS ) );
+		$output = $this->_filter( 'comment_text', sprintf( "[php]\n%s\n[/php]", self::_CODE_WITH_URLS ) );
 
 		$this->_assert_no_links_in_code( $output, 'comment_text' );
 
@@ -134,7 +134,7 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 
 		$this->assertDirectoryDoesNotExist( dirname( __DIR__, 2 ) . '/assets/lib/prism/plugins/autolinker' );
 
-		$this->_filter( 'the_content', sprintf( "[php]\n%s\n[/php]", self::CODE_WITH_URLS ) );
+		$this->_filter( 'the_content', sprintf( "[php]\n%s\n[/php]", self::_CODE_WITH_URLS ) );
 
 		$this->_fire_footer();
 

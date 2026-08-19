@@ -33,7 +33,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const KEY = 'ig-syntax-hiliter-cache-failure-test';
+	protected const string _KEY = 'ig-syntax-hiliter-cache-failure-test';
 
 	/**
 	 * Registry cache key a test poisoned, cleared away afterwards.
@@ -49,7 +49,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 */
 	public function tear_down(): void {
 
-		Cache::create( self::KEY )->delete();
+		Cache::create( self::_KEY )->delete();
 
 		if ( ! empty( $this->_registry_cache_key ) ) {
 
@@ -88,7 +88,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 */
 	public function test_an_error_while_filling_the_cache_does_not_escape_it(): void {
 
-		$result = Cache::create( self::KEY )
+		$result = Cache::create( self::_KEY )
 						->expires_in( DAY_IN_SECONDS )
 						->updates_with(
 							static function (): array {
@@ -113,7 +113,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_failed_build_is_not_written_down(): void {
 
-		Cache::create( self::KEY )
+		Cache::create( self::_KEY )
 			->expires_in( DAY_IN_SECONDS )
 			->updates_with(
 				static function (): array {
@@ -122,10 +122,10 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 			)
 			->get();
 
-		$this->assertFalse( get_option( $this->_option_name( self::KEY ) ), 'Nothing was left behind to be served.' );
+		$this->assertFalse( get_option( $this->_option_name( self::_KEY ) ), 'Nothing was left behind to be served.' );
 
 		// So the next request builds it, and gets the real thing.
-		$data = Cache::create( self::KEY )
+		$data = Cache::create( self::_KEY )
 					->expires_in( DAY_IN_SECONDS )
 					->updates_with(
 						static function (): array {
@@ -150,9 +150,9 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	public function test_a_failed_refresh_leaves_the_last_good_dataset_in_place(): void {
 
 		$good   = [ 'languages' => [ 'php', 'ruby' ] ];
-		$option = $this->_option_name( self::KEY );
+		$option = $this->_option_name( self::_KEY );
 
-		Cache::create( self::KEY )
+		Cache::create( self::_KEY )
 			->expires_in( DAY_IN_SECONDS )
 			->updates_with(
 				static function () use ( $good ): array {
@@ -170,7 +170,7 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 
 		update_option( $option, $stored, false );
 
-		$result = Cache::create( self::KEY )
+		$result = Cache::create( self::_KEY )
 						->expires_in( DAY_IN_SECONDS )
 						->updates_with(
 							static function (): array {

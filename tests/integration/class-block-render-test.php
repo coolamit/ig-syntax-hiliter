@@ -39,7 +39,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const MARKER = 'leaked-block-code-marker';
+	protected const string _MARKER = 'leaked-block-code-marker';
 
 	/**
 	 * Whether the block was rendered during the run under test.
@@ -344,7 +344,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 				'post_content' => wp_slash(
 					static::_block(
 						[
-							'code'     => sprintf( "\$secret = '%s';", static::MARKER ),
+							'code'     => sprintf( "\$secret = '%s';", static::_MARKER ),
 							'language' => 'php',
 						]
 					)
@@ -362,7 +362,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 		remove_filter( 'excerpt_allowed_blocks', [ $this, 'allow_this_plugins_block' ] );
 
 		$this->assertTrue( $this->_block_rendered, 'The block was really let into the excerpt, so this test is measuring something.' );
-		$this->assertStringNotContainsString( static::MARKER, $excerpt );
+		$this->assertStringNotContainsString( static::_MARKER, $excerpt );
 
 	}
 

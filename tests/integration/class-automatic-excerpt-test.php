@@ -28,7 +28,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const MARKER = 'leaked-code-marker';
+	protected const string _MARKER = 'leaked-code-marker';
 
 	/**
 	 * Registers the pipeline once WordPress is up.
@@ -49,7 +49,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * @return string
 	 */
 	protected static function _content(): string {
-		return static::_content_around( sprintf( "\$secret = '%s';", static::MARKER ) );
+		return static::_content_around( sprintf( "\$secret = '%s';", static::_MARKER ) );
 	}
 
 	/**
@@ -92,7 +92,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 */
 	protected function _assert_prose_only( string $excerpt, string $because ): void {
 
-		$this->assertStringNotContainsString( static::MARKER, $excerpt, $because . ': the code is in the excerpt.' );
+		$this->assertStringNotContainsString( static::_MARKER, $excerpt, $because . ': the code is in the excerpt.' );
 		$this->assertDoesNotMatchRegularExpression( '#\[/?php#', $excerpt, $because . ': a piece of the shortcode is in the excerpt.' );
 		$this->assertStringContainsString( 'Outro paragraph.', $excerpt, $because . ': prose past the snippet was lost.' );
 
@@ -139,7 +139,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 */
 	public function test_a_snippet_carrying_an_unclosed_angle_bracket_leaves_a_clean_excerpt( string $code ): void {
 
-		$post_id = $this->_create_post( static::_content_around( sprintf( $code, static::MARKER ) ) );
+		$post_id = $this->_create_post( static::_content_around( sprintf( $code, static::_MARKER ) ) );
 
 		$this->_assert_prose_only( get_the_excerpt( $post_id ), 'automatic excerpt' );
 
@@ -159,7 +159,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
 		$post_id = $this->_create_post(
 			static::_content_around(
-				sprintf( "echo '%s';", static::MARKER ),
+				sprintf( "echo '%s';", static::_MARKER ),
 				'Intro paragraph, in which 1 < 2 is noted.'
 			)
 		);
@@ -200,7 +200,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
 		}
 
-		$this->assertStringNotContainsString( static::MARKER, $excerpts, 'archive excerpts' );
+		$this->assertStringNotContainsString( static::_MARKER, $excerpts, 'archive excerpts' );
 
 		$this->go_to( get_permalink( $post_id ) );
 		the_post();
@@ -211,7 +211,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 		$single = (string) ob_get_clean();
 
 		$this->assertStringContainsString( '<pre ', $single, 'single post view' );
-		$this->assertStringContainsString( static::MARKER, $single, 'single post view' );
+		$this->assertStringContainsString( static::_MARKER, $single, 'single post view' );
 
 	}
 
@@ -253,8 +253,8 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
 		remove_filter( 'the_content', $nested, 50 );
 
-		$this->assertStringNotContainsString( static::MARKER, $excerpt, 'excerpt taken mid render' );
-		$this->assertStringContainsString( static::MARKER, $output, 'The render the excerpt interrupted still carries its code box.' );
+		$this->assertStringNotContainsString( static::_MARKER, $excerpt, 'excerpt taken mid render' );
+		$this->assertStringContainsString( static::_MARKER, $output, 'The render the excerpt interrupted still carries its code box.' );
 
 	}
 

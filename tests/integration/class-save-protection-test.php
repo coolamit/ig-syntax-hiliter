@@ -29,7 +29,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const HOSTILE_CONTENT = "Intro paragraph.\n\n[php]\n<script src=\"https://example.com/a.js\"></script>\n<?php echo '<div>' . \$a . '</div>'; ?>\n\$re = '/\\d+\\s\"x\"/';\n[/php]\n\nOutro paragraph.";  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
+	protected const string _HOSTILE_CONTENT = "Intro paragraph.\n\n[php]\n<script src=\"https://example.com/a.js\"></script>\n<?php echo '<div>' . \$a . '</div>'; ?>\n\$re = '/\\d+\\s\"x\"/';\n[/php]\n\nOutro paragraph.";  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test fixture standing in for author written code, not markup this plugin emits.
 
 	/**
 	 * Registers the pipeline once WordPress is up.
@@ -108,7 +108,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	 */
 	public function test_the_save_filters_are_a_round_trip(): void {
 
-		$slashed = wp_slash( self::HOSTILE_CONTENT );
+		$slashed = wp_slash( self::_HOSTILE_CONTENT );
 
 		$this->assertSame( $slashed, $this->_filter( 'content_save_pre', $slashed ) );
 
@@ -129,7 +129,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$post_id = self::factory()->post->create(
 			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
+				'post_content' => wp_slash( self::_HOSTILE_CONTENT ),
 				'post_status'  => 'draft',
 			]
 		);
@@ -152,7 +152,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 			]
 		);
 
-		$this->assertSame( self::HOSTILE_CONTENT, $first );
+		$this->assertSame( self::_HOSTILE_CONTENT, $first );
 		$this->assertSame( $first, $second );
 		$this->assertSame( $second, get_post_field( 'post_content', $post_id, 'raw' ) );
 
@@ -170,7 +170,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$post_id = self::factory()->post->create(
 			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
+				'post_content' => wp_slash( self::_HOSTILE_CONTENT ),
 				'post_status'  => 'publish',
 			]
 		);
@@ -178,7 +178,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		wp_update_post(
 			[
 				'ID'           => $post_id,
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
+				'post_content' => wp_slash( self::_HOSTILE_CONTENT ),
 				'post_title'   => 'Changed title',
 			]
 		);
@@ -188,10 +188,10 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		$this->assertNotEmpty( $revisions, 'The post type supports revisions, so there should be at least one.' );
 
 		foreach ( $revisions as $revision ) {
-			$this->assertSame( self::HOSTILE_CONTENT, $revision->post_content );
+			$this->assertSame( self::_HOSTILE_CONTENT, $revision->post_content );
 		}
 
-		$this->assertSame( self::HOSTILE_CONTENT, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( self::_HOSTILE_CONTENT, get_post_field( 'post_content', $post_id, 'raw' ) );
 
 	}
 
@@ -341,7 +341,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 					'language' => 'php',
 				]
 			),
-			self::HOSTILE_CONTENT
+			self::_HOSTILE_CONTENT
 		);
 
 		$this->assertSame( $content, $this->_store( $content ) );
@@ -359,7 +359,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$content = sprintf(
 			"%s\n\n%s",
-			self::HOSTILE_CONTENT,
+			self::_HOSTILE_CONTENT,
 			static::_block(
 				[
 					'code'     => "// wrap the snippet in [php] and close it after\n",
@@ -505,7 +505,7 @@ class Save_Protection_Test extends WP_UnitTestCase {
 		add_filter( 'content_save_pre', $repair, $mend );
 
 		try {
-			$stored = $this->_filter( 'content_save_pre', self::HOSTILE_CONTENT );
+			$stored = $this->_filter( 'content_save_pre', self::_HOSTILE_CONTENT );
 		} finally {
 
 			ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- The callback above puts it back on the way through; this is the one that runs when the chain does not get that far.
@@ -599,12 +599,12 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 		$post_id = self::factory()->post->create(
 			[
-				'post_content' => wp_slash( self::HOSTILE_CONTENT ),
+				'post_content' => wp_slash( self::_HOSTILE_CONTENT ),
 				'post_status'  => 'draft',
 			]
 		);
 
-		$this->assertSame( self::HOSTILE_CONTENT, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( self::_HOSTILE_CONTENT, get_post_field( 'post_content', $post_id, 'raw' ) );
 
 	}
 

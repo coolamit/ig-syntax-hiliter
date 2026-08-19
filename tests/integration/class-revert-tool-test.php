@@ -37,7 +37,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const ROUTE = '/' . Admin::REST_NAMESPACE . '/revert';
+	protected const string _ROUTE = '/' . Admin::REST_NAMESPACE . '/revert';
 
 	/**
 	 * Code used by most of the fixtures. It carries braces, quotes and a closing
@@ -45,7 +45,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const CODE = "function f( \$a ) {\n\techo '<b>' . \$a . '</b>';\n}";
+	protected const string _CODE = "function f( \$a ) {\n\techo '<b>' . \$a . '</b>';\n}";
 
 	/**
 	 * Batch size used while the batching tests run.
@@ -178,7 +178,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 */
 	protected function _process( int $cursor ): array {
 
-		$request = new WP_REST_Request( 'POST', self::ROUTE );
+		$request = new WP_REST_Request( 'POST', self::_ROUTE );
 
 		$request->set_body_params( [ 'cursor' => $cursor ] );
 
@@ -242,7 +242,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 				'post_content' => wp_slash(
 					$prefix . static::_block(
 						[
-							'code'     => self::CODE,
+							'code'     => self::_CODE,
 							'language' => 'php',
 						]
 					) . $suffix
@@ -252,7 +252,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->_run_to_completion();
 
-		$expected = sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::CODE );
+		$expected = sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::_CODE );
 
 		$this->assertSame( $prefix . $expected . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
 
@@ -269,7 +269,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->_become_administrator();
 
 		$attributes = [
-			'code'            => self::CODE,
+			'code'            => self::_CODE,
 			'language'        => 'php',
 			'firstLine'       => 12,
 			'highlightLines'  => '2,4-6',
@@ -347,7 +347,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$shortcode = (string) Block_Converter::block_to_shortcode(
 			[
-				'code'     => self::CODE,
+				'code'     => self::_CODE,
 				'language' => 'php',
 				'file'     => 'we"ird] [php]name.php',
 			]
@@ -360,7 +360,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( $shortcode, $matches[0], 'Something outside the shortcode was left over.' );
-		$this->assertSame( self::CODE, trim( $matches[5] ) );
+		$this->assertSame( self::_CODE, trim( $matches[5] ) );
 
 		$atts = shortcode_parse_atts( $matches[3] );
 
@@ -390,7 +390,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$shortcode = (string) Block_Converter::block_to_shortcode(
 			[
-				'code'     => self::CODE,
+				'code'     => self::_CODE,
 				'language' => 'PHP" ]',
 			]
 		);
@@ -417,7 +417,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$shortcode = (string) Block_Converter::block_to_shortcode(
 			[
-				'code'     => self::CODE,
+				'code'     => self::_CODE,
 				'language' => 'php',
 				'file'     => 'my  notes.php',
 			]
@@ -705,7 +705,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			Block_Converter::BLOCK_NAME
 		) . static::_block(
 			[
-				'code'     => self::CODE,
+				'code'     => self::_CODE,
 				'language' => 'php',
 			]
 		);
@@ -745,7 +745,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 				'post_content' => wp_slash(
 					$quoted . "\n\n" . static::_block(
 						[
-							'code'     => self::CODE,
+							'code'     => self::_CODE,
 							'language' => 'php',
 						]
 					)
@@ -759,7 +759,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] + $totals['blocks_left_alone'] );
 
 		$this->assertSame(
-			sprintf( "%s\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $quoted, self::CODE ),
+			sprintf( "%s\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $quoted, self::_CODE ),
 			get_post_field( 'post_content', $post_id, 'raw' ),
 			'The snippet quoting a delimiter is not byte identical to what went in.'
 		);
@@ -780,7 +780,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$content = static::_block(
 			[
-				'code'     => self::CODE,
+				'code'     => self::_CODE,
 				'language' => 'php',
 			]
 		);
@@ -818,7 +818,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 				'post_content' => wp_slash(
 					static::_block(
 						[
-							'code'     => self::CODE,
+							'code'     => self::_CODE,
 							'language' => 'php',
 						]
 					)
@@ -1135,13 +1135,13 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		wp_set_current_user( 0 );
 
-		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'GET', self::ROUTE ) )->get_status() );
-		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'POST', self::ROUTE ) )->get_status() );
+		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'GET', self::_ROUTE ) )->get_status() );
+		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'POST', self::_ROUTE ) )->get_status() );
 
 		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
 
-		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'GET', self::ROUTE ) )->get_status() );
-		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'POST', self::ROUTE ) )->get_status() );
+		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'GET', self::_ROUTE ) )->get_status() );
+		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'POST', self::_ROUTE ) )->get_status() );
 
 		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
 
@@ -1256,7 +1256,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 				'post_content' => wp_slash(
 					static::_block(
 						[
-							'code'     => self::CODE,
+							'code'     => self::_CODE,
 							'language' => 'php',
 						]
 					) . "\n\n" . static::_gist_block( [ 'url' => 'https://gist.github.com/9a1b2c3d4e5f' ] )
@@ -1270,7 +1270,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		$this->assertSame( 1, $totals['converted'] );
 
 		$this->assertSame(
-			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::CODE ) . "\n\n" . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]',
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::_CODE ) . "\n\n" . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]',
 			get_post_field( 'post_content', $post_id, 'raw' )
 		);
 

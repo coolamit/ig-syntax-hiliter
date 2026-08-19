@@ -33,14 +33,14 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const ROUTE = '/' . Admin::REST_NAMESPACE . '/option';
+	protected const string _ROUTE = '/' . Admin::REST_NAMESPACE . '/option';
 
 	/**
 	 * The theme refresh route, which is on the same permission callback.
 	 *
 	 * @var string
 	 */
-	const THEMES_ROUTE = '/' . Admin::REST_NAMESPACE . '/themes';
+	protected const string _THEMES_ROUTE = '/' . Admin::REST_NAMESPACE . '/themes';
 
 	/**
 	 * Brings up a REST server with the plugin's routes on it.
@@ -120,7 +120,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 */
 	protected function _save( string $name, string $value ) {
 
-		$request = new WP_REST_Request( 'POST', self::ROUTE );
+		$request = new WP_REST_Request( 'POST', self::_ROUTE );
 
 		$request->set_body_params(
 			[
@@ -235,7 +235,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 
 		try {
 
-			$request = new WP_REST_Request( 'POST', self::ROUTE );
+			$request = new WP_REST_Request( 'POST', self::_ROUTE );
 
 			$request->set_body_params(
 				[
@@ -282,7 +282,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	 */
 	protected function _refresh_themes() {
 
-		return rest_do_request( new WP_REST_Request( 'POST', self::THEMES_ROUTE ) );
+		return rest_do_request( new WP_REST_Request( 'POST', self::_THEMES_ROUTE ) );
 
 	}
 

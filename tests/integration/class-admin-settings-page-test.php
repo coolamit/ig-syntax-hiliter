@@ -29,21 +29,21 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const HANDLE = 'ig-syntax-hiliter-admin';
+	protected const string _HANDLE = 'ig-syntax-hiliter-admin';
 
 	/**
 	 * Handle the notice stack is registered under.
 	 *
 	 * @var string
 	 */
-	const NOTICES_HANDLE = 'ig-syntax-hiliter-notices';
+	protected const string _NOTICES_HANDLE = 'ig-syntax-hiliter-notices';
 
 	/**
 	 * Scripts the preview code box needs.
 	 *
 	 * @var array
 	 */
-	const PREVIEW_SCRIPTS = [
+	protected const array _PREVIEW_SCRIPTS = [
 		'ig-syntax-hiliter-engine',
 		'ig-syntax-hiliter-autoloader',
 		'ig-syntax-hiliter-toolbar',
@@ -429,26 +429,26 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		$admin->enqueue_assets( 'options-writing.php' );
 
-		$this->assertFalse( wp_script_is( self::HANDLE, 'enqueued' ), 'The settings assets loaded on somebody else\'s admin page.' );
-		$this->assertFalse( wp_script_is( self::NOTICES_HANDLE, 'enqueued' ), 'The notice stack loaded on somebody else\'s admin page.' );
+		$this->assertFalse( wp_script_is( self::_HANDLE, 'enqueued' ), 'The settings assets loaded on somebody else\'s admin page.' );
+		$this->assertFalse( wp_script_is( self::_NOTICES_HANDLE, 'enqueued' ), 'The notice stack loaded on somebody else\'s admin page.' );
 
-		foreach ( self::PREVIEW_SCRIPTS as $handle ) {
+		foreach ( self::_PREVIEW_SCRIPTS as $handle ) {
 			$this->assertFalse( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview\'s %s loaded on somebody else\'s admin page.', $handle ) );
 		}
 
 		$admin->enqueue_assets( Admin::PAGE_HOOK );
 
-		$this->assertTrue( wp_script_is( self::HANDLE, 'enqueued' ) );
-		$this->assertTrue( wp_style_is( self::HANDLE, 'enqueued' ) );
-		$this->assertTrue( wp_script_is( self::NOTICES_HANDLE, 'enqueued' ) );
-		$this->assertTrue( wp_style_is( self::NOTICES_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_script_is( self::_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_style_is( self::_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_script_is( self::_NOTICES_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_style_is( self::_NOTICES_HANDLE, 'enqueued' ) );
 
-		$this->assertSame( [ self::NOTICES_HANDLE ], wp_scripts()->registered[ self::HANDLE ]->deps );
-		$this->assertSame( [ self::NOTICES_HANDLE ], wp_styles()->registered[ self::HANDLE ]->deps );
+		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_scripts()->registered[ self::_HANDLE ]->deps );
+		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_styles()->registered[ self::_HANDLE ]->deps );
 
 		//the notice stack knows nothing about this screen, so it asks for nothing
-		$this->assertSame( [], wp_scripts()->registered[ self::NOTICES_HANDLE ]->deps );
-		$this->assertSame( [], wp_styles()->registered[ self::NOTICES_HANDLE ]->deps );
+		$this->assertSame( [], wp_scripts()->registered[ self::_NOTICES_HANDLE ]->deps );
+		$this->assertSame( [], wp_styles()->registered[ self::_NOTICES_HANDLE ]->deps );
 
 		$this->assertFalse( wp_script_is( 'jquery', 'enqueued' ) );
 
@@ -457,7 +457,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		 * looks, whatever the settings currently say — the reader can switch any of them
 		 * while looking at it, and nothing can be fetched at that moment.
 		 */
-		foreach ( self::PREVIEW_SCRIPTS as $handle ) {
+		foreach ( self::_PREVIEW_SCRIPTS as $handle ) {
 			$this->assertTrue( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview did not load %s.', $handle ) );
 		}
 

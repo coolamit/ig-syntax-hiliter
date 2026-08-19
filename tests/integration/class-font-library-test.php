@@ -34,7 +34,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 *
 	 * @var string
 	 */
-	const FONT_HOST = 'fonts.bunny.net';
+	protected const string _FONT_HOST = 'fonts.bunny.net';
 
 	/**
 	 * The fonts whose family really does carry code ligatures.
@@ -45,7 +45,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 *
 	 * @var array
 	 */
-	const FONTS_WITH_LIGATURES = [
+	protected const array _FONTS_WITH_LIGATURES = [
 		'azeret-mono',
 		'fira-code',
 		'jetbrains-mono',
@@ -137,7 +137,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$this->assertTrue( Asset_Manager::get_instance()->has_snippets(), 'The page really did render a code box.' );
 
 		foreach ( $this->_all_asset_urls() as $asset ) {
-			$this->assertStringNotContainsString( static::FONT_HOST, $asset );
+			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
 		}
 
 		$this->assertArrayNotHasKey(
@@ -170,7 +170,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		foreach ( $this->_all_asset_urls() as $asset ) {
 
-			if ( ! str_contains( $asset, static::FONT_HOST ) ) {
+			if ( ! str_contains( $asset, static::_FONT_HOST ) ) {
 				continue;
 			}
 
@@ -236,7 +236,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 			}
 
 			$this->assertSame(
-				static::FONT_HOST,
+				static::_FONT_HOST,
 				(string) wp_parse_url( $url, PHP_URL_HOST ),
 				sprintf( '%s is fetched from the font service and nowhere else.', $slug )
 			);
@@ -302,7 +302,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		sort( $asking );
 
-		$this->assertSame( static::FONTS_WITH_LIGATURES, $asking );
+		$this->assertSame( static::_FONTS_WITH_LIGATURES, $asking );
 
 	}
 
@@ -329,7 +329,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
 			$css       = Asset_Manager::get_font_css( $slug );
-			$ligatures = in_array( $slug, static::FONTS_WITH_LIGATURES, true );
+			$ligatures = in_array( $slug, static::_FONTS_WITH_LIGATURES, true );
 
 			if ( $ligatures ) {
 
@@ -380,7 +380,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$this->_render_page( "[php]\necho 1;\n[/php]" );
 
 		foreach ( $this->_all_asset_urls() as $asset ) {
-			$this->assertStringNotContainsString( static::FONT_HOST, $asset );
+			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
 		}
 
 	}

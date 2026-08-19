@@ -25,7 +25,7 @@ class Legacy_Map_Test extends TestCase {
 	 *
 	 * @var array
 	 */
-	const SHIPPED_TAGS = [
+	protected const array _SHIPPED_TAGS = [
 		'actionscript',
 		'actionscript3',
 		'apache',
@@ -70,7 +70,7 @@ class Legacy_Map_Test extends TestCase {
 	 *
 	 * @var array
 	 */
-	const SHIPPED_ALIASES = [ 'as', 'html', 'js' ];
+	protected const array _SHIPPED_ALIASES = [ 'as', 'html', 'js' ];
 
 	/**
 	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing
@@ -80,7 +80,7 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function test_claims_exactly_the_shipped_tags(): void {
 
-		$expected = array_merge( self::SHIPPED_TAGS, self::SHIPPED_ALIASES, [ 'sourcecode' ] );
+		$expected = array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES, [ 'sourcecode' ] );
 		$actual   = Legacy_Map::get_default_tags();
 
 		sort( $expected );
@@ -108,7 +108,7 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function test_every_shipped_tag_resolves(): void {
 
-		foreach ( array_merge( self::SHIPPED_TAGS, self::SHIPPED_ALIASES ) as $tag ) {
+		foreach ( array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES ) as $tag ) {
 
 			$this->assertNotNull(
 				Legacy_Map::to_language_id( $tag ),
