@@ -10,12 +10,12 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
-use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
+use iG\Syntax_Hiliter\Themes;
 use iG\Syntax_Hiliter\Validate;
 use WP_UnitTestCase;
 
@@ -335,7 +335,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 		$option->save( 'theme', '../../../../wp-config' );
 
-		$this->assertSame( Asset_Manager::DEFAULT_THEME, $this->_get_stored_settings()['theme'] ?? '' );
+		$this->assertSame( Themes::DEFAULT_THEME, $this->_get_stored_settings()['theme'] ?? '' );
 
 		$option->save( 'theme', 'prism-okaidia' );
 

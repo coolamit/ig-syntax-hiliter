@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration\Traits;
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Cache;
+use iG\Syntax_Hiliter\Themes;
 use ReflectionProperty;
 
 /**
@@ -257,7 +258,7 @@ trait Asset_Test_Helpers {
 	 */
 	protected function _cache_option_name(): string {
 
-		return Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+		return Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
 
 	}
 
@@ -272,7 +273,7 @@ trait Asset_Test_Helpers {
 	 */
 	protected function _forget_themes(): void {
 
-		( new ReflectionProperty( Asset_Manager::class, '_themes' ) )->setValue( null, null );
+		( new ReflectionProperty( Themes::class, '_themes' ) )->setValue( null, null );
 		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
 
 	}

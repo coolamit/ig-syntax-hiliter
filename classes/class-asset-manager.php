@@ -16,8 +16,12 @@ use iG\Syntax_Hiliter\Traits\Singleton;
  * that signal for every box it renders, and is the only caller of
  * `snippet_rendered()` — every path which produces a code box goes through it.
  *
- * This class and the renderer are the only two which know the highlighting engine
- * is Prism.
+ * This class and the renderer know the highlighting engine is Prism, and so does
+ * `Themes`, which holds the two directories the theme stylesheets are vendored
+ * into. Nothing else does. The catalogues themselves — which themes exist and which
+ * fonts are offered — live in `Themes` and `Fonts`; what this class decides is what
+ * a given page is asked to download, which is the one question `_handle()` and every
+ * `wp_enqueue_*` call below are about.
  */
 class Asset_Manager {
 
@@ -48,90 +52,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	protected const string _LIBRARY_PATH = 'lib/prism';
-
-	/**
-	 * Path of the extra theme collection, relative to the assets directory.
-	 *
-	 * These are the themes from PrismJS/prism-themes, which is a project of its own
-	 * and not part of the Prism release. They live in a directory of their own
-	 * because assets/lib/prism/ is Prism's dist and is replaced whole the next time
-	 * Prism is upgraded, which would take every one of these with it.
-	 *
-	 * @var string
-	 */
-	protected const string _THEMES_PATH = 'lib/prism-themes';
-
-	/**
-	 * The theme used when the site has not chosen one.
-	 *
-	 * @var string
-	 */
-	public const string DEFAULT_THEME = 'prism-okaidia';
-
-	/**
-	 * Theme setting value which means "load no theme stylesheet at all".
-	 *
-	 * @var string
-	 */
-	public const string THEME_NONE = 'none';
-
-	/**
-	 * Cache key the built theme list is stored under.
-	 *
-	 * Fixed rather than keyed on the plugin version, which is what the language
-	 * registry does. Nothing accumulates either way: `Migrate::_clean_up()` deletes
-	 * every option named `igsh-cache-%` when the stored version changes, and a plugin
-	 * update is the only thing which can change what is on disk here.
-	 *
-	 * @var string
-	 */
-	public const string THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
-
-	/**
-	 * How long the built theme list is cached for, in seconds. Seven days.
-	 *
-	 * Long, because the answer can only change when the plugin's own files change,
-	 * and a site owner who has just put a theme there by hand has the refresh button
-	 * on the settings page rather than a wait. The expiry is the backstop under that
-	 * button, not the mechanism.
-	 *
-	 * @var int
-	 */
-	protected const int _THEMES_CACHE_LIFE = 604800;
-
-	/**
-	 * Font setting value which means "load no webfont at all".
-	 *
-	 * This is the default, and it is the only value which costs a reader nothing: a
-	 * chosen font is fetched from another host, and a plugin which did that without
-	 * being asked would be making that decision on a site owner's behalf.
-	 *
-	 * @var string
-	 */
-	public const string FONT_NONE = 'none';
-
-	/**
-	 * Where the webfont stylesheets are fetched from.
-	 *
-	 * Bunny Fonts, which serves the same API shape as Google Fonts and states that it
-	 * stores no personal data and no logs. That is the whole reason it was chosen over
-	 * Google's own service.
-	 *
-	 * @var string
-	 */
-	protected const string _FONTS_URL = 'https://fonts.bunny.net/css';
-
-	/**
-	 * What a chosen font falls back to.
-	 *
-	 * The same stack `assets/src/scss/frontend-chrome.scss` sets on a code box, so a
-	 * font which fails to load leaves a reader exactly where they would have been with
-	 * no font chosen at all.
-	 *
-	 * @var string
-	 */
-	public const string FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
+	public const string LIBRARY_PATH = 'lib/prism';
 
 	/**
 	 * `wp_footer` priority at which the assets are first decided.
@@ -149,26 +70,6 @@ class Asset_Manager {
 	 * @var int
 	 */
 	public const int PRIORITY_DECIDE_AGAIN = 19;
-
-	/**
-	 * The theme map, once it has been built in this request.
-	 *
-	 * A compile-time constant which `get_theme_file()` used to rebuild on every call,
-	 * so one `get_themes()` built it forty-four times.
-	 *
-	 * @var array|null
-	 */
-	protected static ?array $_theme_titles = null;
-
-	/**
-	 * The themes on disk, once they have been read in this request.
-	 *
-	 * The persistent cache below is an option read, and this is called several times
-	 * in one request — by the enqueue, by the settings screen and by the validator.
-	 *
-	 * @var array|null
-	 */
-	protected static ?array $_themes = null;
 
 	/**
 	 * Whether a code box has been rendered on this page.
@@ -364,7 +265,7 @@ class Asset_Manager {
 		}
 
 		$this->_enqueue_theme();
-		$this->_enqueue_font( Shortcode_Handler::get_plugin_option( 'font', static::FONT_NONE ) );
+		$this->_enqueue_font( Shortcode_Handler::get_plugin_option( 'font', Fonts::FONT_NONE ) );
 		$this->_enqueue_engine();
 		$this->_enqueue_plugins();
 		$this->_enqueue_setup();
@@ -391,7 +292,7 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	public function enqueue_for_preview( string $theme, string $font = self::FONT_NONE ): void {
+	public function enqueue_for_preview( string $theme, string $font = Fonts::FONT_NONE ): void {
 
 		$this->_enqueue_theme( $theme );
 
@@ -409,28 +310,6 @@ class Asset_Manager {
 	}    //end enqueue_for_preview()
 
 	/**
-	 * Method to settle which theme is actually loaded for a stored setting value.
-	 *
-	 * A stored theme which is not on disk any more — one lost to an upgrade, or a
-	 * value written by something other than this plugin — falls back to the default
-	 * rather than to no stylesheet at all, because "no theme" is a choice a site owner
-	 * makes and not something an accident should look like.
-	 *
-	 * @param string $theme Theme setting value.
-	 *
-	 * @return string A theme slug which is on disk, or the "no theme" value.
-	 */
-	protected static function _resolve_theme( string $theme ): string {
-
-		if ( static::THEME_NONE === $theme ) {
-			return static::THEME_NONE;
-		}
-
-		return ( isset( static::get_themes()[ $theme ] ) ) ? $theme : static::DEFAULT_THEME;
-
-	}    //end _resolve_theme()
-
-	/**
 	 * Method to get the element id of the theme stylesheet's `link` tag.
 	 *
 	 * The preview swaps that tag's `href` as the dropdown is changed, so it has to be
@@ -443,23 +322,6 @@ class Asset_Manager {
 	public static function get_theme_style_id(): string {
 		return sprintf( '%s-css', static::_handle( 'theme' ) );
 	}    //end get_theme_style_id()
-
-	/**
-	 * Method to settle which font is actually loaded for a stored setting value.
-	 *
-	 * **This falls back the other way from `_resolve_theme()`, deliberately.** A theme
-	 * this plugin does not ship falls back to the default theme, because a code box
-	 * with no colours at all looks broken. A font this plugin does not offer falls back
-	 * to loading nothing: the only thing worse than the wrong font is fetching a file
-	 * from another host that nobody asked for.
-	 *
-	 * @param string $font Font setting value.
-	 *
-	 * @return string A font slug this plugin offers, or the "no font" value.
-	 */
-	protected static function _resolve_font( string $font ): string {
-		return ( isset( static::_get_font_titles()[ $font ] ) ) ? $font : static::FONT_NONE;
-	}    //end _resolve_font()
 
 	/**
 	 * Method to get the element id of the webfont stylesheet's `link` tag.
@@ -482,7 +344,7 @@ class Asset_Manager {
 	public function get_components_url(): string {
 
 		$url = trailingslashit(
-			Helper::get_asset_url( sprintf( '%s/components', static::_LIBRARY_PATH ) )
+			Helper::get_asset_url( sprintf( '%s/components', static::LIBRARY_PATH ) )
 		);
 
 		/**
@@ -495,462 +357,6 @@ class Asset_Manager {
 		return (string) apply_filters( static::FILTER_COMPONENTS_URL, $url );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
 	}    //end get_components_url()
-
-	/**
-	 * Method to get the themes the plugin ships, by the directory each one lives in.
-	 *
-	 * The keys are directories relative to the assets directory and the values are
-	 * slug to human readable title. Prism's own themes come first and the
-	 * PrismJS/prism-themes collection second, which is the order they are offered in.
-	 *
-	 * Every title is the name its own project gives it, so that a site owner reading
-	 * the dropdown and a site owner reading either project's documentation see the
-	 * same word.
-	 *
-	 * @return array Directory relative to the assets directory, to slug to title.
-	 */
-	protected static function _get_theme_titles(): array {
-
-		if ( is_array( static::$_theme_titles ) ) {
-			return static::$_theme_titles;
-		}
-
-		static::$_theme_titles = [
-
-			static::_LIBRARY_PATH . '/themes' => [
-				'prism'                => 'Prism',
-				'prism-coy'            => 'Coy',
-				'prism-dark'           => 'Dark',
-				'prism-funky'          => 'Funky',
-				'prism-okaidia'        => 'Okaidia',
-				'prism-solarizedlight' => 'Solarized Light',
-				'prism-tomorrow'       => 'Tomorrow Night',
-				'prism-twilight'       => 'Twilight',
-			],
-
-			static::_THEMES_PATH              => [
-				'prism-a11y-dark'                       => 'a11y Dark',
-				'prism-atom-dark'                       => 'Atom Dark',
-				'prism-base16-ateliersulphurpool.light' => 'Ateliersulphurpool-light',
-				'prism-cb'                              => 'CB',
-				'prism-coldark-cold'                    => 'Coldark Cold',
-				'prism-coldark-dark'                    => 'Coldark Dark',
-				'prism-coy-without-shadows'             => 'Coy without shadows',
-				'prism-darcula'                         => 'Darcula',
-				'prism-dracula'                         => 'Dracula',
-				'prism-duotone-dark'                    => 'Duotone Dark',
-				'prism-duotone-earth'                   => 'Duotone Earth',
-				'prism-duotone-forest'                  => 'Duotone Forest',
-				'prism-duotone-light'                   => 'Duotone Light',
-				'prism-duotone-sea'                     => 'Duotone Sea',
-				'prism-duotone-space'                   => 'Duotone Space',
-				'prism-ghcolors'                        => 'GHColors',
-				'prism-gruvbox-dark'                    => 'Gruvbox Dark',
-				'prism-gruvbox-light'                   => 'Gruvbox Light',
-				'prism-holi-theme'                      => 'Holi Theme',
-				'prism-lucario'                         => 'Lucario',
-				'prism-material-dark'                   => 'Material Dark',
-				'prism-material-light'                  => 'Material Light',
-				'prism-material-oceanic'                => 'Material Oceanic',
-				'prism-night-owl'                       => 'Night Owl',
-				'prism-nord'                            => 'Nord',
-				'prism-one-dark'                        => 'One Dark',
-				'prism-one-light'                       => 'One Light',
-				'prism-pojoaque'                        => 'Pojoaque',
-				'prism-shades-of-purple'                => 'Shades of Purple',
-				'prism-solarized-dark-atom'             => 'Solarized Dark Atom',
-				'prism-synthwave84'                     => "Synthwave '84",
-				'prism-vs'                              => 'VS',
-				'prism-vsc-dark-plus'                   => 'VS Code Dark+',
-				'prism-xonokai'                         => 'Xonokai',
-				'prism-z-touch'                         => 'Z-Touch',
-			],
-
-		];
-
-		return static::$_theme_titles;
-
-	}    //end _get_theme_titles()
-
-	/**
-	 * Method to get the path of a theme stylesheet, relative to the assets directory.
-	 *
-	 * Themes come from two directories, so this is the one place which knows which
-	 * theme is in which. A slug in neither gets an empty string, never a path which
-	 * looks usable.
-	 *
-	 * @param string $slug Theme slug.
-	 *
-	 * @return string Path relative to the assets directory, or an empty string for a theme the plugin does not ship.
-	 */
-	public static function get_theme_file( string $slug ): string {
-
-		foreach ( static::_get_theme_titles() as $directory => $titles ) {
-
-			if ( ! isset( $titles[ $slug ] ) ) {
-				continue;
-			}
-
-			return sprintf( '%s/%s.min.css', $directory, $slug );
-
-		}
-
-		return '';
-
-	}    //end get_theme_file()
-
-	/**
-	 * Method to read the themes bundled with the plugin off the disk.
-	 *
-	 * A theme is only offered if its stylesheet is actually readable, so a slug
-	 * mistyped in the map above, or a file lost in an upgrade, drops out of the
-	 * dropdown instead of being offered and then 404ing.
-	 *
-	 * Public because it is the callback the cache in `get_themes()` refills from, and
-	 * a callback has to be reachable. Call `get_themes()` rather than this: forty-odd
-	 * `is_readable()` calls is what the cache exists to stop happening on every page.
-	 *
-	 * @return array Theme file base name to human readable title.
-	 */
-	public static function build_themes(): array {
-
-		$themes = [];
-
-		foreach ( static::_get_theme_titles() as $titles ) {
-
-			foreach ( $titles as $slug => $title ) {
-
-				if ( ! is_readable( Helper::get_asset_path( static::get_theme_file( $slug ) ) ) ) {
-					continue;
-				}
-
-				$themes[ $slug ] = $title;
-
-			}
-		}
-
-		return $themes;
-
-	}    //end build_themes()
-
-	/**
-	 * Method to get the themes bundled with the plugin.
-	 *
-	 * The answer is a directory listing in all but name, and it is asked for several
-	 * times in a request — twice by the front end's enqueue, by the settings screen,
-	 * and by the validator on every REST request — so it is cached rather than read
-	 * each time. Two layers: a static for the rest of this request, and an option for
-	 * a week after that.
-	 *
-	 * `$force_rebuild` is what the refresh button on the settings page sends. It is a
-	 * yes/no string rather than a boolean because that is what this plugin's settings
-	 * have always been and what arrives over REST; anything which is not the word
-	 * `yes` or the word `no` is read as `no`, so a rebuild is never triggered by
-	 * accident.
-	 *
-	 * A cache which cannot produce a list falls back to reading the disk. An empty
-	 * dropdown would be indistinguishable from a plugin with no themes in it, and the
-	 * files are right there.
-	 *
-	 * **An empty list is a failure and not an answer**, which is why `empty()` is
-	 * tested and not only `is_array()`. `Cache` writes `[]` down as happily as it
-	 * writes a real list, and `Cache::get()` hands it back — `isset( $cache['data'] )`
-	 * is true for an empty array — so a moment when nothing on disk was readable, a
-	 * deploy swapping `assets/lib/` in place or an rsync caught half way, would
-	 * otherwise be served for the whole of `THEMES_CACHE_LIFE`. What a site owner sees
-	 * then is a theme dropdown holding nothing but "None" and a settings screen
-	 * answering 400 for every real theme, with the refresh button the only way out.
-	 *
-	 * So such an entry is deleted rather than merely stepped over: stepping over it
-	 * would leave it there to be stepped over again on every request for the next
-	 * seven days, each one paying for a full directory scan. Deleting it means this
-	 * request reads the disk and the next one caches what it finds, in the ordinary
-	 * way. And an empty rebuild is not memoised either, so a site which really has
-	 * lost its theme files starts working again the moment they come back.
-	 *
-	 * @param string $force_rebuild `yes` to throw the cached list away and read the disk again.
-	 *
-	 * @return array Theme file base name to human readable title.
-	 */
-	public static function get_themes( string $force_rebuild = 'no' ): array {
-
-		$validate      = Validate::get_instance();
-		$force_rebuild = ( $validate->is_yesno( $force_rebuild ) ) ? strtolower( trim( $force_rebuild ) ) : 'no';
-
-		if ( 'yes' === $force_rebuild ) {
-			static::$_themes = null;
-		}
-
-		if ( is_array( static::$_themes ) ) {
-			return static::$_themes;
-		}
-
-		$cache = Cache::create( static::THEMES_CACHE_KEY );
-
-		if ( 'yes' === $force_rebuild ) {
-			$cache->delete();
-		}
-
-		$themes = $cache->updates_with( [ static::class, 'build_themes' ] )
-						->expires_in( static::_THEMES_CACHE_LIFE )
-						->get();
-
-		if ( ! is_array( $themes ) || empty( $themes ) ) {
-
-			$cache->delete();    //do not let an unusable answer stand for a week
-
-			$themes = static::build_themes();
-
-		}
-
-		if ( empty( $themes ) ) {
-			return [];    //nothing readable, and not memoised, so the next request asks again
-		}
-
-		static::$_themes = $themes;
-
-		return static::$_themes;
-
-	}    //end get_themes()
-
-	/**
-	 * Method to get the fonts the plugin offers, keyed by the name Bunny Fonts knows.
-	 *
-	 * The single declaration of what a font is here. The title is the family's real
-	 * name, which is both what the dropdown shows **and** what the CSS asks for, so
-	 * there is one string and not two which could disagree.
-	 *
-	 * Every value below was read out of the font files Bunny actually serves rather
-	 * than from a catalogue page, and two of those readings matter:
-	 *
-	 * - `weight` is the one weight fetched. Bunny drops a weight a family does not
-	 *   have without complaining, so this can never fail a request — but a font asked
-	 *   for at a weight it does not have would be synthesised by the browser, which is
-	 *   why each one is the weight its own family really ships.
-	 * - `ligatures` says the family's `GSUB` table genuinely carries `liga` or `calt`
-	 *   lookups. Only three of the ten do. A browser may switch contextual alternates
-	 *   off for a face it treats as fixed pitch, so the fonts which have them ask for
-	 *   them by name; the rest say nothing, because a declaration which does nothing
-	 *   reads as though it does.
-	 *
-	 * @return array Font slug to title, weight and whether it carries code ligatures.
-	 */
-	protected static function _get_font_titles(): array {
-
-		return [
-			'azeret-mono'       => [
-				'title'     => 'Azeret Mono',
-				'weight'    => 300,
-				'ligatures' => true,
-			],
-			'fira-code'         => [
-				'title'     => 'Fira Code',
-				'weight'    => 400,
-				'ligatures' => true,
-			],
-			'fira-mono'         => [
-				'title'     => 'Fira Mono',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-			'google-sans-code'  => [
-				'title'     => 'Google Sans Code',
-				'weight'    => 400,
-				'ligatures' => false,    //the name says otherwise; its GSUB has ccmp, locl and ss01 and nothing else
-			],
-			'jetbrains-mono'    => [
-				'title'     => 'JetBrains Mono',
-				'weight'    => 400,
-				'ligatures' => true,
-			],
-			'm-plus-code-latin' => [
-				'title'     => 'M PLUS Code Latin',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-			'nova-mono'         => [
-				'title'     => 'Nova Mono',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-			'roboto-mono'       => [
-				'title'     => 'Roboto Mono',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-			'source-code-pro'   => [
-				'title'     => 'Source Code Pro',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-			'ubuntu-mono'       => [
-				'title'     => 'Ubuntu Mono',
-				'weight'    => 400,
-				'ligatures' => false,
-			],
-		];
-
-	}    //end _get_font_titles()
-
-	/**
-	 * Method to get the fonts the plugin offers.
-	 *
-	 * The counterpart of `get_themes()`, without its readability check: a theme is a
-	 * file on disk which an upgrade can lose, and a font is a name in the map above.
-	 *
-	 * @return array Font slug to human readable title.
-	 */
-	public static function get_fonts(): array {
-
-		return array_map(
-			static fn ( array $font ): string => $font['title'],
-			static::_get_font_titles()
-		);
-
-	}    //end get_fonts()
-
-	/**
-	 * Method to get the stylesheet URL for a font.
-	 *
-	 * Built by hand rather than with `add_query_arg()`, which would encode the colon
-	 * the family and its weight are joined with. Nothing here needs escaping: the slug
-	 * is a key of the map above and the weight is an integer from it, so a caller
-	 * cannot get a string of its own into this URL.
-	 *
-	 * @param string $slug Font slug.
-	 *
-	 * @return string URL, or an empty string where no font is to be loaded.
-	 */
-	public static function get_font_url( string $slug ): string {
-
-		$fonts = static::_get_font_titles();
-
-		if ( ! isset( $fonts[ $slug ] ) ) {
-			return '';
-		}
-
-		/*
-		 * `display=swap` so that a reader is shown the code in the fallback font while
-		 * the webfont is still on its way, rather than being shown nothing at all.
-		 */
-		return sprintf(
-			'%s?family=%s:%d&display=swap',
-			static::_FONTS_URL,
-			$slug,
-			$fonts[ $slug ]['weight']
-		);
-
-	}    //end get_font_url()
-
-	/**
-	 * Method to get the CSS which puts a font on the code boxes.
-	 *
-	 * **Values and never a rule.** The selectors and the fallbacks live in
-	 * `frontend-chrome.scss`, which reads these custom properties; all that is not
-	 * known until a site owner has picked a font is what the values are. Keeping it
-	 * that way means the cascade is legible where a reader of CSS would look for it,
-	 * and adding a font is still an edit to `_get_font_titles()` and nothing else.
-	 *
-	 * The properties are set on `:root` because they are read on the code element and
-	 * on every token span inside it, and a custom property is inherited.
-	 *
-	 * @param string $slug Font slug.
-	 *
-	 * @return string CSS, or an empty string where no font is to be loaded.
-	 */
-	public static function get_font_css( string $slug ): string {
-
-		$declarations = static::_get_font_declarations( $slug );
-
-		if ( empty( $declarations ) ) {
-			return '';
-		}
-
-		return sprintf( ':root { %s }', $declarations );
-
-	}    //end get_font_css()
-
-	/**
-	 * Method to get the custom property values which describe a font.
-	 *
-	 * The family, and for a family which really has the lookups for them, the
-	 * ligatures — plus the one thing that has to go with ligatures and would look
-	 * arbitrary anywhere else:
-	 *
-	 * **A non-zero `letter-spacing` suppresses ligatures outright.** That is specified
-	 * behaviour and not a quirk, the property is inherited, and a theme setting it on
-	 * its article text — `letter-spacing: 0.013rem` on `.entry-content` is a real
-	 * example — reaches inside the code box and silently switches off the ligatures a
-	 * site owner chose the font for. So a ligature font zeroes it and nothing else
-	 * does: a site running one of the other seven, or no font at all, keeps whatever
-	 * its theme asks for.
-	 *
-	 * @param string $slug Font slug.
-	 *
-	 * @return string Declarations, or an empty string for a font this plugin does not offer.
-	 */
-	protected static function _get_font_declarations( string $slug ): string {
-
-		$fonts = static::_get_font_titles();
-
-		if ( ! isset( $fonts[ $slug ] ) ) {
-			return '';
-		}
-
-		$declarations = sprintf(
-			'--igsh-code-font: "%s", %s;',
-			$fonts[ $slug ]['title'],
-			static::FONT_STACK
-		);
-
-		if ( ! empty( $fonts[ $slug ]['ligatures'] ) ) {
-			$declarations .= ' --igsh-code-ligatures: common-ligatures contextual; --igsh-code-letter-spacing: 0;';
-		}
-
-		return $declarations;
-
-	}    //end _get_font_declarations()
-
-	/**
-	 * Method to get the CSS which puts a font on the block being edited.
-	 *
-	 * **Custom properties rather than the properties themselves, deliberately.**
-	 * `editor.scss` already sets a font on that textarea, at the same specificity this
-	 * rule can reach, and inside the editor's iframe this rule is enqueued *before* the
-	 * block's own stylesheet — core fires `enqueue_block_assets` first and enqueues the
-	 * blocks' editor styles second. Setting the same property would therefore lose.
-	 * Nothing else declares that variable, so there is no cascade to win.
-	 *
-	 * The block wrapper is the whole of the selector, so nothing else a site owner is
-	 * editing can be reached by it.
-	 *
-	 * **The family and nothing else. Ligatures are never asked for here**, and
-	 * `editor.scss` switches them off outright: the block is edited in a textarea,
-	 * which is where somebody counts characters and puts a caret between them, and a
-	 * caret cannot sit inside one glyph standing for two. Typing `__construct` and
-	 * reading back what looks like ` _construct` is alarming enough to make an author
-	 * correct code which was never wrong. The rendered box and the preview keep their
-	 * ligatures, because nobody edits those.
-	 *
-	 * @param string $slug Font slug.
-	 *
-	 * @return string CSS, or an empty string where no font is to be loaded.
-	 */
-	public static function get_editor_font_css( string $slug ): string {
-
-		$fonts = static::_get_font_titles();
-
-		if ( ! isset( $fonts[ $slug ] ) ) {
-			return '';
-		}
-
-		return sprintf(
-			'.wp-block-igsyntax-hiliter-code { --igsh-editor-font: "%1$s", %2$s; }',
-			$fonts[ $slug ]['title'],
-			static::FONT_STACK
-		);
-
-	}    //end get_editor_font_css()
 
 	/**
 	 * Method to enqueue the chosen theme stylesheet, and the plugin's own chrome.
@@ -967,15 +373,15 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_theme( ?string $theme = null ): void {
 
-		$theme = $theme ?? Shortcode_Handler::get_plugin_option( 'theme', static::DEFAULT_THEME );
+		$theme = $theme ?? Shortcode_Handler::get_plugin_option( 'theme', Themes::DEFAULT_THEME );
 
-		$theme = static::_resolve_theme( $theme );
+		$theme = Themes::resolve_theme( $theme );
 
-		if ( static::THEME_NONE !== $theme ) {
+		if ( Themes::THEME_NONE !== $theme ) {
 
 			wp_enqueue_style(
 				static::_handle( 'theme' ),
-				Helper::get_asset_url( static::get_theme_file( $theme ) ),
+				Helper::get_asset_url( Themes::get_theme_file( $theme ) ),
 				[],
 				static::_get_version()
 			);
@@ -1004,9 +410,9 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_font( string $font ): void {
 
-		$font = static::_resolve_font( $font );
+		$font = Fonts::resolve_font( $font );
 
-		if ( static::FONT_NONE === $font ) {
+		if ( Fonts::FONT_NONE === $font ) {
 			return;
 		}
 
@@ -1016,7 +422,7 @@ class Asset_Manager {
 		 */
 		wp_enqueue_style(
 			static::_handle( 'font' ),
-			static::get_font_url( $font ),
+			Fonts::get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Deliberate. This URL is not this plugin's, so a version of this plugin's on the end of it is meaningless there and a second cache key for the same file.
 		);
@@ -1027,7 +433,7 @@ class Asset_Manager {
 
 		$this->_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'chrome' ), static::get_font_css( $font ) );
+		wp_add_inline_style( static::_handle( 'chrome' ), Fonts::get_font_css( $font ) );
 
 	}    //end _enqueue_font()
 
@@ -1051,15 +457,15 @@ class Asset_Manager {
 	 */
 	public function enqueue_for_editor( string $font ): void {
 
-		$font = static::_resolve_font( $font );
+		$font = Fonts::resolve_font( $font );
 
-		if ( static::FONT_NONE === $font ) {
+		if ( Fonts::FONT_NONE === $font ) {
 			return;
 		}
 
 		wp_enqueue_style(
 			static::_handle( 'editor-font' ),
-			static::get_font_url( $font ),
+			Fonts::get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Deliberate, for the reason `_enqueue_font()` gives.
 		);
@@ -1070,7 +476,7 @@ class Asset_Manager {
 
 		$this->_editor_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'editor-font' ), static::get_editor_font_css( $font ) );
+		wp_add_inline_style( static::_handle( 'editor-font' ), Fonts::get_editor_font_css( $font ) );
 
 	}    //end enqueue_for_editor()
 
@@ -1339,7 +745,7 @@ class Asset_Manager {
 	protected static function _get_library_url( string $path ): string {
 
 		return Helper::get_asset_url(
-			sprintf( '%s/%s', static::_LIBRARY_PATH, ltrim( $path, '/' ) )
+			sprintf( '%s/%s', static::LIBRARY_PATH, ltrim( $path, '/' ) )
 		);
 
 	}    //end _get_library_url()

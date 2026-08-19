@@ -13,6 +13,7 @@ use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Block_Converter;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
+use iG\Syntax_Hiliter\Themes;
 use WP_REST_Request;
 use WP_UnitTestCase;
 
@@ -76,7 +77,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	/**
 	 * Throws away the theme list this file's refresh case warms.
 	 *
-	 * `Admin::refresh_themes()` calls `Asset_Manager::get_themes( 'yes' )`, which
+	 * `Admin::refresh_themes()` calls `Themes::get_themes( 'yes' )`, which
 	 * rebuilds the cached option and repopulates a static in front of it. A static is
 	 * memory: the transaction this case runs in rolls the option row back and cannot
 	 * touch it, so without this the static would go on holding a real list while the

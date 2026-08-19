@@ -11,6 +11,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Block;
+use iG\Syntax_Hiliter\Fonts;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
@@ -315,12 +316,12 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 			$style = wp_styles()->registered['ig-syntax-hiliter-editor-font'] ?? null;
 
 			$this->assertNotNull( $style, 'The webfont stylesheet is registered for the editor.' );
-			$this->assertSame( Asset_Manager::get_font_url( 'fira-code' ), (string) $style->src );
+			$this->assertSame( Fonts::get_font_url( 'fira-code' ), (string) $style->src );
 
 			$rules = $this->_editor_font_rules();
 
 			$this->assertSame(
-				Asset_Manager::get_editor_font_css( 'fira-code' ),
+				Fonts::get_editor_font_css( 'fira-code' ),
 				$rules,
 				'The rule is added once, however many times the hook fires.'
 			);
@@ -356,16 +357,16 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 */
 	public function it_asks_for_ligatures_on_the_front_end_only(): void {
 
-		foreach ( Asset_Manager::get_fonts() as $slug => $title ) {
+		foreach ( Fonts::get_fonts() as $slug => $title ) {
 
-			$needle = sprintf( '"%s", %s', $title, Asset_Manager::FONT_STACK );
+			$needle = sprintf( '"%s", %s', $title, Fonts::FONT_STACK );
 
-			$this->assertStringContainsString( $needle, Asset_Manager::get_font_css( $slug ) );
-			$this->assertStringContainsString( $needle, Asset_Manager::get_editor_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Fonts::get_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Fonts::get_editor_font_css( $slug ) );
 
 			$this->assertStringNotContainsString(
 				'ligatures',
-				Asset_Manager::get_editor_font_css( $slug ),
+				Fonts::get_editor_font_css( $slug ),
 				sprintf( 'The editor must say nothing about ligatures, and it does for %s.', $slug )
 			);
 
@@ -377,7 +378,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		 */
 		$this->assertStringContainsString(
 			'--igsh-code-ligatures',
-			Asset_Manager::get_font_css( 'fira-code' ),
+			Fonts::get_font_css( 'fira-code' ),
 			'The front end still asks for ligatures where the family has them.'
 		);
 

@@ -11,6 +11,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Fonts;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
@@ -93,7 +94,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 */
 	protected function _get_declared_fonts(): array {
 
-		return (array) ( new ReflectionMethod( Asset_Manager::class, '_get_font_titles' ) )->invoke( null );
+		return (array) ( new ReflectionMethod( Fonts::class, '_get_font_titles' ) )->invoke( null );
 
 	}
 
@@ -129,7 +130,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 	public function it_fetches_no_font_unless_one_is_chosen(): void {
 
 		$this->assertSame(
-			Asset_Manager::FONT_NONE,
+			Fonts::FONT_NONE,
 			Option::get_instance()->get( 'font' ),
 			'The shipped default loads no font.'
 		);
@@ -187,7 +188,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$style = wp_styles()->registered['ig-syntax-hiliter-font'] ?? null;
 
 		$this->assertNotNull( $style, 'The webfont stylesheet is registered.' );
-		$this->assertSame( Asset_Manager::get_font_url( 'jetbrains-mono' ), (string) $style->src );
+		$this->assertSame( Fonts::get_font_url( 'jetbrains-mono' ), (string) $style->src );
 
 		/*
 		 * No version on a URL which belongs to somebody else. `wp_enqueue_style()` was
@@ -225,14 +226,14 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$choices = Admin::get_font_choices();
 
 		$this->assertGreaterThan( 1, count( $choices ), 'There are fonts to offer.' );
-		$this->assertSame( Asset_Manager::FONT_NONE, array_key_first( $choices ), 'None is the first choice.' );
+		$this->assertSame( Fonts::FONT_NONE, array_key_first( $choices ), 'None is the first choice.' );
 
 		foreach ( array_keys( $choices ) as $slug ) {
 
-			$url = Asset_Manager::get_font_url( $slug );
-			$css = Asset_Manager::get_font_css( $slug );
+			$url = Fonts::get_font_url( $slug );
+			$css = Fonts::get_font_css( $slug );
 
-			if ( Asset_Manager::FONT_NONE === $slug ) {
+			if ( Fonts::FONT_NONE === $slug ) {
 
 				$this->assertSame( '', $url, 'None fetches nothing.' );
 				$this->assertSame( '', $css, 'None applies nothing.' );
@@ -252,7 +253,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 			$this->assertStringContainsString( 'display=swap', $url );
 
 			$this->assertStringContainsString( sprintf( '"%s"', $choices[ $slug ] ), $css );
-			$this->assertStringContainsString( Asset_Manager::FONT_STACK, $css );
+			$this->assertStringContainsString( Fonts::FONT_STACK, $css );
 
 		}
 
@@ -270,8 +271,8 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		$choices = Admin::get_font_choices();
 
-		$this->assertSame( Asset_Manager::FONT_NONE, array_key_first( $choices ) );
-		$this->assertCount( count( Asset_Manager::get_fonts() ) + 1, $choices );
+		$this->assertSame( Fonts::FONT_NONE, array_key_first( $choices ) );
+		$this->assertCount( count( Fonts::get_fonts() ) + 1, $choices );
 
 		$names = array_values( $choices );
 
@@ -302,7 +303,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
-			if ( ! str_contains( Asset_Manager::get_font_css( $slug ), '--igsh-code-ligatures' ) ) {
+			if ( ! str_contains( Fonts::get_font_css( $slug ), '--igsh-code-ligatures' ) ) {
 				continue;
 			}
 
@@ -340,7 +341,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
-			$css       = Asset_Manager::get_font_css( $slug );
+			$css       = Fonts::get_font_css( $slug );
 			$ligatures = in_array( $slug, static::_FONTS_WITH_LIGATURES, true );
 
 			if ( $ligatures ) {
@@ -380,13 +381,13 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 */
 	public function it_loads_nothing_for_a_font_this_plugin_does_not_offer(): void {
 
-		$this->assertSame( '', Asset_Manager::get_font_url( 'comic-sans-ms' ) );
-		$this->assertSame( '', Asset_Manager::get_font_css( 'comic-sans-ms' ) );
+		$this->assertSame( '', Fonts::get_font_url( 'comic-sans-ms' ) );
+		$this->assertSame( '', Fonts::get_font_css( 'comic-sans-ms' ) );
 
 		Option::get_instance()->save( 'font', 'comic-sans-ms' );
 
 		$this->assertSame(
-			Asset_Manager::FONT_NONE,
+			Fonts::FONT_NONE,
 			Option::get_instance()->get( 'font' ),
 			'A font outside the list is stored as the default, which is None.'
 		);

@@ -315,7 +315,7 @@ class Migrate {
 
 			$this->_option->save(
 				'theme',
-				( 'no' === $validate->to_yesno( $old_options['fe-styles'], 'yes' ) ) ? Asset_Manager::THEME_NONE : Asset_Manager::DEFAULT_THEME
+				( 'no' === $validate->to_yesno( $old_options['fe-styles'], 'yes' ) ) ? Themes::THEME_NONE : Themes::DEFAULT_THEME
 			);
 
 		}

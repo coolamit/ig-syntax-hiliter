@@ -10,13 +10,13 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
-use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Migrate;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
+use iG\Syntax_Hiliter\Themes;
 use WP_UnitTestCase;
 
 /**
@@ -155,7 +155,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$options = get_option( Base::PLUGIN_ID . '-options' );
 
-		$this->assertSame( Asset_Manager::DEFAULT_THEME, $options['theme'] );
+		$this->assertSame( Themes::DEFAULT_THEME, $options['theme'] );
 		$this->assertSame( 'yes', $options['copy_code'] );
 
 	}
@@ -321,7 +321,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	public function it_clears_the_caches_when_it_rewrites_the_version(): void {
 
-		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+		$cache_key = Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
 
 		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
@@ -352,7 +352,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	public function it_keeps_the_caches_of_an_up_to_date_install(): void {
 
-		$cache_key = Cache::KEY_PREFIX . md5( Asset_Manager::THEMES_CACHE_KEY );
+		$cache_key = Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
 		$cached    = [
 			'expiry' => ( time() + HOUR_IN_SECONDS ),
 			'data'   => [ 'prism-okaidia' => 'Okaidia' ],

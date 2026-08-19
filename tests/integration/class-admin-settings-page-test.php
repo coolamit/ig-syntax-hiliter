@@ -12,6 +12,7 @@ namespace iG\Syntax_Hiliter\Tests\Integration;
 use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Themes;
 use ReflectionProperty;
 use WP_UnitTestCase;
 
@@ -153,7 +154,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		$choices = Admin::get_theme_choices();
 
-		$this->assertArrayHasKey( Asset_Manager::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
+		$this->assertArrayHasKey( Themes::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
 		$this->assertSame( 'Prism', $choices['prism'] ?? '', 'The Prism theme is named after itself, not after being the default.' );
 
 	}
@@ -176,10 +177,10 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$choices = Admin::get_theme_choices();
 		$slugs   = array_keys( $choices );
 
-		$this->assertSame( Asset_Manager::THEME_NONE, $slugs[0] ?? '', 'The "no theme" choice is not at the top of the dropdown.' );
+		$this->assertSame( Themes::THEME_NONE, $slugs[0] ?? '', 'The "no theme" choice is not at the top of the dropdown.' );
 
 		// Nothing was dropped on the way through the sort.
-		$this->assertCount( count( Asset_Manager::get_themes() ) + 1, $choices );
+		$this->assertCount( count( Themes::get_themes() ) + 1, $choices );
 
 		$titles = array_values( $choices );
 
@@ -326,7 +327,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		foreach ( $urls as $slug => $url ) {
 
-			if ( Asset_Manager::THEME_NONE === $slug ) {
+			if ( Themes::THEME_NONE === $slug ) {
 				$this->assertSame( '', $url, '"None" means no stylesheet, so it names none.' );
 
 				continue;

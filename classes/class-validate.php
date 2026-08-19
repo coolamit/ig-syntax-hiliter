@@ -47,11 +47,11 @@ class Validate {
 	protected array $_option_values = [
 		'theme'             => [
 			'allowed' => null,    //the bundled themes readable on disk, plus `none`
-			'default' => Asset_Manager::DEFAULT_THEME,
+			'default' => Themes::DEFAULT_THEME,
 		],
 		'font'              => [
 			'allowed' => null,    //the fonts the plugin offers, plus `none`
-			'default' => Asset_Manager::FONT_NONE,    //load no webfont unless a site owner asks for one
+			'default' => Fonts::FONT_NONE,    //load no webfont unless a site owner asks for one
 		],
 		'toolbar'           => [
 			'allowed' => [ 'yes', 'no' ],
@@ -164,11 +164,11 @@ class Validate {
 		//the choice to load nothing at all. Both are read from the asset manager rather
 		//than copied, so the list a value is checked against is the list it is offered from
 		if ( 'theme' === $name ) {
-			return array_merge( array_keys( Asset_Manager::get_themes() ), [ Asset_Manager::THEME_NONE ] );
+			return array_merge( array_keys( Themes::get_themes() ), [ Themes::THEME_NONE ] );
 		}
 
 		if ( 'font' === $name ) {
-			return array_merge( array_keys( Asset_Manager::get_fonts() ), [ Asset_Manager::FONT_NONE ] );
+			return array_merge( array_keys( Fonts::get_fonts() ), [ Fonts::FONT_NONE ] );
 		}
 
 		return [];    //declared as unfixed with nothing here able to resolve it, so nothing is accepted

@@ -253,7 +253,7 @@ class Admin extends Base {
 	 * it means the code boxes are styled by the site's own CSS and nothing else — so
 	 * it goes at the top rather than at the end of a list it is not part of.
 	 *
-	 * The order here is a decision of this screen. `Asset_Manager::get_themes()` is
+	 * The order here is a decision of this screen. `Themes::get_themes()` is
 	 * the registry, and `Validate` builds the setting's allowlist from it, where the
 	 * order means nothing at all.
 	 *
@@ -261,12 +261,12 @@ class Admin extends Base {
 	 */
 	public static function get_theme_choices(): array {
 
-		$themes = Asset_Manager::get_themes();
+		$themes = Themes::get_themes();
 
 		uasort( $themes, 'strnatcasecmp' );
 
 		return array_merge(
-			[ Asset_Manager::THEME_NONE => __( 'None — load no theme stylesheet', 'igsyntax-hiliter' ) ],
+			[ Themes::THEME_NONE => __( 'None — load no theme stylesheet', 'igsyntax-hiliter' ) ],
 			$themes
 		);
 
@@ -288,7 +288,7 @@ class Admin extends Base {
 
 		foreach ( array_keys( static::get_theme_choices() ) as $slug ) {
 
-			$file = Asset_Manager::get_theme_file( $slug );
+			$file = Themes::get_theme_file( $slug );
 
 			$urls[ $slug ] = ( empty( $file ) ) ? '' : Helper::get_asset_url( $file );
 
@@ -310,12 +310,12 @@ class Admin extends Base {
 	 */
 	public static function get_font_choices(): array {
 
-		$fonts = Asset_Manager::get_fonts();
+		$fonts = Fonts::get_fonts();
 
 		uasort( $fonts, 'strnatcasecmp' );
 
 		return array_merge(
-			[ Asset_Manager::FONT_NONE => __( 'None — load no font', 'igsyntax-hiliter' ) ],
+			[ Fonts::FONT_NONE => __( 'None — load no font', 'igsyntax-hiliter' ) ],
 			$fonts
 		);
 
@@ -340,8 +340,8 @@ class Admin extends Base {
 		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
 
 			$fonts[ $slug ] = [
-				'url' => Asset_Manager::get_font_url( $slug ),
-				'css' => Asset_Manager::get_font_css( $slug ),
+				'url' => Fonts::get_font_url( $slug ),
+				'css' => Fonts::get_font_css( $slug ),
 			];
 
 		}
@@ -415,7 +415,7 @@ class Admin extends Base {
 	 */
 	public function refresh_themes(): WP_REST_Response {
 
-		Asset_Manager::get_themes( 'yes' );
+		Themes::get_themes( 'yes' );
 
 		//the schema was built for this request before the list changed under it
 		static::$_settings_schema = null;
