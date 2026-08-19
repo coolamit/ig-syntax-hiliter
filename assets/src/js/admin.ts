@@ -39,6 +39,14 @@
 	 */
 	interface OptionResponse {
 		value?: string | undefined;
+
+		/*
+		 * Every setting which moved with the one that was saved, as name to stored
+		 * value. A setting which does nothing without another one takes that one
+		 * with it, so one save can change two controls. Empty far more often than
+		 * not, and optional because this is the JSON boundary.
+		 */
+		also?: Record< string, string > | undefined;
 	}
 
 	/**
@@ -533,14 +541,75 @@
 	}
 
 	/**
+	 * Puts the controls of any settings which moved with the saved one right, and
+	 * says what moved.
+	 *
+	 * A setting which does nothing on its own — the copy button inside the toolbar,
+	 * the brace colours painted on what the brace matching finds — takes the setting
+	 * it needs with it. The route makes that move in the same request and names it in
+	 * the answer, because the alternative is the screen sending a second save while
+	 * the page is locked precisely to stop it.
+	 *
+	 * `dataset.igshPrevious` moves with the control. Without that, the next failed
+	 * save on that control would put it back to what it showed before this one, which
+	 * is a value nobody holds any more.
+	 *
+	 * The name of the setting comes out of the document through `controlLabel()`, the
+	 * same way the saved setting's own name does, so nothing new has to be sent over.
+	 *
+	 * @param also Setting name to its stored value, or nothing.
+	 *
+	 * @return A sentence to append to the save message, empty when nothing moved.
+	 */
+	function applyAlso( also: Record< string, string > | undefined ): string {
+		if ( ! also ) {
+			return '';
+		}
+
+		let message = '';
+
+		Object.keys( also ).forEach( function ( name ) {
+			const stored = also[ name ];
+			const other = controlNamed( name );
+
+			/*
+			 * Two things which are not faults. A setting may be stored and not shown,
+			 * and this is the JSON boundary, so an entry carrying no value is answered
+			 * by leaving the control exactly as it is rather than by blanking it.
+			 */
+			if ( ! other || 'string' !== typeof stored ) {
+				return;
+			}
+
+			other.dataset.igshPrevious = stored;
+
+			writeControl( other, stored );
+
+			message +=
+				' ' +
+				fill(
+					'yes' === stored
+						? strings.savedAlsoOn
+						: strings.savedAlsoOff,
+					controlLabel( other )
+				);
+		} );
+
+		return message;
+	}
+
+	/**
 	 * Locks or unlocks the whole page for the length of a request.
 	 *
-	 * The screen saves one setting per request and all seven settings live in one
+	 * The screen saves one setting per request and all ten settings live in one
 	 * stored array, so two saves in quick succession are two overlapping requests:
 	 * the second re-reads that array out of the copy its own PHP process cached
 	 * when it started, writes its own idea of it back, and silently undoes the
 	 * first while both report success. Locking every control for the length of a
 	 * save is what makes a second request impossible rather than merely unlikely.
+	 * It is also why a setting which moves another one moves it inside the *same*
+	 * request, in `Admin::_save_dependent_settings()`, rather than by this page
+	 * sending a second save.
 	 *
 	 * Unlocking puts back exactly the elements this disabled, which is why they
 	 * are remembered rather than looked up again: a control already disabled for
@@ -694,7 +763,11 @@
 				 * REST layer answers 400 for a value the setting does not accept rather
 				 * than quietly substituting one — but this is the honest order.
 				 */
-				notice.settle( savedMessage( control, label ), 'success' );
+				notice.settle(
+					savedMessage( control, label ) +
+						applyAlso( payload && payload.also ),
+					'success'
+				);
 			} )
 			.catch( function ( error: RequestError ) {
 				/*
@@ -1076,11 +1149,27 @@
 	 * @return Its value, or NULL when the screen has no such control.
 	 */
 	function controlValue( name: string ): string | null {
-		const control = document.querySelector< OptionControl >(
-			'[data-igsh-option="' + name + '"]'
-		);
+		const control = controlNamed( name );
 
 		return control ? readControl( control ) : null;
+	}
+
+	/**
+	 * Finds the control which stands for a setting.
+	 *
+	 * Every control carries its setting's name, which is how the save reports back
+	 * and how the preview reads what is on screen. Both of those needed the same
+	 * selector, so it is said once.
+	 *
+	 * @param name Setting to find.
+	 *
+	 * @return Its control, or NULL when the screen has no such control. A setting
+	 *         may be stored and not shown, so this is a real answer and not a fault.
+	 */
+	function controlNamed( name: string ): OptionControl | null {
+		return document.querySelector< OptionControl >(
+			'[data-igsh-option="' + name + '"]'
+		);
 	}
 
 	/**

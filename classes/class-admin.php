@@ -153,6 +153,13 @@ class Admin extends Base {
 	 * here is rejected by the route, so the route can never be used to write an
 	 * arbitrary option.
 	 *
+	 * Two keys ride beside `choices` rather than being folded into it, for the same
+	 * reason in both cases — `choices` is read as an allowlist and must stay a flat
+	 * map of value to label. `groups` says how the font dropdown is laid out, and
+	 * **`requires` names a setting this one does not work without**: the copy button
+	 * is drawn in the toolbar, and the brace colours are painted on spans the brace
+	 * matching creates. `save_option()` is what acts on it.
+	 *
 	 * Built once per request. `register_rest_routes()` reads it for the route's `enum`
 	 * and so pays for it on every `rest_api_init` the site serves — the editor's
 	 * requests included — and a single `POST /option` reached it four times. Each
@@ -181,26 +188,27 @@ class Admin extends Base {
 			'font'              => [
 				'type'        => 'choice',
 				'label'       => __( 'Font', 'igsyntax-hiliter' ),
-				'description' => __( 'Typeface used for code boxes on the front end. Anything other than None is fetched from Bunny Fonts, a font service which stores no visitor data, so each reader\'s browser makes one request to fonts.bunny.net. None fetches nothing.', 'igsyntax-hiliter' ),
+				'description' => __( 'Typeface used for code boxes on the front end. Fonts are fetched from Bunny Fonts, a font service which does not store any visitor data. Each visitor\'s browser makes one request to "fonts.bunny.net". "None" fetches nothing.', 'igsyntax-hiliter' ),
 				'choices'     => static::get_font_choices(),
 				'groups'      => static::get_font_groups(),
 			],
 			'toolbar'           => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show the toolbar', 'igsyntax-hiliter' ),
-				'description' => __( 'Puts a small toolbar above each code box, which carries the language name and the copy button.', 'igsyntax-hiliter' ),
+				'description' => __( 'Shows a small toolbar at top of each code box, which carries the language name and the copy button.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'copy_code'         => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show the copy button', 'igsyntax-hiliter' ),
-				'description' => __( 'Adds a button which copies the code to the clipboard. It lives in the toolbar, so it needs the toolbar switched on.', 'igsyntax-hiliter' ),
+				'description' => __( 'Adds a button which copies the code to the clipboard. It requires the toolbar. Switching it ON switches the toolbar ON with it (if its OFF) and switching the toolbar OFF switches this OFF as well.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
+				'requires'    => 'toolbar',
 			],
 			'show_line_numbers' => [
 				'type'        => 'toggle',
 				'label'       => __( 'Show line numbers', 'igsyntax-hiliter' ),
-				'description' => __( 'The default for every code box. A single snippet can override it with the gutter attribute or the block setting.', 'igsyntax-hiliter' ),
+				'description' => __( 'Global setting for every code box. A single snippet can override it with the "gutter" attribute or the block setting.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'match_braces'      => [
@@ -212,19 +220,20 @@ class Admin extends Base {
 			'rainbow_braces'    => [
 				'type'        => 'toggle',
 				'label'       => __( 'Colour brackets by depth', 'igsyntax-hiliter' ),
-				'description' => __( 'Gives each level of nesting its own colour, so a bracket and its partner share one. Four of the bundled themes colour these themselves; everywhere else the colours are the ones this plugin ships.', 'igsyntax-hiliter' ),
+				'description' => __( 'Gives each level of nesting its own colour, so a bracket and its partner share one. This requires "Point out matching brackets" to be enabled. If this is switched ON then "Point out matching brackets" is switched ON as well (if its OFF). Switching OFF "Point out matching brackets" will switch OFF this setting too.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
+				'requires'    => 'match_braces',
 			],
 			'hilite_comments'   => [
 				'type'        => 'toggle',
 				'label'       => __( 'Highlight code in comments', 'igsyntax-hiliter' ),
-				'description' => __( 'Runs the same highlighting over code posted in comments.', 'igsyntax-hiliter' ),
+				'description' => __( 'Allow code to be highlighted in comments via use of shortcodes.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'gist_in_comments'  => [
 				'type'        => 'toggle',
 				'label'       => __( 'Allow Gist embeds in comments', 'igsyntax-hiliter' ),
-				'description' => __( 'Lets a commenter embed a GitHub Gist with the github shortcode. Off by default, because it lets a commenter load a third party script.', 'igsyntax-hiliter' ),
+				'description' => __( 'Allow visitors to embed GitHub Gists in comments with the [github] shortcode.', 'igsyntax-hiliter' ),
 				'choices'     => $yes_no,
 			],
 			'gist_limit_height' => [
@@ -580,15 +589,93 @@ class Admin extends Base {
 		 * knows which control was changed and so which label the reader needs to see
 		 * named. A second sentence here saying the same thing in different words is
 		 * a string nothing reads and nobody notices going stale.
+		 *
+		 * `also` names whatever moved with this setting, so the screen can put those
+		 * controls right without asking a second time. It is empty far more often
+		 * than not.
 		 */
 		return new WP_REST_Response(
 			[
 				'name'  => $name,
 				'value' => (string) $this->_option->get( $name ),
+				'also'  => $this->_save_dependent_settings( $name, $value ),
 			]
 		);
 
 	}    //end save_option()
+
+	/**
+	 * Method to move the settings which depend on the one just saved.
+	 *
+	 * A setting declares `requires` when it does nothing on its own: the copy button
+	 * is drawn inside the toolbar, and the brace colours are painted on spans the
+	 * brace matching creates. Leaving a site owner to switch on a control which then
+	 * does nothing is what this replaces, so two rules follow from that one key —
+	 * **switching a setting on switches on what it needs, and switching a setting off
+	 * switches off whatever needed it.**
+	 *
+	 * The other two moves are deliberately not made. Switching a dependent off says
+	 * nothing about what it needed — somebody may well want the toolbar without the
+	 * copy button — and switching a requirement on says nothing about what depends on
+	 * it, which would otherwise switch on a setting the site owner had turned off.
+	 *
+	 * **This is one level deep and no chain exists.** A `requires` naming a setting
+	 * which itself requires a third would need a loop here; the map above is the one
+	 * place such a chain could be introduced and the one place it would be visible.
+	 *
+	 * `Option::save()` re-reads the stored array immediately before it writes, so
+	 * calling it twice in one request composes: the second read sees the first write.
+	 * That is the same property which makes two overlapping requests safe, used here
+	 * inside a single one.
+	 *
+	 * **A partner which cannot be saved is left out of the answer rather than turned
+	 * into a failure.** The setting the caller asked for is already stored by the time
+	 * this runs, so reporting an error would be reporting the wrong thing; the screen
+	 * shows that partner unchanged, which is the truth, and the pair is left in the
+	 * one state the front end already handles — the colours on with the interaction
+	 * off, or the copy button on with no toolbar to draw it in.
+	 *
+	 * @param string $name  Setting which was just saved.
+	 * @param string $value Value it was saved with.
+	 *
+	 * @return array Setting name to its stored value, for every setting which moved. Empty when none did.
+	 */
+	protected function _save_dependent_settings( string $name, string $value ): array {
+
+		$schema = static::get_settings_schema();
+		$moved  = [];
+
+		if ( 'yes' === $value && ! empty( $schema[ $name ]['requires'] ) ) {
+
+			$required = (string) $schema[ $name ]['requires'];
+
+			if ( 'yes' !== (string) $this->_option->get( $required ) && $this->_option->save( $required, 'yes' ) ) {
+				$moved[ $required ] = (string) $this->_option->get( $required );
+			}
+		}
+
+		if ( 'no' !== $value ) {
+			return $moved;
+		}
+
+		foreach ( $schema as $dependent => $setting ) {
+
+			if ( ( $setting['requires'] ?? '' ) !== $name ) {
+				continue;
+			}
+
+			if ( 'yes' !== (string) $this->_option->get( $dependent ) ) {
+				continue;    //already off, so there is nothing for the screen to put right
+			}
+
+			if ( $this->_option->save( $dependent, 'no' ) ) {
+				$moved[ $dependent ] = (string) $this->_option->get( $dependent );
+			}
+		}
+
+		return $moved;
+
+	}    //end _save_dependent_settings()
 
 	/**
 	 * Method to add the settings page to the Settings menu.
@@ -842,6 +929,17 @@ PREVIEW;
 				'savedOff'          => __( '%s — disabled.', 'igsyntax-hiliter' ),
 				/* translators: 1: name of the setting, 2: value it now holds. */
 				'savedChoice'       => __( '%1$s changed to %2$s.', 'igsyntax-hiliter' ),
+
+				/*
+				 * A setting which does nothing without another one moves that one with
+				 * it, so one save can change two settings and the message has to say
+				 * which. It is appended to the sentence above rather than replacing it:
+				 * the reader asked for one of them, and that is the one to name first.
+				 */
+				/* translators: %s: name of the setting that was switched on alongside the one the reader changed. */
+				'savedAlsoOn'       => __( '%s was switched on with it.', 'igsyntax-hiliter' ),
+				/* translators: %s: name of the setting that was switched off alongside the one the reader changed. */
+				'savedAlsoOff'      => __( '%s was switched off with it.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that was saved. */
 				'saved'             => __( '%s — saved.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that could not be saved. */

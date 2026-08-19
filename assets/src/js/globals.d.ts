@@ -51,6 +51,8 @@ interface IgshAdminStrings {
 	savedOn: string;
 	savedOff: string;
 	savedChoice: string;
+	savedAlsoOn: string;
+	savedAlsoOff: string;
 	saved: string;
 	saveFailed: string;
 	saveTimedOut: string;
