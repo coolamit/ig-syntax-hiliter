@@ -16,7 +16,7 @@ use WP_Hook;
  *
  * WordPress already answers most of this with `has_action()`/`has_filter()`, and the
  * tests which only need "is it there, and at which priority" go on using those. These
- * helpers exist for the two questions core's pair cannot answer:
+ * helpers exist for the three questions core's pair cannot answer:
  *
  * - **Every priority, not the first.** `has_filter()` returns the priority of the first
  *   registration it finds and stops. `Asset_Manager` sits on `wp_footer` at both
@@ -26,6 +26,9 @@ use WP_Hook;
  *   0 and `false` for one that is absent. `Shortcode_Handler::PRIORITY_STRIP_BODY` is 0,
  *   so the two answers are one `if` away from being read as the same thing. A named
  *   assertion cannot make that mistake.
+ * - **How many arguments the callback asked for.** Core answers nothing about this at
+ *   all. `Admin::get_action_links( $links, $file )` registers with `10, 2`, and with a
+ *   `1` there it is handed no second argument and fatals on every admin screen.
  *
  * Nothing here knows anything about this plugin. It reads `$GLOBALS['wp_filter']` and
  * nothing else, so any test class can use it.
@@ -72,6 +75,45 @@ trait Hook_Test_Helpers {
 		sort( $priorities, SORT_NUMERIC );
 
 		return $priorities;
+
+	}
+
+	/**
+	 * Method to read how many arguments a registered callback asked for.
+	 *
+	 * Core offers nothing which answers this, and the priority helpers above cannot:
+	 * a registration is right about its hook and its priority and still broken if it
+	 * asked for one argument where the callback takes two. `Admin::get_action_links()`
+	 * is the plugin's only multi-argument registration, and it would simply be handed
+	 * a missing second parameter — a fatal, on every admin screen, from a change no
+	 * assertion in this file could otherwise see.
+	 *
+	 * @param string $hook     Name of the action or filter.
+	 * @param mixed  $callback The callback, exactly as it was handed to `add_action()`.
+	 * @param int    $priority Priority the callback is registered at.
+	 *
+	 * @return int|null Accepted argument count, or NULL where the callback is not
+	 *                  registered on that hook at that priority.
+	 */
+	protected function _hooked_accepted_args( string $hook, mixed $callback, int $priority ): ?int {
+
+		$registry = $GLOBALS['wp_filter'][ $hook ] ?? null;
+
+		if ( ! $registry instanceof WP_Hook ) {
+			return null;
+		}
+
+		foreach ( ( $registry->callbacks[ $priority ] ?? [] ) as $registered ) {
+
+			if ( ( $registered['function'] ?? null ) !== $callback ) {
+				continue;
+			}
+
+			return (int) $registered['accepted_args'];
+
+		}
+
+		return null;
 
 	}
 

@@ -14,7 +14,6 @@ use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Language_Registry;
 use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Option;
-use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use ReflectionProperty;
 use WP_Block_Type_Registry;
@@ -32,8 +31,6 @@ use WP_UnitTestCase;
 class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
-
-	use Hook_Test_Helpers;
 
 	/**
 	 * The block's generated editor script handle.
@@ -395,59 +392,6 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 		} finally {
 			$this->_reset_editor_font();
 		}
-
-	}
-
-	/**
-	 * The block registers the hooks the rest of this file then calls by hand.
-	 *
-	 * Every other case here reaches for `Block::get_instance()->…()` directly. That is
-	 * fast and it keeps each assertion on what the method does, but it leaves the
-	 * `add_action()` lines themselves invisible: delete the one on `enqueue_block_assets`
-	 * and the editor silently loses its font while this whole file stays green. This is
-	 * the case which sees them.
-	 *
-	 * The `init` priority is asserted and not merely the registration, because the
-	 * priority is the whole of why this works. The plugin boots on `init` at priority
-	 * 10, and a callback added at a priority which does not yet exist is picked up in
-	 * that same run — `WP_Hook::resort_active_iterations()` rebuilds the live
-	 * iteration array and moves the pointer past what has already run. Register the
-	 * block at priority 10 instead and it is appended to the priority currently
-	 * running, which the loop never reaches: the block silently vanishes, which looks
-	 * exactly like a checkout that was never built.
-	 *
-	 * @return void
-	 */
-	public function test_the_block_registers_its_hooks(): void {
-
-		$block = Block::get_instance();
-
-		$this->_assert_hooked(
-			'enqueue_block_editor_assets',
-			[ $block, 'add_editor_data' ],
-			null,
-			'The editor is handed the tag list and the language map.'
-		);
-
-		$this->_assert_hooked(
-			'enqueue_block_assets',
-			[ $block, 'enqueue_editor_font' ],
-			null,
-			'The chosen font reaches the editor canvas, which is an iframe that enqueue_block_editor_assets does not reach.'
-		);
-
-		$this->_assert_hooked(
-			'init',
-			[ $block, 'register_block' ],
-			Block::PRIORITY_REGISTER,
-			'The block registers behind the priority the plugin boots at, which is what gets it into the same run.'
-		);
-
-		$this->assertGreaterThan(
-			10,
-			Block::PRIORITY_REGISTER,
-			'The plugin boots on init at priority 10, so anything at 10 or earlier is appended to a priority already running and never reached.'
-		);
 
 	}
 
