@@ -122,13 +122,22 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * No theme the plugin ships may fetch anything from another host.
+	 * No stylesheet the plugin ships may fetch anything from another host.
 	 *
 	 * This is the permanent guard on a decision taken when the prism-themes
 	 * collection was bundled: Hopscotch was left out because its first line is an
 	 * `@import` of a Google font, so every page carrying a code box would have called
 	 * Google. Its stylesheet was the only one of the collection's with an external
 	 * reference of any kind, and no theme added later may bring one back.
+	 *
+	 * **The engine plugins' own stylesheets are scanned here too**, although they are
+	 * not themes and this file is about themes. They are vendored out of the same
+	 * upstream release, they are enqueued onto the same page, and a `@import` in one
+	 * of them would call another host exactly as a theme's would — and until the
+	 * brace matching plugin was vendored there were only two of them and nothing had
+	 * ever looked. One scan over every stylesheet this plugin ships is the guard;
+	 * splitting it by which directory the file came out of would leave the newest
+	 * directory unwatched, which is precisely how this one nearly shipped unwatched.
 	 *
 	 * A `url()` pointing at a data URI is fine and one theme has one: Pojoaque
 	 * carries its background as base64, which needs no request at all.
@@ -137,17 +146,25 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	 *
 	 * @return void
 	 */
-	public function it_fetches_nothing_from_another_host_for_any_bundled_theme(): void {
+	public function it_fetches_nothing_from_another_host_for_any_bundled_stylesheet(): void {
 
 		$files = [];
 
-		foreach ( array_keys( $this->_get_declared_themes() ) as $directory ) {
+		$directories = array_keys( $this->_get_declared_themes() );
+
+		foreach ( $directories as $directory ) {
 
 			$found = glob( Helper::get_asset_path( $directory ) . '/*.min.css' );
 
 			$files = array_merge( $files, (array) $found );
 
 		}
+
+		$plugin_styles = glob( Helper::get_asset_path( 'lib/prism/plugins' ) . '/*/*.min.css' );
+
+		$this->assertNotEmpty( $plugin_styles, 'The vendored engine plugins ship stylesheets of their own.' );
+
+		$files = array_merge( $files, (array) $plugin_styles );
 
 		$this->assertNotEmpty( $files, 'The vendored theme directories hold stylesheets.' );
 

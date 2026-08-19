@@ -119,6 +119,13 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 			'Two passes and no more — a third would be a decision nothing asked for.'
 		);
 
+		$this->_assert_hooked(
+			'body_class',
+			[ $assets, 'get_body_classes' ],
+			10,
+			'The brace matching classes go on the body, which is the ancestor the engine walks up to.'
+		);
+
 	}
 
 	/**

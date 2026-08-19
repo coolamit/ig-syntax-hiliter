@@ -10,6 +10,7 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
@@ -186,6 +187,206 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			$this->_set_singleton( Option::class, null );
 
 		}
+
+	}
+
+	/**
+	 * Both settings off means no brace matching script, no stylesheet and no class.
+	 *
+	 * Nothing else can see any of this. The script is what creates the spans the
+	 * nesting colours are painted on, and the class on the body is what tells it to
+	 * create them — so all three have to go together, and a site owner who has
+	 * switched both settings off has to get a page which is exactly the page they got
+	 * before this feature existed.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_matches_no_braces_when_both_settings_are_off(): void {
+
+		$option = Option::get_instance();
+
+		$option->save( 'match_braces', 'no' );
+		$option->save( 'rainbow_braces', 'no' );
+
+		try {
+
+			$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+			$handles = $this->_plugin_asset_handles();
+
+			$this->assertNotContains( 'script:ig-syntax-hiliter-match-braces', $handles );
+			$this->assertNotContains( 'style:ig-syntax-hiliter-match-braces', $handles );
+
+			$this->assertSame( [], $this->_brace_body_classes() );
+
+		} finally {
+			$this->_set_singleton( Option::class, null );
+		}
+
+	}
+
+	/**
+	 * Matching on and the colours off is the shipped default, and it says one class.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_asks_only_for_matching_by_default(): void {
+
+		$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+		$handles = $this->_plugin_asset_handles();
+
+		$this->assertContains( 'script:ig-syntax-hiliter-match-braces', $handles );
+		$this->assertContains( 'style:ig-syntax-hiliter-match-braces', $handles );
+
+		$this->assertSame( [ 'match-braces' ], $this->_brace_body_classes() );
+
+	}
+
+	/**
+	 * The colours on top of the matching say both classes and nothing else.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_asks_for_the_nesting_colours_beside_the_matching(): void {
+
+		$option = Option::get_instance();
+
+		$option->save( 'rainbow_braces', 'yes' );
+
+		try {
+
+			$this->assertSame(
+				[ 'match-braces', 'rainbow-braces' ],
+				$this->_brace_body_classes()
+			);
+
+		} finally {
+			$this->_set_singleton( Option::class, null );
+		}
+
+	}
+
+	/**
+	 * The colours wanted without the matching still load the script, and switch the
+	 * hover and the click off by name.
+	 *
+	 * **This is the case the two settings exist for and the one nothing else guards.**
+	 * The `brace-level-N` classes the colours are painted on are added inside the same
+	 * hook `match-braces` gates, so the colours alone would be a setting which does
+	 * nothing — the class has to go on. `no-brace-hover` and `no-brace-select` are then
+	 * the only thing standing between "I wanted the colours" and an interaction the
+	 * site owner switched off, because the plugin defaults both of them on.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_switches_the_interaction_off_when_only_the_colours_are_wanted(): void {
+
+		$option = Option::get_instance();
+
+		$option->save( 'match_braces', 'no' );
+		$option->save( 'rainbow_braces', 'yes' );
+
+		try {
+
+			$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+			$handles = $this->_plugin_asset_handles();
+
+			$this->assertContains( 'script:ig-syntax-hiliter-match-braces', $handles );
+			$this->assertContains( 'style:ig-syntax-hiliter-match-braces', $handles );
+
+			$this->assertSame(
+				[ 'match-braces', 'rainbow-braces', 'no-brace-hover', 'no-brace-select' ],
+				$this->_brace_body_classes()
+			);
+
+		} finally {
+			$this->_set_singleton( Option::class, null );
+		}
+
+	}
+
+	/**
+	 * Every file the plugin enqueues out of its own assets directory is on disk.
+	 *
+	 * `assets/build/` is generated and git-ignored, and `assets/lib/` is a vendored
+	 * upstream release which is copied in by hand — so a fresh checkout, an
+	 * interrupted build and a half finished vendoring all look the same from here: a
+	 * `<script>` tag pointing at a 404. Nothing else in three tiers would say so,
+	 * because enqueuing a handle whose file is missing is not an error anywhere in
+	 * WordPress.
+	 *
+	 * Read off what was actually enqueued rather than from a list written out here,
+	 * so a plugin vendored later is covered the day it is wired up and not the day
+	 * somebody remembers this case.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_ships_every_file_it_enqueues(): void {
+
+		$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+		$sources = array_merge(
+			array_values( wp_scripts()->registered ),
+			array_values( wp_styles()->registered )
+		);
+
+		$checked = 0;
+
+		foreach ( $sources as $dependency ) {
+
+			if ( ! str_starts_with( (string) $dependency->handle, Asset_Manager::HANDLE_PREFIX ) ) {
+				continue;
+			}
+
+			$source = (string) $dependency->src;
+
+			if ( ! str_starts_with( $source, Helper::get_asset_url() ) ) {
+				continue;    //a webfont stylesheet, which is not ours and is not on this disk
+			}
+
+			$this->assertFileExists(
+				Helper::get_asset_path( substr( $source, strlen( Helper::get_asset_url() ) ) ),
+				sprintf( 'The %s handle is enqueued from a file which is not there.', $dependency->handle )
+			);
+
+			++$checked;
+
+		}
+
+		$this->assertGreaterThan( 5, $checked, 'A page with a snippet enqueues rather more than five files of ours.' );
+
+	}
+
+	/**
+	 * Method to read the brace classes this plugin puts on the body element.
+	 *
+	 * Asked of the filter rather than of the method, so that a registration which
+	 * went missing fails here as loudly as a wrong answer does.
+	 *
+	 * @return array Numerically indexed list of the classes this plugin added.
+	 */
+	protected function _brace_body_classes(): array {
+
+		$classes = (array) apply_filters( 'body_class', [] );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core's own filter, applied here so a missing registration fails as loudly as a wrong answer.
+
+		return array_values(
+			array_filter(
+				$classes,
+				static fn ( string $name ): bool => str_contains( $name, 'brace' )
+			)
+		);
 
 	}
 
