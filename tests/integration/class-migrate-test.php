@@ -321,7 +321,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	public function it_clears_the_caches_when_it_rewrites_the_version(): void {
 
-		$cache_key = Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
+		$cache_key = Cache::KEY_PREFIX . md5( Themes::CACHE_KEY );
 
 		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
@@ -352,7 +352,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	public function it_keeps_the_caches_of_an_up_to_date_install(): void {
 
-		$cache_key = Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
+		$cache_key = Cache::KEY_PREFIX . md5( Themes::CACHE_KEY );
 		$cached    = [
 			'expiry' => ( time() + HOUR_IN_SECONDS ),
 			'data'   => [ 'prism-okaidia' => 'Okaidia' ],

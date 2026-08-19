@@ -258,7 +258,7 @@ trait Asset_Test_Helpers {
 	 */
 	protected function _cache_option_name(): string {
 
-		return Cache::KEY_PREFIX . md5( Themes::THEMES_CACHE_KEY );
+		return Cache::KEY_PREFIX . md5( Themes::CACHE_KEY );
 
 	}
 

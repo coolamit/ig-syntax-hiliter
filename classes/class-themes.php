@@ -30,9 +30,14 @@ class Themes {
 	 * because assets/lib/prism/ is Prism's dist and is replaced whole the next time
 	 * Prism is upgraded, which would take every one of these with it.
 	 *
+	 * **Named for the collection and not for the themes**, because this class reads
+	 * two directories and the other one is Prism's own dist themes, under
+	 * `Asset_Manager::LIBRARY_PATH . '/themes'`. A name saying only "themes" inside a
+	 * class called `Themes` reads as though it were the only one.
+	 *
 	 * @var string
 	 */
-	protected const string _THEMES_PATH = 'lib/prism-themes';
+	protected const string _COLLECTION_PATH = 'lib/prism-themes';
 
 	/**
 	 * The theme used when the site has not chosen one.
@@ -58,7 +63,7 @@ class Themes {
 	 *
 	 * @var string
 	 */
-	public const string THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
+	public const string CACHE_KEY = 'ig-syntax-hiliter-themes';
 
 	/**
 	 * How long the built theme list is cached for, in seconds. Seven days.
@@ -70,7 +75,7 @@ class Themes {
 	 *
 	 * @var int
 	 */
-	protected const int _THEMES_CACHE_LIFE = 604800;
+	protected const int _CACHE_LIFE = 604800;
 
 	/**
 	 * The theme map, once it has been built in this request.
@@ -146,7 +151,7 @@ class Themes {
 				'prism-twilight'       => 'Twilight',
 			],
 
-			static::_THEMES_PATH                    => [
+			static::_COLLECTION_PATH                => [
 				'prism-a11y-dark'                       => 'a11y Dark',
 				'prism-atom-dark'                       => 'Atom Dark',
 				'prism-base16-ateliersulphurpool.light' => 'Ateliersulphurpool-light',
@@ -275,7 +280,7 @@ class Themes {
 	 * writes a real list, and `Cache::get()` hands it back — `isset( $cache['data'] )`
 	 * is true for an empty array — so a moment when nothing on disk was readable, a
 	 * deploy swapping `assets/lib/` in place or an rsync caught half way, would
-	 * otherwise be served for the whole of `THEMES_CACHE_LIFE`. What a site owner sees
+	 * otherwise be served for the whole of `_CACHE_LIFE`. What a site owner sees
 	 * then is a theme dropdown holding nothing but "None" and a settings screen
 	 * answering 400 for every real theme, with the refresh button the only way out.
 	 *
@@ -303,14 +308,14 @@ class Themes {
 			return static::$_themes;
 		}
 
-		$cache = Cache::create( static::THEMES_CACHE_KEY );
+		$cache = Cache::create( static::CACHE_KEY );
 
 		if ( 'yes' === $force_rebuild ) {
 			$cache->delete();
 		}
 
 		$themes = $cache->updates_with( [ static::class, 'build_themes' ] )
-						->expires_in( static::_THEMES_CACHE_LIFE )
+						->expires_in( static::_CACHE_LIFE )
 						->get();
 
 		if ( ! is_array( $themes ) || empty( $themes ) ) {
