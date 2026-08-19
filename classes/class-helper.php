@@ -45,11 +45,11 @@ class Helper {
 	 * @param array  $vars     Associative array of values which are to be injected into the template. The array keys become var names and key values respective var values.
 	 * @param bool   $output   Optional - Set to TRUE to print out parsed template content, FALSE to return it as string.
 	 *
-	 * @return string|void
+	 * @return bool|string The markup, or TRUE where it was printed. `void` cannot go in a union, and TRUE says "printed" where an empty string would say "printed, and here is nothing".
 	 *
 	 * @throws \ErrorException If the template path is empty or invalid, or if the vars are not an associative array.
 	 */
-	public static function render_template( string $template, array $vars = [], bool $output = false ) {
+	public static function render_template( string $template, array $vars = [], bool $output = false ): bool|string {
 
 		if ( empty( $template ) ) {
 			throw new ErrorException( 'Template file path not defined, this code is not psychic!' );
@@ -76,7 +76,7 @@ class Helper {
 
 		if ( true === $output ) {
 			echo $html;    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaping is the template's job.
-			return;
+			return true;
 		}
 
 		return $html;

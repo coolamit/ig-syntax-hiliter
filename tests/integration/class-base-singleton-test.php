@@ -66,6 +66,16 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 	 * be: what is being asserted is that the constructor ran, and that property is
 	 * the evidence it leaves.
 	 *
+	 * `isInitialized()` comes first, and that ordering is the whole of what keeps this
+	 * failure readable. `Base::$_option` is a typed property with no default, so a
+	 * constructor which never ran leaves it *uninitialized* rather than null, and
+	 * `getValue()` on it throws an `Error` which says nothing about migrations. The
+	 * type belongs on the class — the property really cannot be null, since
+	 * `Base::__construct()` assigns `Option::get_instance()` and that always returns an
+	 * object — so the diagnostic belongs here instead. Declaring it `?Option` would not
+	 * have helped: nullable is not defaulted, and `?Option $_option;` throws exactly the
+	 * same `Error`.
+	 *
 	 * @return void
 	 */
 	public function test_the_parent_constructor_still_runs(): void {
@@ -73,6 +83,11 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 		$property = new ReflectionProperty( Singleton_Fixture_Alpha::class, '_option' );
 
 		foreach ( [ Singleton_Fixture_Alpha::get_instance(), Singleton_Fixture_Beta::get_instance() ] as $fixture ) {
+
+			$this->assertTrue(
+				$property->isInitialized( $fixture ),
+				'Base\'s constructor never ran, so the options property was never set — which is what happens when a child using the Singleton trait declares no constructor of its own.'
+			);
 
 			$this->assertInstanceOf(
 				Option::class,

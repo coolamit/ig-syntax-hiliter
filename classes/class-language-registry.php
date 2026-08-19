@@ -29,21 +29,21 @@ class Language_Registry {
 	 *
 	 * @var string
 	 */
-	const NO_LANGUAGE = 'none';
+	const string NO_LANGUAGE = 'none';
 
 	/**
 	 * Filter applied to the finished registry.
 	 *
 	 * @var string
 	 */
-	const FILTER_LANGUAGES = 'ig_syntax_hiliter/languages';
+	const string FILTER_LANGUAGES = 'ig_syntax_hiliter/languages';
 
 	/**
 	 * Path of the highlighter library, relative to the plugin directory.
 	 *
 	 * @var string
 	 */
-	const LIBRARY_DIR = 'assets/lib/prism';
+	const string LIBRARY_DIR = 'assets/lib/prism';
 
 	/**
 	 * How long a built registry is cached for, in seconds.
@@ -54,7 +54,7 @@ class Language_Registry {
 	 *
 	 * @var int
 	 */
-	const CACHE_EXPIRY = 86400;
+	const int CACHE_EXPIRY = 86400;
 
 	/**
 	 * Whether the dataset has been loaded.

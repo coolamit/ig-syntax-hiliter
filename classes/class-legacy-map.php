@@ -21,14 +21,14 @@ class Legacy_Map {
 	 *
 	 * @var string
 	 */
-	const FILTER_TAGS = 'ig_syntax_hiliter/shortcode_tags';
+	const string FILTER_TAGS = 'ig_syntax_hiliter/shortcode_tags';
 
 	/**
 	 * The generic tag, which is ours whatever its `language` attribute says.
 	 *
 	 * @var string
 	 */
-	const GENERIC_TAG = 'sourcecode';
+	const string GENERIC_TAG = 'sourcecode';
 
 	/**
 	 * The tag list the alternation below was built from.
@@ -56,7 +56,7 @@ class Legacy_Map {
 	 *
 	 * @var array
 	 */
-	protected static $_language_map = [
+	protected static array $_language_map = [
 		'actionscript'  => 'actionscript',
 		'actionscript3' => 'actionscript',
 		'apache'        => 'apacheconf',

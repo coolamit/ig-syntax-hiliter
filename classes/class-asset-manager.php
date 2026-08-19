@@ -28,21 +28,21 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const HANDLE_PREFIX = 'ig-syntax-hiliter';
+	const string HANDLE_PREFIX = 'ig-syntax-hiliter';
 
 	/**
 	 * Filter which supplies the URL the language files are fetched from.
 	 *
 	 * @var string
 	 */
-	const FILTER_COMPONENTS_URL = 'ig_syntax_hiliter/prism_components_url';
+	const string FILTER_COMPONENTS_URL = 'ig_syntax_hiliter/prism_components_url';
 
 	/**
 	 * Path of the highlighter library, relative to the assets directory.
 	 *
 	 * @var string
 	 */
-	const LIBRARY_PATH = 'lib/prism';
+	const string LIBRARY_PATH = 'lib/prism';
 
 	/**
 	 * Path of the extra theme collection, relative to the assets directory.
@@ -54,21 +54,21 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const THEMES_PATH = 'lib/prism-themes';
+	const string THEMES_PATH = 'lib/prism-themes';
 
 	/**
 	 * The theme used when the site has not chosen one.
 	 *
 	 * @var string
 	 */
-	const DEFAULT_THEME = 'prism-okaidia';
+	const string DEFAULT_THEME = 'prism-okaidia';
 
 	/**
 	 * Theme setting value which means "load no theme stylesheet at all".
 	 *
 	 * @var string
 	 */
-	const THEME_NONE = 'none';
+	const string THEME_NONE = 'none';
 
 	/**
 	 * Cache key the built theme list is stored under.
@@ -80,7 +80,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
+	const string THEMES_CACHE_KEY = 'ig-syntax-hiliter-themes';
 
 	/**
 	 * How long the built theme list is cached for, in seconds. Seven days.
@@ -92,7 +92,7 @@ class Asset_Manager {
 	 *
 	 * @var int
 	 */
-	const THEMES_CACHE_LIFE = 604800;
+	const int THEMES_CACHE_LIFE = 604800;
 
 	/**
 	 * Font setting value which means "load no webfont at all".
@@ -103,7 +103,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const FONT_NONE = 'none';
+	const string FONT_NONE = 'none';
 
 	/**
 	 * Where the webfont stylesheets are fetched from.
@@ -114,7 +114,7 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const FONTS_URL = 'https://fonts.bunny.net/css';
+	const string FONTS_URL = 'https://fonts.bunny.net/css';
 
 	/**
 	 * What a chosen font falls back to.
@@ -125,14 +125,14 @@ class Asset_Manager {
 	 *
 	 * @var string
 	 */
-	const FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
+	const string FONT_STACK = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
 
 	/**
 	 * `wp_footer` priority at which the assets are first decided.
 	 *
 	 * @var int
 	 */
-	const PRIORITY_DECIDE = 1;
+	const int PRIORITY_DECIDE = 1;
 
 	/**
 	 * `wp_footer` priority at which the decision is taken again.
@@ -142,7 +142,7 @@ class Asset_Manager {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_DECIDE_AGAIN = 19;
+	const int PRIORITY_DECIDE_AGAIN = 19;
 
 	/**
 	 * The theme map, once it has been built in this request.

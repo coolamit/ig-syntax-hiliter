@@ -41,21 +41,21 @@ class Content_Protector {
 	 *
 	 * @var string
 	 */
-	const PLACEHOLDER_PREFIX = 'igshx';
+	const string PLACEHOLDER_PREFIX = 'igshx';
 
 	/**
 	 * Characters `WP_Block_Parser` accepts as whitespace inside a block delimiter.
 	 *
 	 * @var string
 	 */
-	const DELIMITER_WHITESPACE = " \t\n\r\f\v";
+	const string DELIMITER_WHITESPACE = " \t\n\r\f\v";
 
 	/**
 	 * Characters a block name is built from.
 	 *
 	 * @var string
 	 */
-	const BLOCK_NAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-/';
+	const string BLOCK_NAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_-/';
 
 	/**
 	 * Stashed snippets, keyed by placeholder key.

@@ -29,42 +29,46 @@ class Cache {
 	 *
 	 * @var string
 	 */
-	const KEY_PREFIX = 'igsh-cache-';
+	const string KEY_PREFIX = 'igsh-cache-';
 
 	/**
 	 * Shortest expiry, in seconds, that `expires_in()` will set. Two minutes.
 	 *
 	 * @var int
 	 */
-	const MIN_EXPIRY = 120;
+	const int MIN_EXPIRY = 120;
 
 	/**
 	 * Name of the option this dataset is stored under.
 	 *
 	 * @var string
 	 */
-	protected $_key;
+	protected string $_key;
 
 	/**
 	 * How long a cached dataset stays fresh, in seconds. Half an hour by default.
 	 *
 	 * @var int
 	 */
-	protected $_expiry = 1800;
+	protected int $_expiry = 1800;
 
 	/**
 	 * Callable which produces a fresh dataset once the cached one has expired.
 	 *
+	 * Typed `mixed` because `callable` is not a legal property type in PHP. What is
+	 * really stored is an array, a string or a Closure, which the docblock says and
+	 * the `is_callable()` guard in `_refresh_cache()` checks.
+	 *
 	 * @var callable|null
 	 */
-	protected $_callback;
+	protected mixed $_callback = null;
 
 	/**
 	 * Arguments passed to the callback.
 	 *
 	 * @var array
 	 */
-	protected $_params = [];
+	protected array $_params = [];
 
 	/**
 	 * In-memory copy of the stored cache entry. Whatever storage handed back, so
@@ -72,7 +76,7 @@ class Cache {
 	 *
 	 * @var mixed
 	 */
-	protected $_cache;
+	protected mixed $_cache = null;
 
 	/**
 	 * Class constructor
@@ -164,7 +168,7 @@ class Cache {
 	 *
 	 * @throws \ErrorException If the cached dataset has expired and no usable callback has been set. Raised by `_refresh_cache()`.
 	 */
-	public function get() {
+	public function get(): mixed {
 
 		if ( $this->_has_expired() ) {
 			$this->_refresh_cache();

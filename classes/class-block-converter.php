@@ -49,14 +49,14 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const BLOCK_NAME = Block::NAME;
+	const string BLOCK_NAME = Block::NAME;
 
 	/**
 	 * The string a post's content must contain for it to hold a code block.
 	 *
 	 * @var string
 	 */
-	const BLOCK_MARKER = '<!-- wp:' . self::BLOCK_NAME;
+	const string BLOCK_MARKER = '<!-- wp:' . self::BLOCK_NAME;
 
 	/**
 	 * Name of the Gist block.
@@ -69,14 +69,14 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const GIST_BLOCK_NAME = Block::GIST_NAME;
+	const string GIST_BLOCK_NAME = Block::GIST_NAME;
 
 	/**
 	 * The string a post's content must contain for it to hold a Gist block.
 	 *
 	 * @var string
 	 */
-	const GIST_BLOCK_MARKER = '<!-- wp:' . self::GIST_BLOCK_NAME;
+	const string GIST_BLOCK_MARKER = '<!-- wp:' . self::GIST_BLOCK_NAME;
 
 	/**
 	 * Shortcode tag every converted code block is written as.
@@ -85,14 +85,14 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const SHORTCODE_TAG = Legacy_Map::GENERIC_TAG;
+	const string SHORTCODE_TAG = Legacy_Map::GENERIC_TAG;
 
 	/**
 	 * Shortcode tag every converted Gist block is written as.
 	 *
 	 * @var string
 	 */
-	const GIST_SHORTCODE_TAG = Gist_Embed::TAG;
+	const string GIST_SHORTCODE_TAG = Gist_Embed::TAG;
 
 	/**
 	 * Post statuses which are never touched.
@@ -103,21 +103,21 @@ class Block_Converter {
 	 *
 	 * @var array
 	 */
-	const EXCLUDED_STATUSES = [ 'trash', 'auto-draft' ];
+	const array EXCLUDED_STATUSES = [ 'trash', 'auto-draft' ];
 
 	/**
 	 * Number of posts examined per batch.
 	 *
 	 * @var int
 	 */
-	const DEFAULT_BATCH_SIZE = 20;
+	const int DEFAULT_BATCH_SIZE = 20;
 
 	/**
 	 * The characters the block grammar counts as whitespace, which is PCRE's `\s`.
 	 *
 	 * @var string
 	 */
-	const DELIMITER_WHITESPACE = " \t\n\r\f\v";
+	const string DELIMITER_WHITESPACE = " \t\n\r\f\v";
 
 	/**
 	 * The characters a language name may carry into a shortcode attribute.
@@ -127,21 +127,21 @@ class Block_Converter {
 	 *
 	 * @var string
 	 */
-	const LANGUAGE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_+#.-';
+	const string LANGUAGE_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789_+#.-';
 
 	/**
 	 * Largest batch the plugin will accept, whatever the filter asks for.
 	 *
 	 * @var int
 	 */
-	const MAX_BATCH_SIZE = 200;
+	const int MAX_BATCH_SIZE = 200;
 
 	/**
 	 * Filter which sets how many posts are examined per batch.
 	 *
 	 * @var string
 	 */
-	const FILTER_BATCH_SIZE = 'ig_syntax_hiliter/revert_batch_size';
+	const string FILTER_BATCH_SIZE = 'ig_syntax_hiliter/revert_batch_size';
 
 	/**
 	 * Class constructor.
@@ -208,7 +208,7 @@ class Block_Converter {
 	 *
 	 * @return bool
 	 */
-	public static function validate_cursor( $value ): bool {
+	public static function validate_cursor( mixed $value ): bool {
 		return ( is_numeric( $value ) && 0 <= (int) $value );
 	}    //end validate_cursor()
 

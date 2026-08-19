@@ -23,7 +23,7 @@ spl_autoload_register( 'ig_syntax_hiliter_autoloader' );
  * @param string $class_name Fully qualified name of the resource that is to be loaded.
  * @return void
  */
-function ig_syntax_hiliter_autoloader( $class_name = '' ) {
+function ig_syntax_hiliter_autoloader( string $class_name = '' ): void {
 
 	$namespace_root = 'iG\Syntax_Hiliter';
 

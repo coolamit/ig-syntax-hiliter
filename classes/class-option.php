@@ -26,7 +26,7 @@ class Option {
 	 *
 	 * @var array
 	 */
-	protected $_options;
+	protected array $_options;
 
 	/**
 	 * An array which contains default plugin options.
@@ -81,7 +81,7 @@ class Option {
 	 *
 	 * @return mixed The stored value, this setting's default when there is none, or FALSE when the plugin has no such setting.
 	 */
-	public function get( string $name ) {
+	public function get( string $name ): mixed {
 
 		if ( empty( $name ) || ! array_key_exists( $name, $this->_default_options ) ) {
 			return false;
@@ -139,7 +139,7 @@ class Option {
 	 *
 	 * @return bool Returns TRUE if option is successfully saved else FALSE
 	 */
-	public function save( string $name, $value ): bool {
+	public function save( string $name, mixed $value ): bool {
 
 		//the set of settings this plugin has is what decides whether a name may be saved,
 		//rather than the array in hand: a key which exists but holds NULL is still one of

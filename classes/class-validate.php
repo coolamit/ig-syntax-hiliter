@@ -92,7 +92,7 @@ class Validate {
 	 *
 	 * @return bool
 	 */
-	public function is_yesno( $value ): bool {
+	public function is_yesno( mixed $value ): bool {
 
 		if ( ! is_string( $value ) ) {
 			return false;
@@ -120,7 +120,7 @@ class Validate {
 	 *
 	 * @return string
 	 */
-	public function to_yesno( $value, string $fallback ): string {
+	public function to_yesno( mixed $value, string $fallback ): string {
 
 		$flag = ( is_scalar( $value ) ) ? filter_var( $value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) : null;
 
@@ -207,7 +207,7 @@ class Validate {
 	 *
 	 * @return string A value this setting accepts, or an empty string when this plugin has no such setting.
 	 */
-	public function get_sanitized_option_value( string $name, $value ): string {
+	public function get_sanitized_option_value( string $name, mixed $value ): string {
 
 		if ( ! array_key_exists( $name, $this->_option_values ) ) {
 			return '';

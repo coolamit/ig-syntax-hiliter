@@ -30,21 +30,21 @@ abstract class Base {
 	 *
 	 * @var string
 	 */
-	const PLUGIN_ID = 'ig-syntax-hiliter';
+	const string PLUGIN_ID = 'ig-syntax-hiliter';
 
 	/**
 	 * Plugin name, for display.
 	 *
 	 * @var string
 	 */
-	const PLUGIN_NAME = 'iG:Syntax Hiliter';
+	const string PLUGIN_NAME = 'iG:Syntax Hiliter';
 
 	/**
 	 * Plugin options.
 	 *
 	 * @var \iG\Syntax_Hiliter\Option
 	 */
-	protected $_option;
+	protected Option $_option;
 
 	/**
 	 * Default constructor for all children.

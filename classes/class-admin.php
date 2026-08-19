@@ -37,35 +37,35 @@ class Admin extends Base {
 	 *
 	 * @var string
 	 */
-	const REST_NAMESPACE = 'igsyntax-hiliter/v1';
+	const string REST_NAMESPACE = 'igsyntax-hiliter/v1';
 
 	/**
 	 * Capability required to read or change anything this class exposes.
 	 *
 	 * @var string
 	 */
-	const CAPABILITY = 'manage_options';
+	const string CAPABILITY = 'manage_options';
 
 	/**
 	 * Menu slug of the settings page.
 	 *
 	 * @var string
 	 */
-	const PAGE_SLUG = self::PLUGIN_ID . '-page';
+	const string PAGE_SLUG = self::PLUGIN_ID . '-page';
 
 	/**
 	 * Hook suffix WordPress gives the settings page.
 	 *
 	 * @var string
 	 */
-	const PAGE_HOOK = 'settings_page_' . self::PAGE_SLUG;
+	const string PAGE_HOOK = 'settings_page_' . self::PAGE_SLUG;
 
 	/**
 	 * Language the preview snippet is written in.
 	 *
 	 * @var string
 	 */
-	const PREVIEW_LANGUAGE = 'php';
+	const string PREVIEW_LANGUAGE = 'php';
 
 	/**
 	 * The settings schema, once it has been built in this request.
@@ -124,7 +124,7 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error TRUE when the request may proceed, an error otherwise.
 	 */
-	public static function rest_permission_check() {
+	public static function rest_permission_check(): bool|WP_Error {
 
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error(
@@ -425,7 +425,7 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function validate_option_name( $value ) {
+	public static function validate_option_name( mixed $value ): bool|WP_Error {
 
 		if ( is_string( $value ) && array_key_exists( sanitize_key( $value ), static::get_settings_schema() ) ) {
 			return true;
@@ -450,12 +450,12 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function validate_option_value( $value, $request ) {
+	public static function validate_option_value( mixed $value, WP_REST_Request $request ): bool|WP_Error {
 
 		//the name is whatever was sent, which is not necessarily a string: casting an array
 		//raises a warning, and a warning printed ahead of the response body is what the
 		//caller reads instead of the 400 this returns
-		$name   = ( $request instanceof WP_REST_Request && is_scalar( $request['name'] ) ) ? sanitize_key( (string) $request['name'] ) : '';
+		$name   = ( is_scalar( $request['name'] ) ) ? sanitize_key( (string) $request['name'] ) : '';
 		$schema = static::get_settings_schema();
 
 		if ( ! isset( $schema[ $name ] ) ) {
@@ -492,7 +492,7 @@ class Admin extends Base {
 	 *
 	 * @return \WP_REST_Response|\WP_Error
 	 */
-	public function save_option( WP_REST_Request $request ) {
+	public function save_option( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 
 		$name   = sanitize_key( (string) $request['name'] );
 		$value  = (string) $request['value'];
@@ -674,7 +674,7 @@ PREVIEW;
 	 *
 	 * @return void
 	 */
-	public function enqueue_assets( $hook ): void {
+	public function enqueue_assets( string $hook ): void {
 
 		if ( static::PAGE_HOOK !== $hook ) {
 			return;
@@ -880,12 +880,17 @@ PREVIEW;
 	/**
 	 * Method to add a settings link to the plugin's row on the plugins screen.
 	 *
-	 * @param array  $links Action links for the plugin being listed.
-	 * @param string $file  Plugin file the links belong to.
+	 * Both parameters are `mixed` because this is a filter callback: it is handed
+	 * whatever the previous callback on `plugin_action_links` returned, and a plugin
+	 * returning something other than an array is a thing which happens. The body
+	 * casts rather than fataling.
+	 *
+	 * @param mixed $links Action links for the plugin being listed.
+	 * @param mixed $file  Plugin file the links belong to.
 	 *
 	 * @return array
 	 */
-	public function get_action_links( $links, $file ): array {
+	public function get_action_links( mixed $links, mixed $file ): array {
 
 		$links = ( is_array( $links ) ) ? $links : [];
 

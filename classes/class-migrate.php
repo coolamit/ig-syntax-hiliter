@@ -35,7 +35,7 @@ class Migrate {
 	 *
 	 * @var string
 	 */
-	const V35_OPTION_NAME = 'igsh_options';
+	const string V35_OPTION_NAME = 'igsh_options';
 
 	/**
 	 * Version at which the plugin moved to the option array it still uses.
@@ -44,14 +44,14 @@ class Migrate {
 	 *
 	 * @var string
 	 */
-	const V4_VERSION = '4.0.0';
+	const string V4_VERSION = '4.0.0';
 
 	/**
 	 * Plugin options.
 	 *
 	 * @var \iG\Syntax_Hiliter\Option
 	 */
-	protected $_option;
+	protected Option $_option;
 
 	/**
 	 * Normalised plugin version found in the DB, empty on a fresh install.
@@ -171,7 +171,7 @@ class Migrate {
 	 *
 	 * @return string Three part version, or an empty string when there is no usable version.
 	 */
-	protected static function _normalize_version( $version ): string {
+	protected static function _normalize_version( mixed $version ): string {
 
 		$version = ( is_scalar( $version ) ) ? trim( (string) $version ) : '';
 

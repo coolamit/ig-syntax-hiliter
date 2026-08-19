@@ -25,7 +25,7 @@ class Gist_Embed {
 	 *
 	 * @var string
 	 */
-	const TAG = 'github';
+	const string TAG = 'github';
 
 	/**
 	 * Priority at which a Gist becomes an embed.
@@ -38,21 +38,21 @@ class Gist_Embed {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_EMBED = 9;
+	const int PRIORITY_EMBED = 9;
 
 	/**
 	 * Priority at which a Gist becomes a link.
 	 *
 	 * @var int
 	 */
-	const PRIORITY_LINK = 9;
+	const int PRIORITY_LINK = 9;
 
 	/**
 	 * Handle the Gist stylesheet is registered under.
 	 *
 	 * @var string
 	 */
-	const STYLE_HANDLE = 'ig-syntax-hiliter-gist';
+	const string STYLE_HANDLE = 'ig-syntax-hiliter-gist';
 
 	/**
 	 * Filters which cannot carry an embed, and get a link instead.
@@ -169,7 +169,7 @@ class Gist_Embed {
 	 *
 	 * @return mixed
 	 */
-	public function parse( $content ) {
+	public function parse( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) || is_admin() || ! str_contains( $content, '[' . static::TAG ) ) {
 			return $content;

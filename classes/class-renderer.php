@@ -26,7 +26,7 @@ class Renderer {
 	 *
 	 * @var string
 	 */
-	const ID_PREFIX = 'ig-sh-';
+	const string ID_PREFIX = 'ig-sh-';
 
 	/**
 	 * How many characters of a file label are put on the page.
@@ -36,14 +36,14 @@ class Renderer {
 	 *
 	 * @var int
 	 */
-	const FILE_LABEL_LENGTH = 30;
+	const int FILE_LABEL_LENGTH = 30;
 
 	/**
 	 * What stands in front of a label which was cut.
 	 *
 	 * @var string
 	 */
-	const FILE_LABEL_ELLIPSIS = '…';
+	const string FILE_LABEL_ELLIPSIS = '…';
 
 	/**
 	 * The registry consulted to validate a language.

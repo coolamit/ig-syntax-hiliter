@@ -32,7 +32,7 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_PROTECT = 1;
+	const int PRIORITY_PROTECT = 1;
 
 	/**
 	 * Priority at which content is restored.
@@ -42,14 +42,14 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_RESTORE = 100;
+	const int PRIORITY_RESTORE = 100;
 
 	/**
 	 * Priority at which snippets are stripped out.
 	 *
 	 * @var int
 	 */
-	const PRIORITY_STRIP = 2;
+	const int PRIORITY_STRIP = 2;
 
 	/**
 	 * Priority at which snippets leave the body an automatic excerpt is built from.
@@ -59,14 +59,14 @@ class Shortcode_Handler {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_STRIP_BODY = 0;
+	const int PRIORITY_STRIP_BODY = 0;
 
 	/**
 	 * Filters whose content is saved rather than displayed.
 	 *
 	 * @var array
 	 */
-	const SAVE_FILTERS = [
+	const array SAVE_FILTERS = [
 		'content_save_pre',
 		'content_filtered_save_pre',
 	];
@@ -76,7 +76,7 @@ class Shortcode_Handler {
 	 *
 	 * @var string
 	 */
-	const EXCERPT_FILTER = 'get_the_excerpt';
+	const string EXCERPT_FILTER = 'get_the_excerpt';
 
 	/**
 	 * Filters which carry a summary, where a code box makes no sense.
@@ -88,7 +88,7 @@ class Shortcode_Handler {
 	 *
 	 * @var array
 	 */
-	const EXCERPT_FILTERS = [
+	const array EXCERPT_FILTERS = [
 		self::EXCERPT_FILTER,
 		'the_excerpt',
 		'the_excerpt_rss',
@@ -152,7 +152,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function protect_display( $content ) {
+	public function protect_display( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) ) {
 			return $content;
@@ -169,7 +169,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function restore_display( $content ) {
+	public function restore_display( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) ) {
 			return $content;
@@ -190,7 +190,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function protect_save( $content ) {
+	public function protect_save( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) ) {
 			return $content;
@@ -207,7 +207,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function restore_save( $content ) {
+	public function restore_save( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) ) {
 			return $content;
@@ -227,7 +227,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function strip( $content ) {
+	public function strip( mixed $content ): mixed {
 
 		if ( ! is_string( $content ) ) {
 			return $content;
@@ -267,7 +267,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function strip_for_excerpt( $content ) {
+	public function strip_for_excerpt( mixed $content ): mixed {
 
 		if ( ! static::is_generating_excerpt() ) {
 			return $content;
@@ -317,7 +317,7 @@ class Shortcode_Handler {
 	 *
 	 * @return mixed
 	 */
-	public function claim_stripped_tags( $tags ) {
+	public function claim_stripped_tags( mixed $tags ): mixed {
 
 		if ( ! is_array( $tags ) || static::is_generating_excerpt() ) {
 			return $tags;

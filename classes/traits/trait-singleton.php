@@ -19,9 +19,13 @@ trait Singleton {
 	/**
 	 * Instance of the current class which has implemented this trait.
 	 *
-	 * @var object
+	 * Typed `?object` and not `static`, because `static` is not usable as a property
+	 * type. What narrows it to the class asking is the `is_a( …, static::class )`
+	 * check in `get_instance()`, which stays for that reason.
+	 *
+	 * @var object|null
 	 */
-	protected static $_instance;
+	protected static ?object $_instance = null;
 
 	/**
 	 * Protected constructor to prevent direct object creation.
@@ -58,7 +62,7 @@ trait Singleton {
 	 *
 	 * @return static
 	 */
-	final public static function get_instance( ...$args ): static {
+	final public static function get_instance( mixed ...$args ): static {
 
 		if ( ! isset( static::$_instance ) || ! is_a( static::$_instance, static::class ) ) {
 			static::$_instance = new static( ...$args );

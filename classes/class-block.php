@@ -25,21 +25,21 @@ class Block {
 	 *
 	 * @var string
 	 */
-	const NAME = 'igsyntax-hiliter/code';
+	const string NAME = 'igsyntax-hiliter/code';
 
 	/**
 	 * Name of the Gist block.
 	 *
 	 * @var string
 	 */
-	const GIST_NAME = 'igsyntax-hiliter/gist';
+	const string GIST_NAME = 'igsyntax-hiliter/gist';
 
 	/**
 	 * Directory holding the built block, relative to the plugin directory.
 	 *
 	 * @var string
 	 */
-	const BUILD_DIR = 'build/block';
+	const string BUILD_DIR = 'build/block';
 
 	/**
 	 * Directory holding the built Gist block, relative to the plugin directory.
@@ -49,14 +49,14 @@ class Block {
 	 *
 	 * @var string
 	 */
-	const GIST_BUILD_DIR = 'build/block/gist';
+	const string GIST_BUILD_DIR = 'build/block/gist';
 
 	/**
 	 * Name of the JavaScript object carrying the editor's data.
 	 *
 	 * @var string
 	 */
-	const EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
+	const string EDITOR_DATA_OBJECT = 'igSyntaxHiliterEditor';
 
 	/**
 	 * Priority the block is registered at.
@@ -70,7 +70,7 @@ class Block {
 	 *
 	 * @var int
 	 */
-	const PRIORITY_REGISTER = 11;
+	const int PRIORITY_REGISTER = 11;
 
 	/**
 	 * Class constructor.
@@ -173,7 +173,7 @@ class Block {
 	 *
 	 * @return string HTML markup for the code box.
 	 */
-	public function render( $attributes = [] ): string {
+	public function render( mixed $attributes = [] ): string {
 
 		if ( static::_is_excerpt_context() ) {
 			return '';
@@ -218,7 +218,7 @@ class Block {
 	 *
 	 * @return string HTML markup for the embed.
 	 */
-	public function render_gist( $attributes = [] ): string {
+	public function render_gist( mixed $attributes = [] ): string {
 
 		$attributes = ( is_array( $attributes ) ) ? $attributes : [];
 		$url        = $attributes['url'] ?? '';

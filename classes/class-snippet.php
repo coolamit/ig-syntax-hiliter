@@ -20,7 +20,7 @@ class Snippet {
 	 *
 	 * @var string
 	 */
-	const DEFAULT_LANGUAGE = 'code';
+	const string DEFAULT_LANGUAGE = 'code';
 
 	/**
 	 * Largest number of lines a single `highlight` range may expand to.
@@ -29,7 +29,7 @@ class Snippet {
 	 *
 	 * @var int
 	 */
-	const MAX_RANGE_LENGTH = 10000;
+	const int MAX_RANGE_LENGTH = 10000;
 
 	/**
 	 * Largest number of lines the whole `highlight` attribute may expand to.
@@ -43,7 +43,7 @@ class Snippet {
 	 *
 	 * @var int
 	 */
-	const MAX_HIGHLIGHT_LINES = 10000;
+	const int MAX_HIGHLIGHT_LINES = 10000;
 
 	/**
 	 * The source code, pristine and unescaped.
@@ -203,7 +203,7 @@ class Snippet {
 	 *
 	 * @return array Sorted, unique list of line numbers.
 	 */
-	public static function parse_line_ranges( $value ): array {
+	public static function parse_line_ranges( mixed $value ): array {
 
 		$parts = ( is_array( $value ) ) ? $value : explode( ',', (string) $value );
 		$lines = [];
