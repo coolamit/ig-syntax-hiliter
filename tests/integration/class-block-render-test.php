@@ -2,11 +2,8 @@
 /**
  * Tests for the block's render callback.
  *
- * The block is the second way into the renderer, and the only one which does not
- * go through the shortcode pipeline: `do_blocks()` runs at `the_content` priority
- * 9, between the protect pass and the filters it protects against. What is checked
- * here is that the second way in arrives at the same place as the first, and is
- * given the same protection once it gets there.
+ * The block is the second way into the renderer; `do_blocks()` runs at `the_content`
+ * priority 9, between the protect pass and the filters it protects against.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -59,12 +56,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 
 		Shortcode_Handler::get_instance();
 
-		/*
-		 * What is under test here is the render callback, not when the block type
-		 * reaches the registry. Registering it if it is not there already keeps
-		 * these tests independent of whether the plugin's own `init` callback has
-		 * run by the time PHPUnit gets here.
-		 */
+		// Under test is the render callback, not whether the plugin's `init` callback has run yet.
 		if ( ! WP_Block_Type_Registry::get_instance()->is_registered( Block::NAME ) ) {
 			Block::get_instance()->register_block();
 		}
@@ -89,8 +81,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A hostile filter of the kind that broke this in production: it strips script
-	 * tags and turns bare URLs into links.
+	 * A hostile filter: it strips script tags and turns bare URLs into links.
 	 *
 	 * @param string $content Content being filtered.
 	 *
@@ -147,19 +138,12 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The block is named twice — `Block::NAME`, and the `name` field of `block.json`
-	 * which WordPress actually registers it under — and nothing ties the two together.
+	 * `Block::NAME` and the `name` in `block.json` name the same block.
 	 *
-	 * The save path shields this plugin's own block delimiters from KSES by matching
-	 * them on the constant, and that shield is the only thing keeping stored code away
-	 * from a filter which strips script tags and encodes angle brackets inside it for
-	 * every author without `unfiltered_html`. A name which drifted would stop matching
-	 * silently: content lost, HTTP 200, nothing said anywhere. So the constant is
-	 * checked against what ended up in the registry rather than against the JSON file.
-	 *
-	 * The build is checked for first because it is git ignored and
-	 * `Block::register_block()` returns quietly without it, which would otherwise look
-	 * exactly like drift.
+	 * The save path shields this plugin's delimiters from KSES by matching on the
+	 * constant, so a name which drifted would silently stop matching and stored code
+	 * would be lost. The build is checked first: `register_block()` returns quietly
+	 * without it, which would look exactly like drift.
 	 *
 	 * @test
 	 *
@@ -220,13 +204,10 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The production bug this pipeline exists for, through the block path — the
-	 * whole point of the release.
+	 * Block markup survives a hostile filter at priority 10.
 	 *
-	 * `do_blocks()` hands the callback's markup straight back into a filter chain
-	 * which has not run yet, so without the protector every priority 10 filter on
-	 * the site gets to rewrite the code. The URL outside the block is the control:
-	 * it proves the hostile filter really ran.
+	 * `do_blocks()` hands the callback's markup into a filter chain which has not run
+	 * yet. The URL outside the block is the control proving the hostile filter ran.
 	 *
 	 * @test
 	 *
@@ -300,11 +281,8 @@ class Block_Render_Test extends WP_UnitTestCase {
 	/**
 	 * A page whose only snippet is a block still loads the highlighter.
 	 *
-	 * The signal is raised by the renderer, so a callback which ever built its own
-	 * markup instead would leave a block only page with unhighlighted, unstyled
-	 * code and nothing to say so.
-	 *
-	 * A page with no snippet at all is `Conditional_Assets_Test`'s business.
+	 * The signal is raised by the renderer, so a callback which built its own markup
+	 * would leave a block-only page with unhighlighted, unstyled code.
 	 *
 	 * @test
 	 *
@@ -335,16 +313,10 @@ class Block_Render_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Code leaking into an excerpt through the block path — the defect which was
-	 * found and fixed for shortcodes, coming back through a door nobody has walked
-	 * through yet.
+	 * A block a site has allowed into an excerpt renders nothing there.
 	 *
-	 * `wp_trim_excerpt()` unhooks `do_blocks` and calls `excerpt_remove_blocks()`,
-	 * which renders the blocks on its allow list itself. This block is not on that
-	 * list by default, so nothing happens today — but a site may put it there, and
-	 * when it does the callback must render nothing rather than hand
-	 * `wp_trim_words()` a code box to strip the markup off and leave the code as
-	 * prose.
+	 * `excerpt_remove_blocks()` renders the blocks on its allow list itself; a code
+	 * box handed to `wp_trim_words()` would be stripped to its code as prose.
 	 *
 	 * @test
 	 *
@@ -382,12 +354,8 @@ class Block_Render_Test extends WP_UnitTestCase {
 	/**
 	 * A snippet whose code documents this plugin still renders.
 	 *
-	 * The code lives in the delimiter as JSON, and `serialize_block_attributes()`
-	 * escapes `<`, `>`, `&` and `--` there but neither `[` nor `]`. A shortcode
-	 * matcher which does not know where delimiters are therefore matches inside one,
-	 * and anything it substitutes is sitting in an HTML comment `do_blocks()` has yet
-	 * to read — a comment which the substitution can close early, taking the block
-	 * with it.
+	 * `serialize_block_attributes()` escapes `<`, `>`, `&` and `--` but neither bracket,
+	 * so a matcher blind to delimiters would rewrite inside one.
 	 *
 	 * @test
 	 *
@@ -419,8 +387,7 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 * The protect pass and the restore pass are two separate filter callbacks, so no
 	 * frame spans both and no `finally` can close the pair. A filter which hands back
 	 * something that is not content — or which throws, or which tears the chain down
-	 * — leaves the run open. What must not follow is a code box replaced by a token
-	 * that never comes back.
+	 * — leaves the run open.
 	 *
 	 * @test
 	 *
@@ -459,9 +426,9 @@ class Block_Render_Test extends WP_UnitTestCase {
 	 *
 	 * Nothing filters a block attribute on its way in: the shortcode path drops
 	 * what it does not recognise through `shortcode_atts()`, while whatever JSON is
-	 * in the delimiter is what the mapper is handed. This is therefore the path
-	 * along which an arbitrary language name reaches the renderer, and it must end
-	 * in a plain box and no request for a language file which is not there.
+	 * in the delimiter is what the mapper is handed, so an arbitrary name reaches the
+	 * renderer here and must end in a plain box and no request for a language file
+	 * which is not there.
 	 *
 	 * @test
 	 *
@@ -493,7 +460,6 @@ class Block_Render_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

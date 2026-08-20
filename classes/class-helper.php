@@ -21,7 +21,8 @@ class Helper {
 	 *
 	 * @param array $array_to_check Array which is to be checked.
 	 *
-	 * @return bool Returns TRUE if the array is associative else FALSE. Even a single numeric key would make this function return FALSE.
+	 * @return bool Returns TRUE if the array is associative else FALSE. Even a single numeric
+	 *              key would make this function return FALSE.
 	 */
 	public static function is_associative_array( array $array_to_check ): bool {
 		return ! (bool) count( array_filter( array_keys( $array_to_check ), 'is_numeric' ) );
@@ -42,12 +43,16 @@ class Helper {
 	 * Method to render a template and return the markup
 	 *
 	 * @param string $template File path to the template file.
-	 * @param array  $vars     Associative array of values which are to be injected into the template. The array keys become var names and key values respective var values.
-	 * @param bool   $output   Optional - Set to TRUE to print out parsed template content, FALSE to return it as string.
+	 * @param array  $vars     Associative array of values which are to be injected into the
+	 *                         template. The array keys become var names and key values
+	 *                         respective var values.
+	 * @param bool   $output   Optional - Set to TRUE to print out parsed template content,
+	 *                         FALSE to return it as string.
 	 *
-	 * @return bool|string The markup, or TRUE where it was printed. `void` cannot go in a union, and TRUE says "printed" where an empty string would say "printed, and here is nothing".
+	 * @return bool|string The markup, or TRUE where it was printed (`void` cannot go in a union).
 	 *
-	 * @throws \ErrorException If the template path is empty or invalid, or if the vars are not an associative array.
+	 * @throws \ErrorException If the template path is empty or invalid, or if the vars are not
+	 *                         an associative array.
 	 */
 	public static function render_template( string $template, array $vars = [], bool $output = false ): bool|string {
 
@@ -95,7 +100,8 @@ class Helper {
 	}
 
 	/**
-	 * Method to get the URL of an asset if relative path to asset is passed else the URL to assets folder.
+	 * Method to get the URL of an asset if relative path to asset is passed else the URL to
+	 * assets folder.
 	 *
 	 * @param string $path Optional asset path relative from assets folder.
 	 *
@@ -109,11 +115,10 @@ class Helper {
 	}
 
 	/**
-	 * Method to get the absolute path of an asset if relative path to asset is passed else the path of assets folder.
+	 * Method to get the absolute path of an asset if relative path to asset is passed else
+	 * the path of assets folder.
 	 *
-	 * This is the on disk counterpart of get_asset_url(). Both take the same relative
-	 * path, so a caller which has to check that a file exists before it enqueues it
-	 * says the path once.
+	 * The on disk counterpart of `get_asset_url()`, taking the same relative path.
 	 *
 	 * @param string $path Optional asset path relative from assets folder.
 	 *
@@ -144,21 +149,10 @@ class Helper {
 	/**
 	 * Method to get the plugin version.
 	 *
-	 * The one place the version constant is read. Four classes each open coded this
-	 * `defined()` check before, and their fallbacks had quietly drifted apart: three
-	 * answered `0`, which is a cache busting string an asset URL can carry, and
-	 * `Migrate` answered an empty string, which is load bearing there because it is
-	 * what tells a fresh install from an upgrade. Both are still wanted, so the
-	 * fallback is the caller's to name and the difference is stated at each call
-	 * rather than buried in four copies of the same check.
-	 *
-	 * It lives here rather than on `Plugin` because it answers a question about a
-	 * constant and needs nothing booted. On `Plugin` it was the reason
-	 * `Block::register_block()` reached for `Plugin::get_instance()` from inside
-	 * `Plugin::__construct()`'s own call chain, which built the plugin twice.
-	 *
-	 * The plugin spells its version `Major.Minor`, eg. `6.0`. Compare it with
-	 * `version_compare()` after normalising it, never numerically.
+	 * The one place `IG_SYNTAX_HILITER_VERSION` is read. The fallback is the caller's to
+	 * name: an asset URL wants `'0'`, `Migrate` wants `''` because empty is what tells a
+	 * fresh install from an upgrade. Compare with `version_compare()` after normalising,
+	 * never numerically.
 	 *
 	 * @param string $fallback Optional. What to answer where the constant is not defined.
 	 *
@@ -171,25 +165,11 @@ class Helper {
 	/**
 	 * Method to build the pattern which matches this plugin's shortcodes.
 	 *
-	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
-	 * tags are all bounded exactly as `do_shortcode()` bounds them. It is handed one
-	 * addition, and only one: a closing tag whose brackets are doubled is consumed as
-	 * part of the snippet's code instead of ending the snippet. That is what lets a
-	 * snippet quote this plugin's own tags — see `Legacy_Map::escape_tags()`.
-	 *
-	 * Core's content group is
-	 *
-	 *     ( [^\[]*+ (?: \[(?!\/\2\]) [^\[]*+ )*+ )
-	 *
-	 * and the escaped closer goes in as the first alternative of that inner group. It
-	 * has to be first: the quantifiers around it are possessive, so nothing backtracks
-	 * and the order of the alternation is what decides. An opening tag needs no
-	 * alternative of its own, because a `[` inside the content group is allowed
-	 * already.
-	 *
-	 * If the substring is not found exactly once the pattern core built is handed back
-	 * untouched. A change in WordPress then costs the escape and nothing else, which
-	 * is the only failure worth having on a pattern that runs over post content.
+	 * WordPress's own pattern plus one addition: a closing tag with doubled brackets
+	 * is consumed as code rather than ending the snippet (see `Legacy_Map::escape_tags()`).
+	 * The alternative must be first in the inner group, because the surrounding
+	 * quantifiers are possessive and order decides. If the substring is not found
+	 * exactly once the pattern is returned untouched.
 	 *
 	 * @param array $tags Shortcode tags to match.
 	 *
@@ -209,16 +189,15 @@ class Helper {
 	}
 
 	/**
-	 * This function accepts two arrays, $new & $default. The common items
-	 * keep value from $new, any extra items in $new are discarded
-	 * & extra items in $default are kept as is. This is different from wp_parse_args()
-	 * which would keep all values from $new & $default and override common values
-	 * in $default.
+	 * Method to overlay $updates onto $defaults, keeping only the keys $defaults has.
+	 *
+	 * Unlike `wp_parse_args()`, extra keys in $updates are discarded.
 	 *
 	 * @param array $defaults Array containing default values which are to be overridden.
 	 * @param array $updates  Array containing new values.
 	 *
-	 * @return array An array containing new values from $updates which override existing values in $defaults
+	 * @return array An array containing new values from $updates which override existing
+	 *               values in $defaults
 	 */
 	public static function array_merge( array $defaults = [], array $updates = [] ): array {
 
@@ -233,7 +212,6 @@ class Helper {
 		foreach ( $defaults as $key => $value ) {
 
 			if ( ! array_key_exists( $key, $updates ) ) {
-				//this key doesn't exist in $updates array, so skip to next
 				continue;
 			}
 
@@ -245,6 +223,6 @@ class Helper {
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

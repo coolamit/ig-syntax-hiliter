@@ -1,18 +1,11 @@
 /*
- * iG:Syntax Hiliter — the bits the Prism themes do not cover.
- *
- * Compiled to assets/build/css/frontend-chrome.css by the `sass` CLI, via
- * the `build:css` script in package.json. Never edit the compiled file.
- *
- * The whole of assets/src/scss/ is compiled, which is why every stylesheet the
- * plugin ships is a .scss: one pipeline, and a new stylesheet needs no change
- * to package.json.
+ * The bits the Prism themes do not cover.
+ * Compiled to `assets/build/css/frontend-chrome.css`.
  */
 
 /*
- * What a code box is set in when no font has been chosen, which is the
- * default. It is the fallback of a custom property rather than a value of its
- * own, so that the font setting has only a value to supply and never a rule.
+ * The fallback of a custom property, so the font setting supplies only a value
+ * and never a rule.
  */
 /* stylelint-disable-next-line value-keyword-case -- Font names. */
 $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
@@ -21,25 +14,10 @@ $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 	max-width: 100%;
 
 	/*
-	 * The file name label, `.igsh-code-box__file`.
-	 *
-	 * `file="…"` is a v5 attribute and has to keep working whatever the toolbar
-	 * setting is, so the label is markup of the plugin's own rather than a toolbar
-	 * item: the toolbar is only loaded when the setting is on, and it hides itself
-	 * until the reader hovers over the box.
-	 *
-	 * It sits above the box and outside it. Inside there is nowhere to put it —
-	 * the line numbers plugin reserves the left gutter for its numbers and the
-	 * line highlight plugin puts its start-line badge in the same top left corner
-	 * — and anything added to the flow *inside* the box slides those overlays off
-	 * the lines they mark. Both plugins measure the `pre` alone, so a sibling in
-	 * front of it moves neither.
-	 *
-	 * Every code box is wrapped, whether it was given a label or not. Only the
-	 * label span is conditional: a container is what a code box *is*, and whether
-	 * it shows a label is a fact about one snippet. Before 6.0 the two were
-	 * tangled — an unlabelled snippet got no wrapper, which is why the rules
-	 * further down used to have to find a code box by the id on its `pre`.
+	 * The file name label. Sits above the box and outside it: the line-numbers
+	 * plugin owns the left gutter and the line-highlight plugin the top-left
+	 * corner, and anything added inside the `pre` slides those overlays off the
+	 * lines they mark.
 	 */
 	&__file {
 		display: block;
@@ -56,47 +34,24 @@ $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 	}
 
 	/*
-	 * Minimal box styling for sites which load no theme at all, on
-	 * `.igsh-code-box pre[class*="language-"]`. The box is positioned because the
-	 * line highlight plugin hangs its overlay off it; the line numbers and line
-	 * highlight plugins each position the box themselves when they are loaded, and
-	 * this is the same value they use.
-	 *
-	 * A code box also scrolls sideways; it never wraps. Long lines are ordinary
-	 * in source code, and a wrapped one puts the line numbers out of step with
-	 * the code they are numbering, which is worse than a scrollbar.
-	 *
-	 * **That has to be said on the `pre` and not only on the `code`.** Prism's
-	 * line numbers plugin carries `white-space: inherit` on the code at the same
-	 * 0-2-2 as the rule below, and loads after it, so with line numbers on it
-	 * wins and the code is sent back to its parent for an answer. Nothing here
-	 * used to give it one, which left the last word with the theme's own 0-1-1 —
-	 * and any site CSS touching `pre` took it away silently. `white-space` is
-	 * inherited, so this one declaration covers the code with line numbers on
-	 * and off alike.
-	 *
-	 * `[class*="language-"]` is on the selector to take it to 0-2-1, past every
-	 * theme and past a `.wrap pre` of a site's own whatever order they load in.
-	 * It is not a trick: the renderer writes that class onto this very element,
-	 * and `.igsh-code-box` onto the container it always emits around it.
-	 *
-	 * **0-2-1 is preserved rather than merely sufficient.** This rule used to read
-	 * `pre[id^="ig-sh-"][class*="language-"]`, which is the same weight, so moving
-	 * the id onto the container changed which element is matched and nothing about
-	 * where this lands in the cascade. Keying off the container's id instead —
-	 * `div[id^="ig-sh-"] pre[…]` — would have been 0-2-2 and would have started
-	 * winning fights this rule is meant to lose.
-	 *
-	 * **Descendant, never child.** The toolbar plugin wraps each `pre` in a
-	 * `.code-toolbar` div at runtime, so `.igsh-code-box > pre` would match until
-	 * somebody switched the toolbar setting on. That is why the nesting below
-	 * opens `pre[class*="language-"]` and not `> pre[class*="language-"]`.
+	 * Minimal styling for sites loading no theme. Positioned because the
+	 * line-highlight plugin hangs its overlay off it. `[class*="language-"]`
+	 * takes the selector to 0-2-1, past every theme; descendant and never
+	 * child, because the toolbar plugin wraps each `pre` in a `.code-toolbar`
+	 * div at runtime.
 	 */
 	pre[class*="language-"] {
 		position: relative;
 		overflow: auto;
 		max-width: 100%;
 		tab-size: 4;
+
+		/*
+		 * Scrolls sideways, never wraps — a wrapped line puts the numbers out
+		 * of step with the code. Declared on the `pre` because Prism's
+		 * line-numbers plugin sets `white-space: inherit` on the `code` at the
+		 * same 0-2-2 and loads later.
+		 */
 		white-space: pre;
 		word-wrap: normal;
 	}
@@ -108,27 +63,12 @@ $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 		word-wrap: normal;
 
 		/*
-		 * How the code is set, on `.igsh-code-box pre > code` and on every token
-		 * span inside it. The three values come from the font setting, and PHP
-		 * sends nothing but the values — the selectors and the fallbacks are here,
-		 * which is what keeps adding a font to one file and keeps the cascade
-		 * readable in the place a reader would look for it.
-		 *
-		 * The token spans are claimed as well as the `code` element, for one theme
-		 * out of the 43: `prism-z-touch` carries `pre[class*="language-"] * {
-		 * font-family: monospace }`, which otherwise wins on every coloured token
-		 * and leaves a reader looking at two fonts in one box.
-		 *
-		 * **`inherit` is the fallback for the last two, deliberately.** It is
-		 * exactly what happens when nothing declares them, so a site which has
-		 * chosen no font — the default — renders as it always has, and a theme's
-		 * own letter spacing is left alone. A chosen font with ligatures sets the
-		 * letter spacing to zero, because a non-zero one suppresses ligatures
-		 * outright and a theme setting it on its article text is enough to do that.
-		 *
-		 * The second selector is a bare `*` and not `& *` because stylelint's
-		 * `scss/selector-no-redundant-nesting-selector` refuses the `&` there. The
-		 * two compile the same: `.igsh-code-box pre > code *`.
+		 * PHP sends only the values; the selectors and fallbacks are here. The
+		 * token spans are claimed as well as the `code`, for `prism-z-touch`, which
+		 * sets `pre[class*="language-"] * { font-family: monospace }`. `inherit` is
+		 * the fallback for the last two. The bare `*` rather than `& *` is for
+		 * stylelint's `scss/selector-no-redundant-nesting-selector`; both
+		 * compile the same.
 		 */
 		&,
 		* {
@@ -140,23 +80,9 @@ $igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
 }
 
 /*
- * The two rules below are not descendants of a code box, so they stay at the
- * root. They read after the block above rather than in the middle of it, as
- * they used to: neither shares a property with anything inside `.igsh-code-box`
- * — `display` on a `.toolbar`, and colour on a `code.language-none` — so no
- * cascade decision turns on which of them a browser reads first.
- */
-
-/*
- * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` itself or on anything
- * wrapping it; the toolbar plugin wraps each `pre` in a `.code-toolbar` div and
- * appends the toolbar beside it, so both shapes need covering.
- *
- * Nothing this plugin ships writes the class onto a `pre` — `admin.ts` puts it
- * on the preview's wrapper, which the second selector covers. The first is kept
- * deliberately, as the hook for a theme or a site's own CSS to switch a single
- * code box's toolbar off. It is undocumented and unofficial, exactly as the
- * plugin's four filters are.
+ * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` or anything wrapping it;
+ * the toolbar plugin wraps each `pre` in a `.code-toolbar` div, so both shapes
+ * need covering. The `pre` selector is the hook for a theme's own CSS.
  */
 pre.igsh-no-toolbar ~ .toolbar,
 .igsh-no-toolbar .code-toolbar > .toolbar {
@@ -164,9 +90,8 @@ pre.igsh-no-toolbar ~ .toolbar,
 }
 
 /*
- * The themes paint a `language-none` box like any other, because they select on
- * `pre[class*="language-"]`. All that is left is to keep the text in the box
- * colour rather than a token colour which is never applied.
+ * The themes paint a `language-none` box like any other; this just keeps the
+ * text in the box colour.
  */
 code.language-none,
 pre[class*="language-"] > code.language-none {

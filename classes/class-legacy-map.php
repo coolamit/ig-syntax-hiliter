@@ -11,8 +11,7 @@ namespace iG\Syntax_Hiliter;
  * Single source of truth for which shortcode tags belong to this plugin.
  *
  * Ownership is decided by the tag alone, so a tag the plugin has never shipped is
- * never registered and never claimed. That is what keeps it off other plugins'
- * shortcodes.
+ * never claimed.
  */
 class Legacy_Map {
 
@@ -33,9 +32,8 @@ class Legacy_Map {
 	/**
 	 * The tag list the alternation below was built from.
 	 *
-	 * The list comes through a filter, so it can change inside a request and the
-	 * memo has to be keyed on it rather than merely set once. `Content_Protector`
-	 * keeps its shortcode pattern the same way and for the same reason.
+	 * Keyed on the tag list because the list comes through a filter and can change
+	 * inside a request.
 	 *
 	 * @var array
 	 */
@@ -51,8 +49,7 @@ class Legacy_Map {
 	/**
 	 * Legacy tag to canonical language id.
 	 *
-	 * The last three keys are shorthand aliases; `[sourcecode]` is absent because it
-	 * carries its language in an attribute.
+	 * `[sourcecode]` is absent because it carries its language in an attribute.
 	 *
 	 * @var array
 	 */
@@ -111,7 +108,7 @@ class Legacy_Map {
 			[ static::GENERIC_TAG ]
 		);
 
-	}    //end get_default_tags()
+	}
 
 	/**
 	 * Method to get the shortcode tags the plugin claims.
@@ -142,29 +139,23 @@ class Legacy_Map {
 
 		return array_values( array_unique( $tags ) );
 
-	}    //end get_tags()
+	}
 
 	/**
 	 * Method to write one of this plugin's tags inside a snippet as text.
 	 *
-	 * A snippet ends at its own closing tag, so a snippet whose code quotes one used
-	 * to be impossible to write. Doubling the brackets is the escape: `[[php]]` is the
-	 * text `[php]` and `[[/php]]` is the text `[/php]`, and the matcher steps over the
-	 * doubled form instead of closing on it. WordPress's own escape for a whole
-	 * shortcode, `[[php]…[/php]]`, is a different construct and is left exactly as it
-	 * is — this only ever doubles a tag which is already a single pair of brackets.
-	 *
-	 * This is what the revert tool writes with. It used to refuse such a block and
-	 * report it instead, which left the one post most likely to hold this plugin's
-	 * tags — a post about this plugin — as the one post the tool could not rescue.
+	 * A snippet ends at its own closing tag, so a tag quoted inside one has its brackets
+	 * doubled: `[[php]]` is the text `[php]`, and the matcher steps over the doubled form
+	 * instead of closing on it. WordPress's own whole-shortcode escape `[[php]…[/php]]`
+	 * is a different construct and is left alone.
 	 *
 	 * @param string $code Source code as the author wrote it.
 	 *
-	 * @return string|null The code with every claimed tag in it escaped, or NULL when PCRE gave up on it.
+	 * @return string|null The code with every claimed tag in it escaped, or NULL when PCRE
+	 *                     gave up on it.
 	 */
 	public static function escape_tags( string $code ): ?string {
 
-		//the cheap test first: no bracket, no tag, and nothing to build an alternation for
 		if ( ! str_contains( $code, '[' ) ) {
 			return $code;
 		}
@@ -181,31 +172,20 @@ class Legacy_Map {
 			$code
 		);
 
-		/*
-		 * `preg_replace()` hands back NULL on a backtrack, recursion or JIT stack limit,
-		 * and this runs on the way to a post being written. A failure has to mean "wrote
-		 * nothing", never "wrote an empty snippet", so the caller is told rather than
-		 * handed a string.
-		 */
+		// A NULL from PCRE on the way to a write must mean "wrote nothing", so the caller is told.
 		if ( ! is_string( $escaped ) || PREG_NO_ERROR !== preg_last_error() ) {
 			return null;
 		}
 
 		return $escaped;
 
-	}    //end escape_tags()
+	}
 
 	/**
 	 * Method to read an escaped tag inside a snippet back as the text it stands for.
 	 *
-	 * The mirror of `self::escape_tags()`, and the only two places it is called from
-	 * are the two ways a shortcode's code becomes a snippet: the display path and the
-	 * editor's conversion of a shortcode into a block. Stored content is never
-	 * touched, so an author who typed `[[/php]]` keeps those bytes in their post.
-	 *
-	 * One level of nesting falls out of this rather than being special cased.
-	 * `[[[/php]]]` is stepped over by the matcher, unescaped once here, and shows the
-	 * reader `[[/php]]`.
+	 * The mirror of `self::escape_tags()`, called only on the display path and on the
+	 * editor's shortcode to block conversion; stored content is never touched.
 	 *
 	 * @param string $code Source code, as the matcher found it.
 	 *
@@ -213,7 +193,6 @@ class Legacy_Map {
 	 */
 	public static function unescape_tags( string $code ): string {
 
-		//as in `escape_tags()`: almost no snippet holds a doubled bracket, and this runs once per snippet built
 		if ( ! str_contains( $code, '[[' ) ) {
 			return $code;
 		}
@@ -237,7 +216,7 @@ class Legacy_Map {
 
 		return $unescaped;
 
-	}    //end unescape_tags()
+	}
 
 	/**
 	 * Method to get the full legacy tag to language id map.
@@ -246,7 +225,7 @@ class Legacy_Map {
 	 */
 	public static function get_language_map(): array {
 		return static::$_language_map;
-	}    //end get_language_map()
+	}
 
 	/**
 	 * Method to translate a legacy tag or language name into a canonical language id.
@@ -261,12 +240,13 @@ class Legacy_Map {
 
 		return static::$_language_map[ $tag ] ?? null;
 
-	}    //end to_language_id()
+	}
 
 	/**
 	 * Method to get an alternation which matches any one of the claimed tags.
 	 *
-	 * @return string Pattern fragment for a `/` delimited pattern, or an empty string when the plugin claims no tags.
+	 * @return string Pattern fragment for a `/` delimited pattern, or an empty string when the
+	 *                plugin claims no tags.
 	 */
 	protected static function _get_tag_alternation(): string {
 
@@ -290,9 +270,8 @@ class Legacy_Map {
 
 		return static::$_alternation;
 
-	}    //end _get_tag_alternation()
+	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

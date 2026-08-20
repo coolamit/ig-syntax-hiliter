@@ -17,28 +17,12 @@ use WP_REST_Server;
 /**
  * The way out of the block format, in batches, over REST.
  *
- * A snippet held in a block is not portable: with the plugin switched off the
- * block type is gone, a self closing block has no inner content to fall back on,
- * and the snippet renders as nothing at all. The same snippet written as a
- * shortcode is at least still visible in the post, as text its owner can act on.
- * That is the whole reason this exists, and it is why the rewrite has to be
- * trustworthy rather than merely convenient.
- *
- * Both of this plugin's blocks are converted, because both vanish the same way: the
- * code block becomes a `[sourcecode]` shortcode and the Gist block becomes a
- * `[github]` one.
- *
- * So the rewrite is surgical. Only the plugin's own block delimiters are matched and
- * replaced; the post is never parsed into blocks and serialised back, because that
- * round trip is not byte identical and would quietly rewrite content this tool has
- * no business touching. Every byte outside a matched delimiter is left exactly as
- * it was found.
- *
- * Work is handed out a batch at a time, keyed on the last post id seen rather than
- * on an offset. Rows stop matching as they are rewritten, so an offset would slide
- * over posts and skip them; a post id cursor cannot. A batch that never finished
- * costs nothing — running it again picks up from the first post still holding a
- * block.
+ * A snippet in a block is not portable: with the plugin off the block type is gone
+ * and a self closing block has no inner content. Both blocks are converted. Only the
+ * plugin's own delimiters are matched and replaced; the post is never parsed into
+ * blocks and re-serialised, because that round trip is not byte identical. Work is
+ * handed out keyed on the last post id, not an offset, because rows stop matching as
+ * they are rewritten.
  */
 class Block_Converter {
 
@@ -61,11 +45,8 @@ class Block_Converter {
 	/**
 	 * Name of the Gist block.
 	 *
-	 * Converted for the same reason the code block is: with the plugin switched off
-	 * the block type is gone and a self closing block has no inner content, so the
-	 * Gist renders as nothing and the post no longer says which Gist it meant. That
-	 * the Gist block is never created automatically from a `[github]` shortcode is a
-	 * decision about the way in, and says nothing about the way out.
+	 * Converted for the same reason the code block is: with the plugin off the Gist
+	 * renders as nothing and the post no longer says which Gist it meant.
 	 *
 	 * @var string
 	 */
@@ -73,10 +54,6 @@ class Block_Converter {
 
 	/**
 	 * The string a post's content must contain for it to hold a Gist block.
-	 *
-	 * Protected while `self::BLOCK_MARKER` beside it is public, which looks like an
-	 * oversight and is not: the code block's marker is read by `Revert_Tool_Test` and
-	 * this one is not. The pair is split by who reads it, not by what it is.
 	 *
 	 * @var string
 	 */
@@ -112,10 +89,6 @@ class Block_Converter {
 	/**
 	 * Number of posts examined per batch.
 	 *
-	 * This bound and `self::_MAX_BATCH_SIZE` are the class's own business, while the
-	 * filter which overrides them is the extension point and stays public. That is
-	 * the line between the three, and it is why they do not share a visibility.
-	 *
 	 * @var int
 	 */
 	protected const int _DEFAULT_BATCH_SIZE = 20;
@@ -130,8 +103,8 @@ class Block_Converter {
 	/**
 	 * The characters a language name may carry into a shortcode attribute.
 	 *
-	 * A plain list rather than a pattern, because membership in it is tested without
-	 * PCRE — see `self::_sanitize_language()` for why.
+	 * A plain list, not a pattern; membership is tested without PCRE — see
+	 * `self::_sanitize_language()`.
 	 *
 	 * @var string
 	 */
@@ -158,7 +131,7 @@ class Block_Converter {
 
 		$this->_register_hooks();
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Method to hook this class up to WordPress.
@@ -169,7 +142,7 @@ class Block_Converter {
 
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 
-	}    //end _register_hooks()
+	}
 
 	/**
 	 * Method to register the converter's REST routes.
@@ -207,7 +180,7 @@ class Block_Converter {
 			]
 		);
 
-	}    //end register_rest_routes()
+	}
 
 	/**
 	 * Method to check that a cursor is a post id, or the start.
@@ -218,7 +191,7 @@ class Block_Converter {
 	 */
 	public static function validate_cursor( mixed $value ): bool {
 		return ( is_numeric( $value ) && 0 <= (int) $value );
-	}    //end validate_cursor()
+	}
 
 	/**
 	 * Method to report how much work there is.
@@ -234,21 +207,20 @@ class Block_Converter {
 			]
 		);
 
-	}    //end get_status()
+	}
 
 	/**
 	 * Method to convert one batch of posts.
 	 *
-	 * Every post examined lands in exactly one of `converted`, `skipped` and
-	 * `failed`, so those three add up to `processed` and can drive a progress meter.
-	 * `blocks_left_alone` counts blocks rather than posts and overlaps all three: it
-	 * is the only place a block the tool declined to rewrite inside a post which
-	 * otherwise converted is reported at all. The two units are never worth adding
-	 * together.
+	 * `converted` + `skipped` + `failed` = `processed`. `blocks_left_alone` counts
+	 * blocks, not posts, and overlaps all three.
 	 *
 	 * @param \WP_REST_Request $request Request being served.
 	 *
-	 * @return \WP_REST_Response Post counts `processed`, `converted`, `skipped` and `failed`; `blocks_left_alone`, how many blocks in the batch the tool deliberately declined to rewrite; the `cursor` to carry on from; and `done`.
+	 * @return \WP_REST_Response Post counts `processed`, `converted`, `skipped` and `failed`;
+	 *                           `blocks_left_alone`, how many blocks in the batch the tool
+	 *                           deliberately declined to rewrite; the `cursor` to carry on
+	 *                           from; and `done`.
 	 */
 	public function process_batch( WP_REST_Request $request ): WP_REST_Response {
 
@@ -273,11 +245,7 @@ class Block_Converter {
 
 			$result = static::convert_content( (string) $row->post_content );
 
-			/*
-			 * A block the tool chose to leave is left whatever becomes of the rest of
-			 * the post, so it is counted here, ahead of the branches below which put
-			 * the post in a bucket and skip past the rest of the loop.
-			 */
+			// Counted ahead of the branches below, which skip the rest of the loop.
 			$counts['blocks_left_alone'] += $result['skipped'];
 
 			if ( 0 < $result['converted'] && ! static::_save_content( $post_id, $result['content'] ) ) {
@@ -288,13 +256,7 @@ class Block_Converter {
 
 			}
 
-			/*
-			 * A delimiter the tool could not read is a failure and is reported as one,
-			 * even where the rest of the post converted, because the site owner has a
-			 * block left that nothing here can turn back into a shortcode. A block the
-			 * tool chose to leave alone is not a failure, and neither is a post whose
-			 * content held the marker but no delimiter of this plugin's.
-			 */
+			// An unreadable delimiter is a failure even where the rest of the post converted.
 			if ( 0 < $result['failed'] ) {
 
 				++$counts['failed'];
@@ -325,7 +287,7 @@ class Block_Converter {
 			)
 		);
 
-	}    //end process_batch()
+	}
 
 	/**
 	 * Method to write a post's rewritten content back.
@@ -347,26 +309,20 @@ class Block_Converter {
 
 		return ( ! is_wp_error( $saved ) && 0 < (int) $saved );
 
-	}    //end _save_content()
+	}
 
 	/**
 	 * Method to rewrite every one of this plugin's blocks in a piece of content.
 	 *
-	 * Both of them: a code block becomes a `[sourcecode]` shortcode and a Gist block
-	 * becomes a `[github]` one. Nothing but the delimiters this plugin wrote is
-	 * touched: the content is copied across a byte at a time around them, so
-	 * everything else arrives on the other side exactly as it went in.
-	 *
-	 * A delimiter which sits inside one of this plugin's shortcodes is not a block. It
-	 * is a snippet whose code is block markup — this plugin's own documentation, for
-	 * one — and it is left exactly where it was found. That is what makes running the
-	 * tool a second time safe: the shortcode the first run wrote carries the delimiter
-	 * from the block's code in its body, and rewriting that would nest a shortcode
-	 * inside another one's code and lose the snippet from the closing tag onwards.
+	 * Nothing but this plugin's delimiters is touched. A delimiter inside one of this
+	 * plugin's shortcodes is a snippet whose code is block markup and is left alone —
+	 * that is what makes a second run safe.
 	 *
 	 * @param string $content Content to rewrite.
 	 *
-	 * @return array Four keys: `content`, the rewritten content; `converted`, how many blocks became shortcodes; `skipped`, how many were deliberately left alone; and `failed`, how many could not be read.
+	 * @return array Four keys: `content`, the rewritten content; `converted`, how many blocks
+	 *               became shortcodes; `skipped`, how many were deliberately left alone; and
+	 *               `failed`, how many could not be read.
 	 */
 	public static function convert_content( string $content ): array {
 
@@ -385,7 +341,7 @@ class Block_Converter {
 		$shortcodes = static::_get_shortcode_ranges( $content, $delimiters );
 
 		if ( is_null( $shortcodes ) ) {
-			return $result;    //where the shortcodes are is unknown, so nothing here can be rewritten safely
+			return $result;    // where the shortcodes are is unknown, so nothing here can be rewritten safely
 		}
 
 		$rewritten = '';
@@ -396,7 +352,7 @@ class Block_Converter {
 			$open = $delimiter['open'];
 
 			if ( ! is_null( static::_get_enclosing_end( $open, $shortcodes ) ) ) {
-				continue;    //the author's code, which merely reads like a block
+				continue;    // the author's code, which merely reads like a block
 			}
 
 			$attributes = static::_decode_attributes( $delimiter['attrs'] );
@@ -405,7 +361,7 @@ class Block_Converter {
 
 				++$result['failed'];
 
-				continue;    //this plugin's block, and unreadable, which is not the same as choosing to leave it
+				continue;    // this plugin's block, and unreadable, which is not the same as choosing to leave it
 
 			}
 
@@ -417,7 +373,7 @@ class Block_Converter {
 
 				++$result['skipped'];
 
-				continue;    //left exactly as it was found
+				continue;    // left exactly as it was found
 
 			}
 
@@ -434,7 +390,7 @@ class Block_Converter {
 
 		return $result;
 
-	}    //end convert_content()
+	}
 
 	/**
 	 * Method to find every one of this plugin's self closing block delimiters in a
@@ -442,7 +398,8 @@ class Block_Converter {
 	 *
 	 * @param string $content Content to scan.
 	 *
-	 * @return array List of delimiters, each with `block`, `open`, `attrs` and `end`, in the order they appear.
+	 * @return array List of delimiters, each with `block`, `open`, `attrs` and `end`, in the
+	 *               order they appear.
 	 */
 	protected static function _get_delimiters( string $content ): array {
 
@@ -463,7 +420,7 @@ class Block_Converter {
 
 				$search = $open + 4;
 
-				continue;    //some other comment, or some other block
+				continue;    // some other comment, or some other block
 
 			}
 
@@ -475,33 +432,23 @@ class Block_Converter {
 
 		return $delimiters;
 
-	}    //end _get_delimiters()
+	}
 
 	/**
 	 * Method to find where every one of this plugin's shortcodes in a piece of content
 	 * begins and ends.
 	 *
-	 * The pattern is WordPress's own, so escaped, self closing, unclosed and nested
-	 * tags are bounded exactly as `do_shortcode()` bounds them, and it is built by the
-	 * same call `Content_Protector` builds its own with, so the two cannot drift.
-	 *
-	 * The matches are walked one at a time rather than handed to
-	 * `preg_replace_callback()`, because where matching resumes has to be decided here.
-	 * A match which begins inside a block delimiter is that block's attribute data
-	 * rather than a shortcode — `serialize_block_attributes()` escapes `<`, `>`, `&`
-	 * and `--` in there but neither `[` nor `]` — and it can reach a long way past the
-	 * end of the delimiter. Matching therefore resumes at the end of the delimiter, so
-	 * that every real shortcode such a match spanned is still offered to the matcher
-	 * instead of being swallowed with it.
-	 *
-	 * A match which begins outside a delimiter owns every byte it covers, delimiters
-	 * included, because that is a snippet whose code is block markup and the shortcode
-	 * is the construct the author wrote.
+	 * Matches are walked one at a time because where matching resumes has to be decided
+	 * here: a match beginning inside a delimiter is attribute data
+	 * (`serialize_block_attributes()` escapes `<>&--` but not `[]`) and can reach far
+	 * past the delimiter, so matching resumes at the delimiter's end. A match beginning
+	 * outside a delimiter owns every byte it covers.
 	 *
 	 * @param string $content    Content to scan.
 	 * @param array  $delimiters Delimiters from `self::_get_delimiters()`.
 	 *
-	 * @return array|null List of ranges, each with `open` and `end`, end exclusive; or NULL when PCRE gave up on the content.
+	 * @return array|null List of ranges, each with `open` and `end`, end exclusive; or NULL
+	 *                    when PCRE gave up on the content.
 	 */
 	protected static function _get_shortcode_ranges( string $content, array $delimiters ): ?array {
 
@@ -525,7 +472,7 @@ class Block_Converter {
 
 				$offset = $delimiter;
 
-				continue;    //the block's data, not content
+				continue;    // the block's data, not content
 
 			}
 
@@ -538,15 +485,11 @@ class Block_Converter {
 
 		}
 
-		/*
-		 * `preg_match()` hands back FALSE when it hits a backtrack, recursion or JIT
-		 * stack limit, which from here is indistinguishable from having run out of
-		 * matches. This runs on the way to a post being written, so a scan that gave up
-		 * has to mean "the shortcodes are unknown" and never "there were none".
-		 */
+		// A FALSE from `preg_match()` looks like running out of matches. On the way to a
+		// post being written it has to mean "unknown", never "none".
 		return ( PREG_NO_ERROR === preg_last_error() ) ? $ranges : null;
 
-	}    //end _get_shortcode_ranges()
+	}
 
 	/**
 	 * Method to find where the range holding an offset ends.
@@ -567,31 +510,25 @@ class Block_Converter {
 
 		return null;
 
-	}    //end _get_enclosing_end()
+	}
 
 	/**
 	 * Method to read one of this plugin's self closing block delimiters.
 	 *
-	 * The end of the delimiter is found by scanning for the `-->` that closes the
-	 * HTML comment, rather than by matching the attribute JSON. Matching the JSON is
-	 * what a pattern does, and the tempered pattern the block grammar is written with
-	 * backtracks catastrophically once the attributes run to a few tens of kilobytes.
-	 * That is precisely the content this tool exists to rescue, so it cannot be the
-	 * content the tool gives up on. A scan has no such limit.
-	 *
-	 * Scanning is sound because `serialize_block_attributes()` escapes `-`, `<` and
-	 * `>` before the attributes are written, so however a snippet is written no `-->`
-	 * can occur inside them. Should a delimiter be hand written and hold one anyway,
-	 * the scan carries on to the next `-->`, so the delimiter is still read whole.
+	 * The end is found by scanning for `-->`, not by matching the attribute JSON: the
+	 * tempered pattern the block grammar wants backtracks catastrophically past a few
+	 * tens of KB, which is the content this tool exists to rescue. Sound because
+	 * `serialize_block_attributes()` escapes `-`, `<` and `>`.
 	 *
 	 * @param string $content Content being read.
 	 * @param int    $offset  Offset of the `<!--` which opens the comment.
 	 *
-	 * @return array|null Three keys, `block`, `attrs` and `end`, or NULL when this is not one of this plugin's self closing delimiters.
+	 * @return array|null Three keys, `block`, `attrs` and `end`, or NULL when this is not one
+	 *                    of this plugin's self closing delimiters.
 	 */
 	protected static function _read_delimiter( string $content, int $offset ): ?array {
 
-		$after = $offset + 4;    //past the `<!--`
+		$after = $offset + 4;
 		$gap   = strspn( $content, static::_DELIMITER_WHITESPACE, $after );
 
 		if ( 1 > $gap ) {
@@ -604,14 +541,14 @@ class Block_Converter {
 			return null;
 		}
 
-		$body = $after + $gap + strlen( $block ) + 3;    //the name, plus the `wp:` in front of it
+		$body = $after + $gap + strlen( $block ) + 3;    // the name, plus the `wp:` in front of it
 		$gap  = strspn( $content, static::_DELIMITER_WHITESPACE, $body );
 
 		if ( 1 > $gap ) {
-			return null;    //a longer block name which merely begins with this one
+			return null;    // a longer block name which merely begins with this one
 		}
 
-		$start = $body + $gap;    //the `{` which opens the attributes, or the `/` which closes an empty delimiter
+		$start = $body + $gap;    // the `{` which opens the attributes, or the `/` which closes an empty delimiter
 
 		if ( '/-->' === substr( $content, $start, 4 ) ) {
 
@@ -624,7 +561,7 @@ class Block_Converter {
 		}
 
 		if ( '{' !== substr( $content, $start, 1 ) ) {
-			return null;    //not self closing, or carrying something which is not attributes
+			return null;    // not self closing, or carrying something which is not attributes
 		}
 
 		$close = $start;
@@ -634,31 +571,22 @@ class Block_Converter {
 			$close = strpos( $content, '-->', $close + 1 );
 
 			if ( false === $close ) {
-				return null;    //the comment is never closed
+				return null;    // the comment is never closed
 			}
 
-			/*
-			 * The bound is tested here rather than left to the fact that `$close` starts
-			 * at `$start` and the search above runs from `$close + 1`. That holds, but it
-			 * holds thirty lines away from the read which needs it, and a rewrite of the
-			 * scan above would take the defence away without touching this line.
-			 *
-			 * The `$content[ $end - 1 ]` read below needs nothing of its own: `$end` is
-			 * only ever decremented while `$end > $start`, and where it is not decremented
-			 * at all the `( $close - 1 ) === $end` test short circuits ahead of it.
-			 */
+			// The bound is tested here rather than inferred from where the search started.
 			if ( 1 > $close || '/' !== $content[ $close - 1 ] ) {
-				continue;    //nothing before the `-->`, or a closing delimiter rather than a self closing one
+				continue;    // nothing before the `-->`, or a closing delimiter rather than a self closing one
 			}
 
-			$end = $close - 1;    //the `/`
+			$end = $close - 1;
 
 			while ( $end > $start && false !== strpos( static::_DELIMITER_WHITESPACE, $content[ $end - 1 ] ) ) {
 				--$end;
 			}
 
 			if ( ( $close - 1 ) === $end || '}' !== $content[ $end - 1 ] ) {
-				continue;    //the attributes do not end here, so neither does the delimiter
+				continue;    // the attributes do not end here, so neither does the delimiter
 			}
 
 			return [
@@ -669,7 +597,7 @@ class Block_Converter {
 
 		}
 
-	}    //end _read_delimiter()
+	}
 
 	/**
 	 * Method to read which of this plugin's blocks a delimiter names.
@@ -702,45 +630,30 @@ class Block_Converter {
 
 		return null;
 
-	}    //end _read_block_name()
+	}
 
 	/**
 	 * Method to write one block's attributes as a shortcode.
 	 *
-	 * Attributes the block did not carry are left out, so that a setting the block
-	 * took from the site defaults goes on taking it from the site defaults.
+	 * Attributes the block did not carry are left out, so the site defaults still apply.
 	 *
 	 * @param array $attributes Block attributes, as they were stored in the delimiter.
 	 *
-	 * @return string|null The shortcode, an empty string when there is no snippet to write one for, or NULL when the snippet cannot be written as one.
+	 * @return string|null The shortcode, an empty string when there is no snippet to write one
+	 *                     for, or NULL when the snippet cannot be written as one.
 	 */
 	public static function block_to_shortcode( array $attributes ): ?string {
 
 		$code = ( isset( $attributes['code'] ) && is_scalar( $attributes['code'] ) ) ? (string) $attributes['code'] : '';
 
-		/*
-		 * A block holding no code shows a reader nothing, so there is nothing to write
-		 * a shortcode around. It is dropped rather than replaced by an empty shortcode,
-		 * which would show a reader nothing either and would leave noise behind in the
-		 * post content.
-		 */
-		//`'' ===` and not `empty()`, and this is the one where it matters most: `0` is code,
-		//`empty( '0' )` is TRUE, and this method dropping a block means the snippet leaves the
-		//post for good. The other two guards of this shape only fail to paint something
+		// `'' ===` and not `empty()`: `0` is code and `empty( '0' )` is TRUE, and here
+		// dropping a block means the snippet leaves the post for good.
 		if ( '' === $code ) {
 			return '';
 		}
 
-		/*
-		 * A shortcode ends at its own closing tag, so this plugin's tags are written as
-		 * text before the code goes into one — see `Legacy_Map::escape_tags()`. The
-		 * block a post about this plugin is made of holds exactly those tags, and it
-		 * used to be the one block this tool refused.
-		 *
-		 * NULL only where the escape itself failed. A block whose code could not be read
-		 * is left where it stands and reported, which is what `blocks_left_alone` has
-		 * always counted.
-		 */
+		// A shortcode ends at its own closing tag, so this plugin's tags are escaped first
+		// — see `Legacy_Map::escape_tags()`. NULL only where the escape itself failed.
 		$code = Legacy_Map::escape_tags( $code );
 
 		if ( is_null( $code ) ) {
@@ -788,36 +701,26 @@ class Block_Converter {
 			$code
 		);
 
-	}    //end block_to_shortcode()
+	}
 
 	/**
 	 * Method to write one Gist block's attributes as a shortcode.
 	 *
-	 * One output shape, always: `[github gist="https://gist.github.com/<id>"]`. That is
-	 * byte for byte the address the embed already resolves the block to, so the page a
-	 * reader sees is unchanged by the conversion, and with the plugin deactivated the
-	 * post is left a working Gist address rather than a bare id.
-	 *
-	 * The id comes back from `Gist_Embed::resolve_id()` — the same call the embed makes,
-	 * so the two cannot disagree about which Gist a block names — and it is letters and
-	 * digits by construction. So there is nothing here which could break out of the
-	 * attribute it is written into, and no sanitising step of this method's own.
+	 * One output shape, byte for byte the address the embed resolves to. The id comes
+	 * from `Gist_Embed::resolve_id()` — the same call the embed makes — and is letters
+	 * and digits by construction.
 	 *
 	 * @param array $attributes Block attributes, as they were stored in the delimiter.
 	 *
-	 * @return string|null The shortcode, an empty string when there is no Gist to write one for, or NULL when one cannot be written.
+	 * @return string|null The shortcode, an empty string when there is no Gist to write one
+	 *                     for, or NULL when one cannot be written.
 	 */
 	public static function gist_block_to_shortcode( array $attributes ): ?string {
 
 		$url = ( isset( $attributes['url'] ) && is_scalar( $attributes['url'] ) ) ? (string) $attributes['url'] : '';
 		$id  = Gist_Embed::resolve_id( [ 'gist' => trim( $url ) ] );
 
-		/*
-		 * A block naming no Gist this plugin will print shows a reader nothing today, so
-		 * there is nothing to write a shortcode around. It is dropped rather than replaced
-		 * by an empty shortcode, which would show a reader nothing either and would leave
-		 * noise behind in the post content.
-		 */
+		// A block naming no valid Gist renders nothing today, so it is dropped.
 		if ( empty( $id ) ) {
 			return '';
 		}
@@ -828,17 +731,13 @@ class Block_Converter {
 			$id
 		);
 
-	}    //end gist_block_to_shortcode()
+	}
 
 	/**
 	 * Method to count the posts whose content holds either block's marker.
 	 *
-	 * The count is a `LIKE` over `post_content` and knows nothing about where in the
-	 * content the marker sits, so a post whose only marker is inside a snippet's code
-	 * goes on being counted after the tool has decided to leave it alone. Reading every
-	 * matching post to tell the two apart is the work of a whole run, and this is a
-	 * progress figure, so the count stays cheap and generous: it is the number of posts
-	 * worth looking at, which is exactly what `self::_get_batch()` hands out.
+	 * A cheap and generous `LIKE`: a post whose only marker is inside a snippet's code
+	 * stays counted. It is a progress figure, not a promise.
 	 *
 	 * @return int
 	 */
@@ -852,22 +751,18 @@ class Block_Converter {
 			return 0;
 		}
 
-		/*
-		 * The placeholders are built by _get_where_clause() and every value that
-		 * fills them is passed to prepare(), which is what the sniffs below cannot
-		 * see. The count is deliberately uncached: the tool is rewriting the very
-		 * rows it is counting.
-		 */
-		//phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Placeholders are built by _get_where_clause() and every value goes through
+		// prepare(); uncached because the tool is rewriting the rows it is reading.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE {$clause['sql']}",
 				$clause['values']
 			)
 		);
-		//phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-	}    //end count_remaining()
+	}
 
 	/**
 	 * Method to get how many posts are examined per batch.
@@ -888,7 +783,7 @@ class Block_Converter {
 
 		return max( 1, min( static::_MAX_BATCH_SIZE, $batch_size ) );
 
-	}    //end get_batch_size()
+	}
 
 	/**
 	 * Method to fetch one batch of posts which still hold a block.
@@ -910,21 +805,18 @@ class Block_Converter {
 
 		$values = array_merge( $clause['values'], [ max( 0, $cursor ), $limit ] );
 
-		/*
-		 * As in count_remaining(): the placeholders come from _get_where_clause()
-		 * and every value that fills them is passed to prepare(). A cached read
-		 * would hand back rows this tool has already rewritten.
-		 */
-		//phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Placeholders are built by _get_where_clause() and every value goes through
+		// prepare(); uncached because the tool is rewriting the rows it is reading.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return (array) $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT ID, post_content FROM {$wpdb->posts} WHERE {$clause['sql']} AND ID > %d ORDER BY ID ASC LIMIT %d",
 				$values
 			)
 		);
-		//phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
-	}    //end _get_batch()
+	}
 
 	/**
 	 * Method to build the condition which selects the posts in scope.
@@ -934,7 +826,8 @@ class Block_Converter {
 	 * Revisions are excluded by the post type list, since `revision` is not a public
 	 * post type.
 	 *
-	 * @return array|null Two keys, `sql` and `values`, or NULL when there is nothing that could match.
+	 * @return array|null Two keys, `sql` and `values`, or NULL when there is nothing that
+	 *                    could match.
 	 */
 	protected static function _get_where_clause(): ?array {
 
@@ -965,7 +858,7 @@ class Block_Converter {
 			),
 		];
 
-	}    //end _get_where_clause()
+	}
 
 	/**
 	 * Method to read a block delimiter's attributes.
@@ -979,29 +872,20 @@ class Block_Converter {
 		$raw = trim( $raw );
 
 		if ( empty( $raw ) ) {
-			return [];    //a block with no attributes is still a block
+			return [];    // a block with no attributes is still a block
 		}
 
 		$attributes = json_decode( $raw, true );
 
 		return ( is_array( $attributes ) ) ? $attributes : null;
 
-	}    //end _decode_attributes()
+	}
 
 	/**
 	 * Method to clean up a language name so that it is safe in a shortcode.
 	 *
-	 * This was a `preg_replace()` cast to a string, which meant a language dropped
-	 * without a word whenever PCRE gave up: NULL cast to a string is an empty one, so
-	 * every snippet the run rewrote came back out unhighlighted. Nothing survives that
-	 * cast worth keeping either — the only values which reach the pattern's failure
-	 * branch are the ones with something in them to strip, so "keep what came in" here
-	 * would mean writing the very characters that end a shortcode attribute into one.
-	 *
-	 * So the filter is done without PCRE instead, and there is no failure branch left to
-	 * decide anything about: a language is cleaned the same way whatever state the
-	 * engine is in. `LANGUAGE_CHARS` is a list of bytes and the pattern it replaces was
-	 * byte-wise as well, so the two agree on multibyte input.
+	 * Filtered without PCRE: a `preg_replace()` which gives up returns NULL, and NULL cast
+	 * to a string would drop the language from every snippet the run rewrote.
 	 *
 	 * @param string $language Language as the block carried it.
 	 *
@@ -1022,20 +906,14 @@ class Block_Converter {
 
 		return $safe;
 
-	}    //end _sanitize_language()
+	}
 
 	/**
 	 * Method to clean up a free text label so that it is safe in a shortcode.
 	 *
-	 * A shortcode has no escape for the three characters that end an attribute or a
-	 * tag, so they are removed. Losing a bracket out of a file label is a visible,
-	 * harmless loss; a label which broke out of the shortcode would not be.
-	 *
-	 * Everything which makes the label safe to write has happened by the time the
-	 * pattern runs, and the pattern only tidies whitespace. So a pattern which gives up
-	 * — NULL, and `(string) NULL` is an empty string — keeps the label as it stood
-	 * before the tidying, untidy and whole, rather than blanking a label the author
-	 * wrote.
+	 * The three characters that end an attribute or a tag are removed, since a shortcode
+	 * has no escape for them. The pattern only tidies whitespace, so when it gives up
+	 * the label is kept untidy and whole rather than blanked.
 	 *
 	 * @param string $label Label as the block carried it.
 	 *
@@ -1048,9 +926,8 @@ class Block_Converter {
 
 		return trim( ( is_string( $collapsed ) ) ? $collapsed : $label );
 
-	}    //end _sanitize_label()
+	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

@@ -1,10 +1,7 @@
 /**
- * Shared vocabulary of the block: its attributes, the editor data PHP hands
- * over, and the one mapping from legacy shortcode attributes onto block
- * attributes.
- *
- * Both the `shortcode` transform and the automatic conversion of Classic blocks
- * import the mapper from here, so the two paths cannot drift apart.
+ * The block's attributes, the editor data PHP hands over, and the one mapping
+ * from legacy shortcode attributes onto block attributes — shared by the
+ * shortcode transform and the Classic-block conversion.
  */
 
 export const BLOCK_NAME = 'igsyntax-hiliter/code';
@@ -12,8 +9,7 @@ export const BLOCK_NAME = 'igsyntax-hiliter/code';
 /**
  * The block's attributes, mirroring `src/block/block.json`.
  *
- * `showLineNumbers` is optional on purpose: when it is absent the site wide
- * setting decides, which is what `Snippet::from_block_attributes()` implements.
+ * `showLineNumbers` is optional: absent means the site-wide setting decides.
  */
 export interface CodeBlockAttributes {
 	code: string;
@@ -50,8 +46,7 @@ declare global {
 const DEFAULT_GENERIC_TAG = 'sourcecode';
 
 /**
- * Mirrors `Language_Registry::NO_LANGUAGE`, and is only ever the fallback: PHP
- * sends the constant over so that the two cannot drift.
+ * Fallback only; PHP sends `Language_Registry::NO_LANGUAGE` over.
  */
 const DEFAULT_NO_LANGUAGE = 'none';
 
@@ -83,13 +78,8 @@ function toStringMap( value: unknown ): Record< string, string > {
 /**
  * The last object PHP localised, and what was derived from it.
  *
- * Keyed on the source object's *identity*, not on a "have we run yet" flag. The
- * test suite sets and deletes `window.igSyntaxHiliterEditor` between cases, and a
- * plain memo would hand the first case's data to every case after it. Anything
- * which replaces the global — including deleting it, which leaves `undefined` —
- * is a different object and rebuilds. The one thing this no longer notices is a
- * third party mutating the same object in place after it has been read once, and
- * nothing in the plugin does that.
+ * Keyed on the identity of the source object, not a "have we run" flag, so
+ * replacing or deleting the global rebuilds.
  */
 let cachedSource: unknown;
 let cachedData: EditorData | null = null;
@@ -97,16 +87,9 @@ let cachedData: EditorData | null = null;
 /**
  * Reads the data PHP localised for the editor.
  *
- * The result is derived rather than returned as it stands — the alias map alone
- * runs to over a hundred entries — and it is memoised because the two hot paths
- * both call this far more often than the data can change. `edit.tsx` calls it in
- * its render body, and `PlainText` is controlled, so every character typed into a
- * code block used to rebuild the whole thing; `mapShortcodeAttributes()` reaches
- * it three times for every snippet converted out of a Classic block.
- *
- * The tag list is never hardcoded here. When PHP has said nothing, the list is
- * empty and nothing is claimed — a tag this plugin has never shipped belongs to
- * somebody else and must be left alone.
+ * Memoised because both hot paths call it far more often than the data can
+ * change. The tag list is never hardcoded — when PHP has said nothing,
+ * nothing is claimed.
  */
 export function getEditorData(): EditorData {
 	if (
@@ -141,18 +124,11 @@ export function getEditorData(): EditorData {
 /**
  * Turns a language name as an author wrote it into the id the block stores.
  *
- * The server resolves a language late, when it renders. That is right for
- * rendering and wrong for storing: the inspector's dropdown is built from
- * canonical ids alone, so a block holding `html` matches no option, the control
- * shows the first one instead, and touching it writes that back and destroys a
- * language which was highlighting perfectly well.
- *
- * An unrecognised name is handed straight back rather than replaced with a
- * default. It is the author's own word, it is what the snippet has said for as
- * long as the post has existed, and the site may yet add the language through
- * the `ig_syntax_hiliter/languages` filter — a name overwritten here could never
- * be recovered. It renders as an unhighlighted box until then, which is what it
- * did before.
+ * Resolved on the way in, not at render: the inspector dropdown is built from
+ * canonical ids, so a block holding `html` matches no option, the control
+ * shows the first one, and touching it writes that back. An unrecognised name
+ * is handed back rather than defaulted — the `ig_syntax_hiliter/languages`
+ * filter may yet add it, and an overwritten name cannot be recovered.
  *
  * @param value Language name, alias or legacy tag as the author wrote it.
  */
@@ -195,21 +171,9 @@ export function escapeForRegExp( value: string ): string {
 /**
  * Reads an escaped tag inside a snippet back as the text it stands for.
  *
- * A snippet ends at its own closing tag, so one whose code quotes this plugin's
- * tags writes them with doubled brackets — `[[php]]` for the text `[php]`,
- * `[[/php]]` for the text `[/php]`. The matcher steps over the doubled form
- * instead of closing on it, and this is where the brackets come back off.
- *
- * The mirror of `Legacy_Map::escape_tags()` in PHP, and the counterpart of
- * `Shortcode_Handler::build_snippet()`, which does exactly this on the display
- * path. It belongs here rather than in either caller because both ways a
- * shortcode becomes a block — the paste transform and the automatic conversion —
- * go through `mapShortcodeAttributes()`, so doing it once is what keeps the two
- * from drifting.
- *
- * Stored content is never touched: an author who typed `[[/php]]` keeps those
- * bytes in their post, and one level of nesting falls out of the rule rather than
- * being special cased.
+ * A snippet ends at its own closing tag, so code quoting this plugin's tags
+ * writes them with doubled brackets; this is where the brackets come off.
+ * Mirrors `Legacy_Map::escape_tags()`. Stored content is never touched.
  *
  * @param code Source code, as the matcher found it.
  */
@@ -290,19 +254,11 @@ function yesNoToBoolean( value: string ): boolean | undefined {
 /**
  * Turns one legacy shortcode into this block's attributes.
  *
- * Mirrors `Snippet::from_shortcode_atts()` and `Shortcode_Handler::build_snippet()`:
- * a named language tag names its own language, `[sourcecode]` carries it in an
- * attribute with `lang` as a fallback spelling, the first line number is the
- * larger of `firstline` and `num` rather than one falling back to the other,
- * `highlight` keeps its `"2,4-6"` string form, and `gutter` is the per snippet
- * line numbers switch. `plaintext`, `toolbar` and `strict_mode` are parsed and
- * dropped — they never reach a block attribute or the markup.
- *
- * The language is resolved here, on the way in, rather than left for the server
- * to resolve on the way out. See `resolveLanguage()`.
- *
- * The code has one pair of brackets taken off every escaped tag in it, which is
- * what makes block to shortcode and back again byte exact. See `unescapeTags()`.
+ * Mirrors `Snippet::from_shortcode_atts()`: a named tag names its language,
+ * `[sourcecode]` carries it in `language` with `lang` as a fallback spelling,
+ * first line is the larger of `firstline` and `num`, `highlight` keeps its
+ * `2,4-6` string, `gutter` is the per-snippet line-numbers switch.
+ * `plaintext`, `toolbar`, `strict_mode` are parsed and dropped.
  *
  * @param tag  Shortcode tag that was matched.
  * @param atts Named shortcode attributes.

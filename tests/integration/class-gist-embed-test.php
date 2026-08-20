@@ -36,11 +36,7 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 		Gist_Embed::get_instance();
 
-		/*
-		 * The class is a singleton and the style registry is a global, so both
-		 * outlive a test. Every test here starts from the state a request which has
-		 * rendered nothing starts in.
-		 */
+		// The singleton and the style registry both outlive a test; start from a request which has rendered nothing.
 		( new ReflectionProperty( Gist_Embed::class, '_has_embeds' ) )->setValue( Gist_Embed::get_instance(), false );
 
 		wp_dequeue_style( Gist_Embed::STYLE_HANDLE );
@@ -61,9 +57,8 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * The Gist pipeline runs ahead of `wptexturize`.
 	 *
-	 * Texturize is registered on `the_content` at priority 10 and curls the quotes
-	 * around a `gist="…"` URL before this pipeline can parse it, which is what broke
-	 * that attribute for the whole of v5. Priority 9 is the fix, so it is pinned.
+	 * Texturize runs on `the_content` at priority 10 and curls the quotes around a
+	 * `gist="…"` URL before this pipeline can parse it, so priority 9 is pinned.
 	 *
 	 * @test
 	 *
@@ -105,10 +100,8 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * A full Gist URL wins over the id, and only its last segment is used.
 	 *
-	 * Run through `the_content` rather than called directly, because that is the
-	 * path the quoted URL was broken on for the whole of v5: `wptexturize` curled
-	 * the quotes at priority 10 before this pipeline could read them, leaving
-	 * `https://gist.github.com/.js`. The embed now runs at 9, so the URL survives.
+	 * Run through `the_content` rather than called directly, so that `wptexturize`
+	 * gets its chance at the quoted URL.
 	 *
 	 * @test
 	 *
@@ -158,9 +151,8 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * A path segment that is not a Gist id never reaches the URL.
 	 *
-	 * `sanitize_user()` stood in the sanitising slot until 6.0, and being a username
-	 * sanitiser it lets `. - _ @` and spaces through — so `..` went into the path of
-	 * a URL this plugin then printed. Both paths are checked because the embed and
+	 * A username sanitiser lets `. - _ @` and spaces through, so `..` can reach the
+	 * path of a URL this plugin prints. Both paths are checked because the embed and
 	 * the link are two different pieces of markup built from that one URL.
 	 *
 	 * @test
@@ -224,10 +216,10 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A bare `[github]` with no attributes renders nothing, and above all does not
-	 * fatal — the v5 signature took `array $atts`, which fatals on the empty string
-	 * a shortcode with no attributes used to be handed. WordPress hands callbacks an
-	 * array from 6.5 onwards, so the string is asserted against directly.
+	 * A bare `[github]` with no attributes renders nothing and does not fatal.
+	 *
+	 * WordPress hands callbacks an array from 6.5 onwards, so the empty string is
+	 * asserted against directly.
 	 *
 	 * @test
 	 *
@@ -303,21 +295,11 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * Content with no `[github` in it is handed straight back.
 	 *
-	 * This runs on `the_content` and three excerpt filters for every post on every
-	 * request, and it borrows the whole shortcode registry to do its work. The guard
-	 * is what keeps it from doing any of that on the overwhelming majority of posts,
-	 * which have no Gist on them — and a bare `[` is not enough to tell, because most
-	 * real writing has one somewhere.
-	 *
-	 * Every string below contains a `[`, so each one would have gone the long way
-	 * round before. `&#91;` is the case that used to come back changed rather than
-	 * merely come back slowly: core's `do_shortcodes_in_html_tags()` decodes the
-	 * brackets inside an HTML tag and `unescape_invalid_shortcodes()` does not put
-	 * them back.
-	 *
-	 * The method is called directly rather than through `the_content`, because the
-	 * claim is that this method changes nothing — and the rest of the chain, texturize
-	 * and `wpautop` included, changes plenty.
+	 * The guard keeps the parse, which borrows the whole shortcode registry, off every
+	 * post with no Gist on it. `&#91;` is the case that comes back changed without it:
+	 * `do_shortcodes_in_html_tags()` decodes brackets inside a tag and
+	 * `unescape_invalid_shortcodes()` does not put them back. The method is called
+	 * directly because the claim is that this method changes nothing.
 	 *
 	 * @test
 	 *
@@ -344,7 +326,7 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 		}
 
-		//and the guard is not simply refusing everything
+		// And the guard is not simply refusing everything.
 		$this->assertStringContainsString(
 			$this->_expected_embed( 'abc123' ),
 			$embed->parse( 'before [github id="abc123"] after' )
@@ -356,8 +338,7 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	 * The stylesheet which boxes an embed loads only where there is one to box.
 	 *
 	 * A page carrying nothing but a Gist loads no stylesheet of this plugin's
-	 * otherwise, so this is the only thing that puts one on it — and a page with no
-	 * embed must not pay for it.
+	 * otherwise, and a page with no embed must not pay for this one.
 	 *
 	 * @test
 	 *
@@ -432,9 +413,8 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	/**
 	 * The Gist block renders through this same pipeline.
 	 *
-	 * There is one embed implementation, not two, which is what keeps the block and
-	 * the twenty year old shortcode agreeing on the id sanitising, on the link form
-	 * and on what a comment may carry.
+	 * There is one embed implementation, not two, so the block and the shortcode agree
+	 * on the id sanitising, the link form and what a comment may carry.
 	 *
 	 * @test
 	 *
@@ -474,7 +454,6 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

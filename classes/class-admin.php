@@ -18,15 +18,10 @@ use WP_REST_Server;
 /**
  * Settings screen, and the REST route the screen saves through.
  *
- * Settings save one at a time, as they always have: changing a control sends that
- * one setting and nothing else. The route is the only way in, so the same schema
- * decides what may be written whether the request came from the screen or from
- * anywhere else.
- *
- * The route has to be registered on every request, not only in wp-admin, because
- * `rest_api_init` runs on requests where `is_admin()` is false and `REST_REQUEST`
- * is not defined until long after this plugin loads. Everything else this class
- * hooks is on an admin only hook and costs nothing elsewhere.
+ * Settings save one at a time, through the route, so one schema decides what may be
+ * written. The route is registered on every request and not only in wp-admin, because
+ * `rest_api_init` runs on requests where `is_admin()` is false. Everything else this
+ * class hooks is on an admin only hook.
  */
 class Admin extends Base {
 
@@ -70,10 +65,8 @@ class Admin extends Base {
 	/**
 	 * Lines of the preview snippet drawn as highlighted.
 	 *
-	 * Written as the expression an author would type rather than as a list of line
-	 * numbers, because that is what it is an example of. `Snippet::parse_line_ranges()`
-	 * reads it and `Renderer::compact_line_ranges()` writes it back out, so what
-	 * reaches `data-line` is this string exactly.
+	 * Written as the expression an author would type; `Snippet::parse_line_ranges()`
+	 * reads it and `Renderer::compact_line_ranges()` writes it back.
 	 *
 	 * @var string
 	 */
@@ -89,19 +82,10 @@ class Admin extends Base {
 	/**
 	 * Class constructor, which is where this class hooks itself up to WordPress.
 	 *
-	 * **The `parent::__construct()` call is not boilerplate and must not go.**
-	 *
-	 * PHP resolves a constructor in a fixed order: one declared in the class beats
-	 * one a trait brings in, and a trait's beats one inherited from a parent. The
-	 * `Singleton` trait above declares an empty constructor — so without this method,
-	 * that empty one wins over `Base::__construct()`, `$this->_option` is never set
-	 * and `Migrate` never runs, because `Base`'s constructor is the only thing which
-	 * triggers a pending migration and this is the only class which reaches it.
-	 *
-	 * It would fail silently, and it would fail on upgrade.
-	 *
-	 * It also has to come first, ahead of the hooks: a migration has to have finished
-	 * before anything this class registers can be reached.
+	 * `parent::__construct()` must stay and must stay first. A trait's constructor
+	 * beats an inherited one, so without this method `Singleton`'s empty constructor
+	 * wins, `$this->_option` is never set and `Migrate` never runs; and a migration has
+	 * to have finished before anything registered here can be reached.
 	 */
 	protected function __construct() {
 
@@ -109,7 +93,7 @@ class Admin extends Base {
 
 		$this->_register_hooks();
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Method to hook this class up to WordPress.
@@ -125,14 +109,12 @@ class Admin extends Base {
 
 		add_filter( 'plugin_action_links', [ $this, 'get_action_links' ], 10, 2 );
 
-	}    //end _register_hooks()
+	}
 
 	/**
 	 * Method to decide whether the current user may use the plugin's REST routes.
 	 *
-	 * Logged out is answered with `401` and under privileged with `403`, so that a
-	 * caller can tell "log in" apart from "you may not do this". Neither answer
-	 * reaches a callback, so neither can change a stored setting.
+	 * Logged out is `401` and under privileged is `403`, so a caller can tell the two apart.
 	 *
 	 * @return true|\WP_Error TRUE when the request may proceed, an error otherwise.
 	 */
@@ -156,26 +138,14 @@ class Admin extends Base {
 
 		return true;
 
-	}    //end rest_permission_check()
+	}
 
 	/**
 	 * Method to get the settings the screen shows and the route accepts.
 	 *
-	 * This is the only list of writable settings there is. A name which is not a key
-	 * here is rejected by the route, so the route can never be used to write an
-	 * arbitrary option.
-	 *
-	 * Two keys ride beside `choices` rather than being folded into it, for the same
-	 * reason in both cases — `choices` is read as an allowlist and must stay a flat
-	 * map of value to label. `groups` says how the font dropdown is laid out, and
-	 * **`requires` names a setting this one does not work without**: the copy button
-	 * is drawn in the toolbar, and the brace colours are painted on spans the brace
-	 * matching creates. `save_option()` is what acts on it.
-	 *
-	 * Built once per request. `register_rest_routes()` reads it for the route's `enum`
-	 * and so pays for it on every `rest_api_init` the site serves — the editor's
-	 * requests included — and a single `POST /option` reached it four times. Each
-	 * build is twenty `__()` calls, both choice lists and the font grouping.
+	 * The only list of writable settings; a name not keyed here is rejected by the
+	 * route. `groups` and `requires` ride beside `choices` because `choices` is read
+	 * as a flat allowlist. Built once per request.
 	 *
 	 * @return array Setting name to its type, label, description and permitted values.
 	 */
@@ -258,26 +228,13 @@ class Admin extends Base {
 
 		return static::$_settings_schema;
 
-	}    //end get_settings_schema()
+	}
 
 	/**
 	 * Method to get the themes offered by the theme setting.
 	 *
-	 * The bundled themes are those whose stylesheet is actually readable on disk, so
-	 * a theme which is not shipped is never offered.
-	 *
-	 * Sorted by name, and "None" put in front of the lot. There are 43 themes to read
-	 * through, which is enough that the order has to be one a reader can predict: the
-	 * registry hands them over grouped by the directory they came from, and that is a
-	 * fact about this plugin's file layout rather than anything a site owner knows.
-	 * The comparison is case insensitive so that `a11y Dark` sorts among the A's, and
-	 * natural so that a digit in a name is read as a number. "None" is not a theme —
-	 * it means the code boxes are styled by the site's own CSS and nothing else — so
-	 * it goes at the top rather than at the end of a list it is not part of.
-	 *
-	 * The order here is a decision of this screen. `Themes::get_themes()` is
-	 * the registry, and `Validate` builds the setting's allowlist from it, where the
-	 * order means nothing at all.
+	 * Sorted `strnatcasecmp` with "None" in front — the registry's own order is grouped
+	 * by directory, which means nothing to a site owner.
 	 *
 	 * @return array Theme setting value to its label.
 	 */
@@ -292,15 +249,13 @@ class Admin extends Base {
 			$themes
 		);
 
-	}    //end get_theme_choices()
+	}
 
 	/**
 	 * Method to get the stylesheet URL of every theme the dropdown offers.
 	 *
-	 * Built by walking the choices rather than the registry, so that the list the
-	 * preview can paint and the list the screen offers are the same list. "None" is
-	 * in it, carrying an empty string: it is a choice like any other and the script
-	 * has to be able to look it up and find that there is nothing to load.
+	 * Walked from the choices, so the preview paints the same list the screen offers;
+	 * "None" carries an empty string.
 	 *
 	 * @return array Theme setting value to the URL of its stylesheet.
 	 */
@@ -318,15 +273,13 @@ class Admin extends Base {
 
 		return $urls;
 
-	}    //end get_theme_urls()
+	}
 
 	/**
 	 * Method to get the fonts offered by the font setting.
 	 *
-	 * Sorted by name with "None" in front, for the reasons `get_theme_choices()` gives
-	 * and by the same comparison. "None" is the default here, which the themes' "None"
-	 * is not: a font is fetched from another host, and a plugin which reached out to one
-	 * on a site owner's behalf without being asked would be making that call for them.
+	 * Sorted like the themes. "None" is the default here because a font is fetched from
+	 * another host.
 	 *
 	 * @return array Font setting value to its label.
 	 */
@@ -341,29 +294,14 @@ class Admin extends Base {
 			$fonts
 		);
 
-	}    //end get_font_choices()
+	}
 
 	/**
 	 * Method to get how the font dropdown is grouped.
 	 *
-	 * Fifteen families is more than a reader can hold in one list, and the question
-	 * they are actually asking is whether the font draws `=>` as one glyph or two. So
-	 * the dropdown is split on that, and `None` sits above both groups because it is
-	 * not a font.
-	 *
-	 * **This rides beside `choices` and does not replace it, which is the whole design
-	 * of the change.** `choices` is read as an allowlist in `validate_option_value()`
-	 * and again in `save_option()`, both `isset( $choices[ $value ] )`; nesting it by
-	 * group would fail both closed and would answer 400 on every font save. Two more
-	 * readers would break more quietly still — `render_page()` falls back to the
-	 * default when a stored value is not a key of `choices`, so a site running Fira
-	 * Code would be shown `None` while the database held Fira Code, and
-	 * `get_font_data()` walks `array_keys( get_font_choices() )`, so the preview would
-	 * stop repainting. A structure read in five places is not a display structure,
-	 * whatever it looks like where it is declared.
-	 *
-	 * The order inside each group is the order of `choices`, which is sorted by title,
-	 * so the two lists agree by construction rather than by being sorted twice.
+	 * Split on whether the face draws `=>` as one glyph. This rides beside `choices`
+	 * and must not replace it — `choices` is read as a flat allowlist in
+	 * `validate_option_value()`, `save_option()`, `render_page()` and `get_font_data()`.
 	 *
 	 * @return array Group label to a numerically indexed list of font slugs.
 	 */
@@ -380,7 +318,7 @@ class Admin extends Base {
 		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
 
 			if ( Fonts::FONT_NONE === $slug ) {
-				continue;    //not a font, and it belongs above both groups
+				continue;    // not a font, and it belongs above both groups
 			}
 
 			$groups[ Fonts::has_ligatures( $slug ) ? $with : $without ][] = $slug;
@@ -389,17 +327,13 @@ class Admin extends Base {
 
 		return $groups;
 
-	}    //end get_font_groups()
+	}
 
 	/**
 	 * Method to get what the preview needs in order to paint each font.
 	 *
-	 * The stylesheet to fetch and the rule which applies it, for every font the
-	 * dropdown offers. Walked from the choices rather than from the registry, for the
-	 * reason `get_theme_urls()` is: the list the preview can paint and the list the
-	 * screen offers must be the same list. "None" is in it carrying two empty strings,
-	 * because it is a choice like any other and the script has to be able to look it up
-	 * and find that there is nothing to do.
+	 * Walked from the choices, so the preview paints the same list the screen offers;
+	 * "None" carries two empty strings.
 	 *
 	 * @return array Font setting value to its stylesheet URL and its CSS.
 	 */
@@ -418,7 +352,7 @@ class Admin extends Base {
 
 		return $fonts;
 
-	}    //end get_font_data()
+	}
 
 	/**
 	 * Method to register the plugin's REST routes.
@@ -464,21 +398,13 @@ class Admin extends Base {
 			]
 		);
 
-	}    //end register_rest_routes()
+	}
 
 	/**
 	 * Method to read the theme list off the disk again and answer with it.
 	 *
-	 * The list is cached for a week, because it is a directory listing which can only
-	 * change when the plugin's files change. This is the way to change it sooner —
-	 * for a theme dropped in by hand, or one lost to a bad upload.
-	 *
-	 * It answers with the rebuilt list rather than with "done", because the whole
-	 * point of the button is the case where what is on disk is not what was cached,
-	 * and a message saying the cache was rebuilt would tell a site owner nothing about
-	 * whether their theme is now there. The URLs go with it so that the live preview
-	 * can paint a theme which has only just appeared.
-	 *
+	 * The list is cached for a week; this is the way to change it sooner. It answers
+	 * with the rebuilt list and its URLs so the screen can repaint without a reload.
 	 * `POST` and not `GET`: this writes.
 	 *
 	 * @return \WP_REST_Response
@@ -487,7 +413,7 @@ class Admin extends Base {
 
 		Themes::get_themes( 'yes' );
 
-		//the schema was built for this request before the list changed under it
+		// the schema was built for this request before the list changed under it
 		static::$_settings_schema = null;
 
 		return new WP_REST_Response(
@@ -498,7 +424,7 @@ class Admin extends Base {
 			200
 		);
 
-	}    //end refresh_themes()
+	}
 
 	/**
 	 * Method to check that a setting name is one this plugin owns.
@@ -519,7 +445,7 @@ class Admin extends Base {
 			[ 'status' => 400 ]
 		);
 
-	}    //end validate_option_name()
+	}
 
 	/**
 	 * Method to check that a value is one the named setting accepts.
@@ -534,9 +460,8 @@ class Admin extends Base {
 	 */
 	public static function validate_option_value( mixed $value, WP_REST_Request $request ): bool|WP_Error {
 
-		//the name is whatever was sent, which is not necessarily a string: casting an array
-		//raises a warning, and a warning printed ahead of the response body is what the
-		//caller reads instead of the 400 this returns
+		// The name may not be a string; casting an array raises a warning that is printed
+		// ahead of the 400.
 		$name   = ( is_scalar( $request['name'] ) ) ? sanitize_key( (string) $request['name'] ) : '';
 		$schema = static::get_settings_schema();
 
@@ -562,7 +487,7 @@ class Admin extends Base {
 			[ 'status' => 400 ]
 		);
 
-	}    //end validate_option_value()
+	}
 
 	/**
 	 * Method to save one setting.
@@ -597,14 +522,8 @@ class Admin extends Base {
 		}
 
 		/*
-		 * No message. The settings page words its own, because only the browser
-		 * knows which control was changed and so which label the reader needs to see
-		 * named. A second sentence here saying the same thing in different words is
-		 * a string nothing reads and nobody notices going stale.
-		 *
-		 * `also` names whatever moved with this setting, so the screen can put those
-		 * controls right without asking a second time. It is empty far more often
-		 * than not.
+		 * No message — the screen words its own, because only the browser knows which
+		 * control changed. `also` names whatever moved with this setting.
 		 */
 		return new WP_REST_Response(
 			[
@@ -614,43 +533,21 @@ class Admin extends Base {
 			]
 		);
 
-	}    //end save_option()
+	}
 
 	/**
 	 * Method to move the settings which depend on the one just saved.
 	 *
-	 * A setting declares `requires` when it does nothing on its own: the copy button
-	 * is drawn inside the toolbar, and the brace colours are painted on spans the
-	 * brace matching creates. Leaving a site owner to switch on a control which then
-	 * does nothing is what this replaces, so two rules follow from that one key —
-	 * **switching a setting on switches on what it needs, and switching a setting off
-	 * switches off whatever needed it.**
-	 *
-	 * The other two moves are deliberately not made. Switching a dependent off says
-	 * nothing about what it needed — somebody may well want the toolbar without the
-	 * copy button — and switching a requirement on says nothing about what depends on
-	 * it, which would otherwise switch on a setting the site owner had turned off.
-	 *
-	 * **This is one level deep and no chain exists.** A `requires` naming a setting
-	 * which itself requires a third would need a loop here; the map above is the one
-	 * place such a chain could be introduced and the one place it would be visible.
-	 *
-	 * `Option::save()` re-reads the stored array immediately before it writes, so
-	 * calling it twice in one request composes: the second read sees the first write.
-	 * That is the same property which makes two overlapping requests safe, used here
-	 * inside a single one.
-	 *
-	 * **A partner which cannot be saved is left out of the answer rather than turned
-	 * into a failure.** The setting the caller asked for is already stored by the time
-	 * this runs, so reporting an error would be reporting the wrong thing; the screen
-	 * shows that partner unchanged, which is the truth, and the pair is left in the
-	 * one state the front end already handles — the colours on with the interaction
-	 * off, or the copy button on with no toolbar to draw it in.
+	 * `requires` names a setting this one does not work without. Switching on switches
+	 * on what it needs; switching off switches off whatever needed it. The other two
+	 * moves are deliberately not made. One level deep, no chain. A partner which cannot
+	 * be saved is left out of the answer rather than turned into a failure.
 	 *
 	 * @param string $name  Setting which was just saved.
 	 * @param string $value Value it was saved with.
 	 *
-	 * @return array Setting name to its stored value, for every setting which moved. Empty when none did.
+	 * @return array Setting name to its stored value, for every setting which moved. Empty
+	 *               when none did.
 	 */
 	protected function _save_dependent_settings( string $name, string $value ): array {
 
@@ -677,7 +574,7 @@ class Admin extends Base {
 			}
 
 			if ( 'yes' !== (string) $this->_option->get( $dependent ) ) {
-				continue;    //already off, so there is nothing for the screen to put right
+				continue;    // already off, so there is nothing for the screen to put right
 			}
 
 			if ( $this->_option->save( $dependent, 'no' ) ) {
@@ -687,7 +584,7 @@ class Admin extends Base {
 
 		return $moved;
 
-	}    //end _save_dependent_settings()
+	}
 
 	/**
 	 * Method to add the settings page to the Settings menu.
@@ -708,7 +605,7 @@ class Admin extends Base {
 			[ $this, 'render_page' ]
 		);
 
-	}    //end add_menu()
+	}
 
 	/**
 	 * Method to render the settings page.
@@ -726,11 +623,9 @@ class Admin extends Base {
 			$value = ( is_scalar( $value ) ) ? (string) $value : '';
 
 			/*
-			 * A stored value the setting does not offer falls back to that setting's own
-			 * default, and not to its first choice. Every consumer of a yes/no setting
-			 * compares against `yes`, so an unrecognised value behaves as off; falling
-			 * back to the first choice would draw the control as on, and a control which
-			 * already looks right is one nobody puts right.
+			 * An unoffered stored value falls back to the setting's own default, not its first
+			 * choice — every yes/no consumer compares against `yes`, so the first choice would
+			 * draw an on control for an off setting.
 			 */
 			$setting['name']  = $name;
 			$setting['value'] = ( isset( $setting['choices'][ $value ] ) ) ? $value : $this->_option->get_default( $name );
@@ -749,40 +644,16 @@ class Admin extends Base {
 			true
 		);
 
-	}    //end render_page()
+	}
 
 	/**
 	 * Method to get the code box the settings page previews a theme with.
 	 *
-	 * Rendered by the plugin's own renderer, from a snippet like any other, so that
-	 * what a site owner is shown is produced by the same code the front end runs. A
-	 * preview built out of markup written here would be a second answer to "what does
-	 * a code box look like", and the two would drift.
-	 *
-	 * Calling the renderer in wp-admin is inert: it signals the asset manager that a
-	 * snippet was rendered, and the asset manager decides during `wp_footer`, which
-	 * no admin page fires.
-	 *
-	 * The snippet itself is source code and is deliberately not translated. It is
-	 * chosen to put a comment, a string, a keyword, a number and a function name in
-	 * front of the reader, because those are what a theme colours differently — and
-	 * `=>`, `&&`, `===` and `->`, because those are what the four fonts carrying code
-	 * ligatures draw differently from every other font on the list.
-	 *
-	 * **It also highlights lines, and that is the one thing shown here which has no
-	 * setting on the page.** Highlighting is decided per code box — the block's
-	 * highlight field, or the shortcode's `highlight` attribute — so there is nothing
-	 * for a site owner to switch and no other way for them to find out what it looks
-	 * like before writing one. The two ranges are `_PREVIEW_HIGHLIGHT` and they land
-	 * on the structure rather than anywhere: 15 to 19 is the whole of `__construct()`,
-	 * and 23 is the `if` on its own. Between them they show both halves of the
-	 * grammar, a run of lines and a single one.
-	 *
-	 * **The box scrolls in both directions and that is expected.** The snippet is
-	 * longer than the column is tall and one line of it is wider than the column is
-	 * wide, which is Amit's call: a preview showing a real class is worth more than one
-	 * which fits. The themes ask for type sizes half again apart, so no snippet can fit
-	 * every one of them anyway.
+	 * Rendered by the plugin's own renderer from a real snippet, so the preview is
+	 * produced by the code the front end runs. Inert in wp-admin: it only signals the
+	 * asset manager, which decides during `wp_footer`. The snippet is source code and is
+	 * deliberately not translated. Line highlighting has no setting on this page, so the
+	 * preview is the only way to see it.
 	 *
 	 * @param bool $show_line_numbers Whether the box is drawn with line numbers.
 	 *
@@ -838,7 +709,7 @@ PREVIEW;
 			)
 		);
 
-	}    //end get_preview_markup()
+	}
 
 	/**
 	 * Method to load the settings page assets.
@@ -859,15 +730,8 @@ PREVIEW;
 		$notices = sprintf( '%s-notices', static::PLUGIN_ID );
 		$version = Helper::get_version();
 
-		/*
-		 * The notice stack is a script and a stylesheet of its own, knowing nothing
-		 * about this screen — it is handed a string and a tone. This page is its
-		 * only caller today; it is separate so that the next thing needing to say
-		 * something to a site owner does not grow a second copy of it.
-		 *
-		 * Both are declared as dependencies rather than merely enqueued first, so
-		 * the order holds however else the page is put together.
-		 */
+		// The notice stack is generic — handed a string and a tone; declared as dependencies
+		// so the order holds.
 		wp_enqueue_style( $notices, Helper::get_asset_url( 'build/css/notices.css' ), [], $version );
 
 		wp_enqueue_style( $handle, Helper::get_asset_url( 'build/css/admin.css' ), [ $notices ], $version );
@@ -876,10 +740,7 @@ PREVIEW;
 
 		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [ $notices ], $version, true );
 
-		/*
-		 * The engine, its plugins and the theme stylesheet, for the preview box. The
-		 * screen asks for a preview and is told nothing about what one is made of.
-		 */
+		// The engine, its plugins and the theme stylesheet, for the preview box.
 		Asset_Manager::get_instance()->enqueue_for_preview(
 			(string) $this->_option->get( 'theme' ),
 			(string) $this->_option->get( 'font' )
@@ -889,13 +750,14 @@ PREVIEW;
 			$handle,
 			sprintf(
 				'window.igSyntaxHiliterAdmin = %s;',
-				// Angle brackets are escaped so that no translated string can close the script tag this sits in.
+				// Angle brackets are escaped so that no translated string can close the script
+				// tag this sits in.
 				wp_json_encode( $this->_get_script_data(), JSON_HEX_TAG | JSON_HEX_AMP )
 			),
 			'before'
 		);
 
-	}    //end enqueue_assets()
+	}
 
 	/**
 	 * Method to build the data the settings page script needs.
@@ -908,48 +770,19 @@ PREVIEW;
 			'restUrl'      => trailingslashit( rest_url( static::REST_NAMESPACE ) ),
 			'nonce'        => wp_create_nonce( 'wp_rest' ),
 
-			/*
-			 * Where every theme's stylesheet is, and which tag on the page is showing
-			 * one. Between them they are the whole of what the preview needs to repaint
-			 * without a reload. The list is built from the same choices the dropdown is
-			 * drawn from, so a theme can never be offered without a stylesheet to go
-			 * with it.
-			 */
+			// The theme stylesheets and the tag showing one: what the preview needs to repaint.
 			'themes'       => static::get_theme_urls(),
 			'themeStyleId' => Asset_Manager::get_theme_style_id(),
 
-			/*
-			 * The same two things for the fonts, and one more: a font needs a rule as
-			 * well as a stylesheet, because fetching a family does not put it on
-			 * anything. Both strings are built by the asset manager, so the preview and
-			 * the front end cannot end up applying a font two different ways.
-			 */
+			// Fonts need a rule as well as a stylesheet.
 			'fonts'        => static::get_font_data(),
 			'fontStyleId'  => Asset_Manager::get_font_style_id(),
 			'i18n'         => [
 
-				/*
-				 * The first four name the setting they are about. More than one message
-				 * can be on screen at once now, and a "Setting saved." sitting above
-				 * another "Setting saved." says nothing about which setting either of
-				 * them saved. The name is the label this screen already prints, read
-				 * off the control by the script rather than sent over a second time, so
-				 * that one translated string is what the reader sees in both places.
-				 */
+				// Messages name their setting, read off the control by the script.
 				/* translators: %s: name of the setting being saved. */
 				'saving'            => __( '%s — saving…', 'igsyntax-hiliter' ),
 
-				/*
-				 * A saved setting says what it was saved to, and a toggle and a choice
-				 * do not read the same way: every toggle label on this screen is a verb
-				 * phrase — "Show the toolbar", "Limit the height of Gist embeds" — so
-				 * the em dash form reads naturally for those, while "Theme" wants
-				 * "changed to". One template forced onto both would be clumsy for one of
-				 * them.
-				 *
-				 * `saved` is the fallback for a choice whose value has no name to give,
-				 * because "Theme changed to ." would be worse than saying less.
-				 */
 				/* translators: %s: name of the setting that was switched on. */
 				'savedOn'           => __( '%s — enabled.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that was switched off. */
@@ -957,15 +790,9 @@ PREVIEW;
 				/* translators: 1: name of the setting, 2: value it now holds. */
 				'savedChoice'       => __( '%1$s changed to %2$s.', 'igsyntax-hiliter' ),
 
-				/*
-				 * A setting which does nothing without another one moves that one with
-				 * it, so one save can change two settings and the message has to say
-				 * which. It is appended to the sentence above rather than replacing it:
-				 * the reader asked for one of them, and that is the one to name first.
-				 */
-				/* translators: %s: name of the setting that was switched on alongside the one the reader changed. */
+				/* translators: %s: setting switched on alongside the one the reader changed. */
 				'savedAlsoOn'       => __( '%s was switched on with it.', 'igsyntax-hiliter' ),
-				/* translators: %s: name of the setting that was switched off alongside the one the reader changed. */
+				/* translators: %s: setting switched off alongside the one the reader changed. */
 				'savedAlsoOff'      => __( '%s was switched off with it.', 'igsyntax-hiliter' ),
 				/* translators: %s: name of the setting that was saved. */
 				'saved'             => __( '%s — saved.', 'igsyntax-hiliter' ),
@@ -975,13 +802,6 @@ PREVIEW;
 				'saveTimedOut'      => __( '%s — your site did not answer in time, so it has been put back the way it was on screen. It may have been saved anyway — reload this page to see where it stands.', 'igsyntax-hiliter' ),
 				'reloadNeeded'      => __( 'This page has been open too long. Reload it and try again.', 'igsyntax-hiliter' ),
 
-				/*
-				 * The theme list is a reading of what is on disk, cached for a week, and
-				 * these three are the refresh button. The middle one reports the count
-				 * because that is the only thing a site owner can check the answer
-				 * against — the list either has the theme they are looking for in it or
-				 * it does not, and the number is what says something changed at all.
-				 */
 				'themesRefreshing'  => __( 'Rereading the themes on disk…', 'igsyntax-hiliter' ),
 				/* translators: %d: number of themes now offered. */
 				'themesRefreshed'   => __( 'Themes reread. %d are available.', 'igsyntax-hiliter' ),
@@ -993,21 +813,8 @@ PREVIEW;
 				'revertNone'        => __( 'There are no blocks to convert.', 'igsyntax-hiliter' ),
 				'revertRunning'     => __( 'Converting… do not close this page.', 'igsyntax-hiliter' ),
 
-				/*
-				 * The next five strings are the closing report between them. The first
-				 * is always shown; each of the next four is appended only when what it
-				 * reports happened, so a clean run reads as one short sentence. Each
-				 * count names what it counts and the block count says where those blocks
-				 * sit, because a block is reported inside a post which one of the post
-				 * counts has already counted: the two units overlap and adding them
-				 * together counts the same snippet twice. The two clauses naming code
-				 * which vanishes on deactivation say so, and say what to do about it,
-				 * because this report is read by somebody on their way out.
-				 *
-				 * The counts are only known in the browser, so they are written in by
-				 * JavaScript and `_n()` cannot be reached. Every string is therefore
-				 * worded to read the same whether its count is one or many.
-				 */
+				// Counts are written in by JavaScript so `_n()` cannot be reached — every string
+				// reads the same for one or many.
 				/* translators: %d: number of posts converted. */
 				'revertDone'        => __( 'Finished. Posts converted: %d.', 'igsyntax-hiliter' ),
 				/* translators: %d: number of posts in which nothing was rewritten. */
@@ -1021,17 +828,13 @@ PREVIEW;
 			],
 		];
 
-	}    //end _get_script_data()
+	}
 
 	/**
 	 * Method to tell the site owner, once, that their settings were migrated.
 	 *
-	 * The migration itself runs on `init`, on every request, so by the time any admin
-	 * page is drawn it has already happened. This notice is deliberately shown on
-	 * whichever admin page comes first after that, and not on this plugin's settings
-	 * page alone: a site owner who upgrades and never opens the settings page would
-	 * otherwise never be told, and would have no way of knowing their settings had
-	 * been rewritten.
+	 * Shown on whichever admin page comes first after the migration, not only this
+	 * plugin's — a site owner who never opens the settings page would otherwise never be told.
 	 *
 	 * @return void
 	 */
@@ -1044,7 +847,7 @@ PREVIEW;
 			return;
 		}
 
-		delete_option( static::PLUGIN_ID . '-migrated-from' );    //shown once, then gone
+		delete_option( static::PLUGIN_ID . '-migrated-from' );    // shown once, then gone
 
 		if ( ! version_compare( $old_version, Helper::get_version(), '<' ) ) {
 			return;
@@ -1061,15 +864,13 @@ PREVIEW;
 			)
 		);
 
-	}    //end maybe_show_migration_message()
+	}
 
 	/**
 	 * Method to add a settings link to the plugin's row on the plugins screen.
 	 *
-	 * Both parameters are `mixed` because this is a filter callback: it is handed
-	 * whatever the previous callback on `plugin_action_links` returned, and a plugin
-	 * returning something other than an array is a thing which happens. The body
-	 * casts rather than fataling.
+	 * Both params are `mixed` because a previous `plugin_action_links` callback may return
+	 * a non-array; the body casts rather than fataling.
 	 *
 	 * @param mixed $links Action links for the plugin being listed.
 	 * @param mixed $file  Plugin file the links belong to.
@@ -1102,9 +903,8 @@ PREVIEW;
 
 		return $links;
 
-	}    //end get_action_links()
+	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

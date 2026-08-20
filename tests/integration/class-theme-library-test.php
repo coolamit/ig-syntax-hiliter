@@ -18,10 +18,9 @@ use ReflectionMethod;
 use WP_UnitTestCase;
 
 /**
- * Themes come from two directories now — Prism's own dist themes and the separate
- * PrismJS/prism-themes collection — and the settings dropdown, the allowlist the REST
- * route validates against and the stylesheet the page loads are all built from one
- * map. These are the things that map has to keep true.
+ * Themes come from two directories, Prism's own dist and the PrismJS/prism-themes
+ * collection, and the dropdown, the REST allowlist and the enqueued stylesheet are
+ * all built from one map. These are the things that map has to keep true.
  */
 class Theme_Library_Test extends WP_UnitTestCase {
 
@@ -57,12 +56,8 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Puts the singleton back, so that a saved theme cannot leak into the next test.
-	 *
-	 * The theme list outlives a test in two places now — a static in front of an
-	 * option — and the tests below plant one of their own in both. Neither is rolled
-	 * back by the transaction the test case runs in: the static is memory, and the
-	 * option was written before the assertions rather than by them.
+	 * Puts the singleton back and clears the theme cache, which lives in a static and
+	 * an option the transaction does not roll back.
 	 *
 	 * @return void
 	 */
@@ -88,12 +83,9 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every theme the plugin declares has to be on disk.
-	 *
-	 * `get_themes()` only offers a theme whose stylesheet is readable, which is what
-	 * stops the dropdown offering a file that would 404. The cost of that is silence:
-	 * a slug mistyped in the map, or a file left out of the vendored tree, simply is
-	 * not offered and nothing says so. This is what says so.
+	 * Every theme the plugin declares has to be on disk. `get_themes()` silently drops
+	 * a theme whose stylesheet is not readable, so a mistyped slug or a missing file
+	 * would otherwise go unnoticed.
 	 *
 	 * @test
 	 *
@@ -124,23 +116,9 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	/**
 	 * No stylesheet the plugin ships may fetch anything from another host.
 	 *
-	 * This is the permanent guard on a decision taken when the prism-themes
-	 * collection was bundled: Hopscotch was left out because its first line is an
-	 * `@import` of a Google font, so every page carrying a code box would have called
-	 * Google. Its stylesheet was the only one of the collection's with an external
-	 * reference of any kind, and no theme added later may bring one back.
-	 *
-	 * **The engine plugins' own stylesheets are scanned here too**, although they are
-	 * not themes and this file is about themes. They are vendored out of the same
-	 * upstream release, they are enqueued onto the same page, and a `@import` in one
-	 * of them would call another host exactly as a theme's would — and until the
-	 * brace matching plugin was vendored there were only two of them and nothing had
-	 * ever looked. One scan over every stylesheet this plugin ships is the guard;
-	 * splitting it by which directory the file came out of would leave the newest
-	 * directory unwatched, which is precisely how this one nearly shipped unwatched.
-	 *
-	 * A `url()` pointing at a data URI is fine and one theme has one: Pojoaque
-	 * carries its background as base64, which needs no request at all.
+	 * Hopscotch was left out of the vendored collection because its first line is an
+	 * `@import` of a Google font. The engine plugins' stylesheets are scanned too: they
+	 * are enqueued onto the same page. A data URI `url()` is fine; Pojoaque has one.
 	 *
 	 * @test
 	 *
@@ -189,11 +167,8 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A theme slug carrying a dot has to survive being saved and read back.
-	 *
-	 * `prism-base16-ateliersulphurpool.light` is the only slug of that shape in either
-	 * directory, and it is exactly the sort of value a sanitiser reshapes into
-	 * something that no longer names a file.
+	 * A theme slug carrying a dot has to survive being saved and read back: it is
+	 * the sort of value a sanitiser reshapes into something that no longer names a file.
 	 *
 	 * @test
 	 *
@@ -220,10 +195,8 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A slug the plugin does not ship gets no path at all.
-	 *
-	 * An empty string is what makes the caller's mistake visible. A path built anyway
-	 * would be enqueued and would 404.
+	 * A slug the plugin does not ship gets no path at all; a path built anyway would
+	 * be enqueued and would 404.
 	 *
 	 * @test
 	 *
@@ -238,12 +211,8 @@ class Theme_Library_Test extends WP_UnitTestCase {
 
 	/**
 	 * The list is read from the cache, and a forced rebuild goes back to the disk.
-	 *
-	 * The theme list is a directory reading, and it was being taken afresh on every
-	 * front end page which rendered a code box, twice, and on every REST request the
-	 * site served. Both halves are asserted here: that the stored list is what a
-	 * caller is handed, which is the saving; and that `yes` throws it away, which is
-	 * the refresh button and the only way out of a cache with a week to run.
+	 * `yes` is what the refresh button sends, and the only way out of a cache with a
+	 * week to run.
 	 *
 	 * @test
 	 *
@@ -276,19 +245,9 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An empty cached list is a failure and is never served.
-	 *
-	 * `Cache` writes `[]` down as readily as it writes a real list, and `Cache::get()`
-	 * hands it back — `isset( $cache['data'] )` is true for an empty array — so the
-	 * one request in which nothing on disk happened to be readable used to be served
-	 * for the whole seven days the entry lives. What a site owner sees then is a theme
-	 * dropdown holding nothing but "None", and a settings screen answering 400 for
-	 * every real theme slug, with the refresh button the only way out.
-	 *
-	 * The other half of the fix — that an empty *rebuild* is not written down either —
-	 * has no seam to drive it through from here: `build_themes()` reads two constant
-	 * directories and takes nothing this test could point elsewhere. It is two lines
-	 * beside the ones asserted below and is stated in the docblock there.
+	 * An empty cached list is a failure and is never served. `Cache` writes `[]` down
+	 * as readily as a real list and hands it back, so a request in which nothing on
+	 * disk was readable would otherwise be served for seven days.
 	 *
 	 * @test
 	 *
@@ -312,12 +271,8 @@ class Theme_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Only the word `yes` forces a rebuild.
-	 *
-	 * The value arrives over REST, so it is a string of somebody else's choosing.
-	 * Anything which is not a yes/no flag reads as `no`, which is what stops a
-	 * rebuild being triggered by a typo or by a caller passing something else
-	 * entirely.
+	 * Only the word `yes` forces a rebuild. The value arrives over REST, and anything
+	 * which is not a yes/no flag reads as `no`.
 	 *
 	 * @test
 	 *
@@ -341,6 +296,6 @@ class Theme_Library_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

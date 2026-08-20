@@ -34,14 +34,9 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Build a renderer over a small, known registry.
 	 *
-	 * An `Asset_Manager` built without its constructor is planted first, because
-	 * `render_snippet()` signals every snippet to it and `Asset_Manager::__construct()`
-	 * is where that class hooks itself up to WordPress. There is no WordPress here and
-	 * there must not be: shimming `add_action()` would have answered this and would
-	 * have blinded `Unit_Tier_Isolation_Test`, whose canary for a loaded WordPress is
-	 * that very function. What is under test is what the renderer emits, and the
-	 * signal only sets properties, so a service which never ran its constructor
-	 * answers it exactly as the real one does.
+	 * An `Asset_Manager` built without its constructor is planted first: `render_snippet()`
+	 * signals every snippet to it, and that constructor hooks into WordPress. Shimming
+	 * `add_action()` would blind `Unit_Tier_Isolation_Test`.
 	 *
 	 * @return void
 	 */
@@ -110,10 +105,7 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A snippet with no file label still gets its container, and no label span.
 	 *
-	 * The container is what a code box *is* and does not depend on this snippet
-	 * having been given a label; the span does. Until 6.0 the two were the same
-	 * decision, which left an unlabelled box with nowhere to carry its own id and
-	 * made `frontend-chrome.scss` find a code box by the id on its `pre`.
+	 * The container is what a code box is; the span depends on the label.
 	 *
 	 * @test
 	 *
@@ -126,7 +118,6 @@ class Renderer_Test extends TestCase {
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $markup );
 		$this->assertStringEndsWith( '</pre></div>', $markup );
 
-		// The container is unconditional; what it holds is not.
 		$this->assertStringNotContainsString( 'igsh-code-box__file', $markup );
 
 	}
@@ -160,9 +151,8 @@ class Renderer_Test extends TestCase {
 	/**
 	 * Code is escaped exactly once, and is otherwise untouched.
 	 *
-	 * The exact string below is what says "once": ordinary source is encoded and not
-	 * re-encoded, so the fix which makes `&amp;` in an author's text come out as
-	 * `&amp;amp;` must not also turn their `<` into `&amp;amp;lt;`.
+	 * The exact string is what says "once": an author's `&amp;` comes out as
+	 * `&amp;amp;`, but their `<` must not become `&amp;amp;lt;`.
 	 *
 	 * @test
 	 *
@@ -186,10 +176,8 @@ class Renderer_Test extends TestCase {
 	/**
 	 * An entity the author typed is text, and stays text.
 	 *
-	 * A highlighter which decodes what it was given shows something the author did
-	 * not write, so the ampersand that opens an entity is encoded exactly like the
-	 * one that does not. Byte for byte, because the way an entity is spelled is part
-	 * of the snippet.
+	 * The ampersand that opens an entity is encoded exactly like the one that does
+	 * not; the way an entity is spelled is part of the snippet.
 	 *
 	 * @test
 	 *
@@ -338,8 +326,7 @@ class Renderer_Test extends TestCase {
 
 	/**
 	 * The three stages of resolution: the name as typed, the legacy map, and the
-	 * registry's own aliases — each case insensitive and whitespace tolerant. The
-	 * legacy map's own table belongs to `Legacy_Map_Test`.
+	 * registry's own aliases — each case insensitive and whitespace tolerant.
 	 *
 	 * @test
 	 *
@@ -392,12 +379,7 @@ class Renderer_Test extends TestCase {
 		$second = $this->renderer->render_snippet( $snippet );
 		$third  = $this->renderer->render_snippet( new Snippet( 'echo 2;', 'php' ) );
 
-		/*
-		 * Anchored on the container. `assertStringContainsString( 'id="ig-sh-1"' )`
-		 * passes whichever element carries the id, so it would have gone on passing
-		 * silently when the id moved off the `pre` — and this is the only case which
-		 * says where it lives.
-		 */
+		// Anchored on the container: `assertStringContainsString( 'id="ig-sh-1"' )` passes whichever element carries the id.
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $first );
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-2">', $second );
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-3">', $third );
@@ -436,12 +418,9 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * The file label is a free text attribute and is treated as hostile. Escaping it
-	 * is what makes it safe; taking the markup out of it first is the second layer,
-	 * and a free text attribute printed on every page of a site is worth two.
-	 *
-	 * The cost is stated rather than hidden: a type parameter goes with the tags, so
-	 * `vector<int>.cpp` is shown as `vector.cpp`. 5.1 did the same.
+	 * The file label is free text and is treated as hostile: escaping makes it safe,
+	 * and stripping the markup first is a second layer. The cost is that a type
+	 * parameter goes with the tags, so `vector<int>.cpp` is shown as `vector.cpp`.
 	 *
 	 * @test
 	 *
@@ -467,9 +446,8 @@ class Renderer_Test extends TestCase {
 	}
 
 	/**
-	 * A label which is nothing but markup leaves nothing to label the box with, so
-	 * no span is written — an empty one would draw a gap above the box. The
-	 * container is still there, because it does not depend on the label.
+	 * A label which is nothing but markup gets no span — an empty one would draw a
+	 * gap above the box — but the container is still there.
 	 *
 	 * @test
 	 *
@@ -489,17 +467,14 @@ class Renderer_Test extends TestCase {
 
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $markup );
 
-		// Stripped to nothing, so there is no span - but the container is not the span.
 		$this->assertStringNotContainsString( 'igsh-code-box__file', $markup );
 		$this->assertStringNotContainsString( 'alert(1)', $markup );
 
 	}
 
 	/**
-	 * A label is as often a path as a file name, and a path is long. Thirty
-	 * characters go on the page and the whole of it goes in the tooltip, which is
-	 * what 5.1 did — the tail is what is kept, because the end of a path is the part
-	 * that names the file.
+	 * Thirty characters go on the page and the whole label goes in the tooltip; the
+	 * tail is kept, because the end of a path is the file name.
 	 *
 	 * @test
 	 *
@@ -578,11 +553,8 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A byte the site charset cannot read costs that byte, not the whole snippet.
 	 *
-	 * `htmlspecialchars()` returns the empty string for text which is invalid in the
-	 * charset it is escaping for, and `_wp_specialchars()` gives it no way to be told
-	 * to substitute instead. So one stray byte anywhere in a snippet emptied the entire
-	 * code box — and it emptied the file label the same way. The failure mode of an
-	 * escape has to be "changed nothing", never "matched everything".
+	 * `htmlspecialchars()` returns the empty string for text invalid in its charset,
+	 * so one stray byte would otherwise empty the whole code box and the file label.
 	 *
 	 * @test
 	 *
@@ -674,19 +646,10 @@ class Renderer_Test extends TestCase {
 	/**
 	 * A snippet numbered from anywhere but line 1 tells the highlighter so.
 	 *
-	 * **`data-line-offset` is not a second spelling of `data-start`.** They are read by
-	 * two different Prism plugins: the line numbers plugin reads `data-start` to label
-	 * the gutter, and the line highlight plugin reads this one to learn that the
-	 * numbers in `data-line` are the ones on screen rather than the code's own.
-	 *
-	 * Without it a range is measured against the number of lines the code physically
-	 * has. A snippet of 11 lines displayed as 5 to 15 had `11-13` clamped back to
-	 * `11-11`, so a three line range highlighted one line — and with line numbers
-	 * switched off the same plugin takes an arithmetic branch and draws the band
-	 * `first_line - 1` lines too low.
-	 *
-	 * This case is here because the attribute looks redundant beside `data-start` and
-	 * reads like something to tidy away.
+	 * `data-line-offset` is not a second spelling of `data-start`: the line numbers
+	 * plugin reads `data-start` for the gutter, the line highlight plugin reads the
+	 * offset to map `data-line` onto the code. Without it an 11-line snippet shown as
+	 * 5 to 15 has `11-13` clamped to `11-11`.
 	 *
 	 * @test
 	 *
@@ -707,14 +670,8 @@ class Renderer_Test extends TestCase {
 	/**
 	 * The offset is never zero and never negative.
 	 *
-	 * It is `first_line - 1`, so it is only ever right because `first_line` cannot be
-	 * below 1. `Snippet` clamps it in the constructor, which is what covers every
-	 * caller — the block, the shortcode, WP-CLI, block markup written by hand, and an
-	 * attribute stored by an older version. A snippet clamped back to line 1 needs
-	 * neither attribute and gets neither.
-	 *
-	 * Asserted rather than left to a reading of the value object, because a second
-	 * attribute now rests on that clamp.
+	 * It is `first_line - 1`, so it rests on `Snippet` clamping `first_line` to 1 in
+	 * its constructor. A snippet clamped back to line 1 gets neither attribute.
 	 *
 	 * @test
 	 *
@@ -740,7 +697,6 @@ class Renderer_Test extends TestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

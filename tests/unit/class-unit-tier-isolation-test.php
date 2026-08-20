@@ -31,7 +31,6 @@ class Unit_Tier_Isolation_Test extends TestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

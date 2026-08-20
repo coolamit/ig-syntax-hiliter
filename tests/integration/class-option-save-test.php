@@ -20,8 +20,8 @@ use iG\Syntax_Hiliter\Validate;
 use WP_UnitTestCase;
 
 /**
- * The settings are one option array holding seven keys, and the screen saves one of
- * those keys per request. Everything here is about what happens to the other six
+ * The settings are one option array holding ten keys, and the screen saves one of
+ * those keys per request. Everything here is about what happens to the other nine
  * while that one is written, and about what a setting may hold at all.
  */
 class Option_Save_Test extends WP_UnitTestCase {
@@ -46,11 +46,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 		$this->_original_option = Option::get_instance();
 
-		/*
-		 * Every case starts from a site holding exactly what v6 ships with, because
-		 * what each of them is about is one setting moving off that. A case which needs
-		 * something else stored writes over this.
-		 */
+		// Every case starts from the shipped defaults; one which needs something else writes over this.
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
 
 	}
@@ -70,10 +66,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to build an options object which has just read what is stored.
-	 *
-	 * This is one request's worth of the plugin: the object reads the option array
-	 * once when it is built, and holds that for the rest of the request.
+	 * Method to build an options object which has just read what is stored, which
+	 * is one request's worth of the plugin.
 	 *
 	 * @return \iG\Syntax_Hiliter\Option
 	 */
@@ -99,9 +93,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Two settings changed in quick succession are two requests which overlap, each
-	 * having read the settings before either of them wrote. Neither may undo the
-	 * other: both report success, so a discarded write is one nobody is told about.
+	 * Two settings changed in quick succession are two overlapping requests, each
+	 * having read the settings before either wrote. Neither may undo the other.
 	 *
 	 * @test
 	 *
@@ -120,14 +113,14 @@ class Option_Save_Test extends WP_UnitTestCase {
 		$this->assertSame( 'no', $stored['toolbar'] ?? '', 'The second save never reached the database.' );
 		$this->assertSame( 'no', $stored['copy_code'] ?? '', 'The second save put the first save\'s setting back the way it was.' );
 
-		//and the writer which wrote last reads what is actually stored, not the snapshot it started with
+		// The writer which wrote last reads what is stored, not the snapshot it started with.
 		$this->assertSame( 'no', $second->get( 'toolbar' ) );
 		$this->assertSame( 'no', $second->get( 'copy_code' ) );
 
 	}
 
 	/**
-	 * Saving one setting leaves the other six exactly as they were stored, including
+	 * Saving one setting leaves the other nine exactly as they were stored, including
 	 * any this version does not know about being dropped as it always has been.
 	 *
 	 * @test
@@ -228,12 +221,7 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 	/**
 	 * A value this setting does not accept is replaced by the setting's default, never
-	 * stored.
-	 *
-	 * Until 6.0 the value went through `sanitize_title()`, which is not a check at all:
-	 * `evil` is a perfectly good slug and went in untouched. A request edited on its way
-	 * to the server — devtools, an extension, anything not the settings screen — could
-	 * put an arbitrary value into the settings that way.
+	 * stored. A slug sanitiser is not a check: `evil` is a perfectly good slug.
 	 *
 	 * @test
 	 *
@@ -273,9 +261,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every spelling a flag has ever had reads as the same setting. Versions up to 3.5
-	 * stored real booleans and 4.0 onwards stored the words, so both turn up in the
-	 * wild.
+	 * Every spelling a flag has ever had reads as the same setting: versions up to 3.5
+	 * stored real booleans and 4.0 onwards stored the words.
 	 *
 	 * @test
 	 *
@@ -322,8 +309,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The theme setting takes a bundled theme or nothing at all. It is the one setting
-	 * whose value becomes a file path, so it is the one worth being sure about.
+	 * The theme setting takes a bundled theme or nothing at all; it is the one
+	 * setting whose value becomes a file path.
 	 *
 	 * @test
 	 *
@@ -344,15 +331,9 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The screen must not offer a value storage would refuse. The two lists are built
-	 * separately — `Admin` pairs values with labels, `Validate` holds the values — so
-	 * this is the seam where they could drift apart.
-	 *
-	 * The two are compared as **sets**, because only one of them has an order that
-	 * means anything. `Validate` answers a list to look a value up in; the screen
-	 * decides what a reader reads down, which for the themes is "None" first and then
-	 * by name. Asserting the two sequences match would be asserting that the dropdown
-	 * is ordered by whatever the allowlist happens to be built from.
+	 * The screen must not offer a value storage would refuse. `Admin` and `Validate`
+	 * build their lists separately, and they are compared as sets because only the
+	 * screen's order means anything.
 	 *
 	 * @test
 	 *
@@ -375,9 +356,8 @@ class Option_Save_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The defaults every site that has never opened the settings page is running on.
-	 * Spelled out here rather than read from the class under test, because the whole
-	 * point is to notice one of them moving.
+	 * The defaults every site that has never opened the settings page is running on,
+	 * spelled out rather than read from the class under test so that one moving is noticed.
 	 *
 	 * @test
 	 *
@@ -390,26 +370,20 @@ class Option_Save_Test extends WP_UnitTestCase {
 	/**
 	 * Whatever a flag is stored as, both readers agree on what it means.
 	 *
-	 * `Validate::to_yesno()` is the one converter and `Shortcode_Handler` reaches it
-	 * on the read side, so `1`/`0`, `true`/`false`, `on`/`off` and `yes`/`no` all read
-	 * alike — versions up to 3.5 stored real booleans and 4.0 onwards stored the
-	 * words, and both are still out there. A value which is none of those is not a
-	 * flag at all and reads as the setting's default, which is the same answer
-	 * `Option::get()` gives for a NULL.
-	 *
-	 * Two settings on every row, with opposite defaults, so that a reader which
-	 * quietly answered the same thing for both would fail rather than pass half the
-	 * time.
+	 * `Validate::to_yesno()` is the one converter, so `1`/`0`, `true`/`false`,
+	 * `on`/`off` and `yes`/`no` all read alike, and anything else reads as the
+	 * setting's default. Two settings with opposite defaults on every row, so a reader
+	 * answering the same thing for both fails rather than passing half the time.
 	 *
 	 * @test
 	 *
 	 * @dataProvider stored_flag_provider
 	 *
-	 * @param mixed  $hilite      What `hilite_comments`, whose default is `yes`, is stored as.
-	 * @param mixed  $gist        What `gist_in_comments`, whose default is `no`, is stored as.
+	 * @param mixed  $hilite        What `hilite_comments`, whose default is `yes`, is stored as.
+	 * @param mixed  $gist          What `gist_in_comments`, whose default is `no`, is stored as.
 	 * @param bool   $expect_hilite What `hilite_comments` should read as.
 	 * @param bool   $expect_gist   What `gist_in_comments` should read as.
-	 * @param string $description What the row stands for, for the failure message.
+	 * @param string $description   What the row stands for, for the failure message.
 	 *
 	 * @return void
 	 */
@@ -458,7 +432,6 @@ class Option_Save_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

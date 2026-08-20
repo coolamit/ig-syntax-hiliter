@@ -1,45 +1,13 @@
 /**
- * Automatic conversion of legacy snippets held in Classic blocks.
+ * Lifts legacy shortcode snippets out of `core/freeform` blocks into their own
+ * block.
  *
- * WordPress parses a classic post into a single `core/freeform` block, so the
- * whole post — code included — sits in one TinyMCE instance. TinyMCE parses
- * `<?php echo "<div>x</div>"; ?>` as HTML, and because it is one block for the
- * whole post, editing an unrelated paragraph re-serialises every snippet in it.
- * The fix is to lift each snippet out into its own block, where the code lives
- * in JSON attributes that no editor and no filter rewrites.
- *
- * Everything that is not a snippet is handed straight back to Classic blocks,
- * byte for byte. Nothing else in the post is touched, the post is not marked
- * dirty, and shortcodes living in blocks other than `core/freeform` are left
- * alone — they carry no TinyMCE risk and keep rendering through the shortcode
- * pipeline.
- *
- * No byte of that ever comes from the Classic block's own `content` attribute.
- * `@wordpress/blocks` runs `autop()` over freeform content inside `parse()`, so
- * by the time a block reaches the store its code has already gained `<br />`
- * for every newline and `</p>\n<p>` for every blank line, and the `<p>` that
- * `autop` wrapped around a snippet standing on its own line straddles the
- * snippet — a split there cuts the paragraph in half. Capturing any of that
- * into a block attribute would freeze it into the post permanently. So the
- * conversion goes back to the stored post content and re-parses it with
- * `__unstableSkipAutop`, which is the same string `parse()` was handed and the
- * only place the author's bytes still exist unaltered.
- *
- * The snippets are lifted out of that string BEFORE it is parsed, which is the
- * same protect-then-restore order `Content_Protector` follows on the server and
- * is here for the same reason: a snippet whose code quotes a block delimiter is
- * taken apart by the block grammar long before any of this runs. Our own
- * `<!-- wp:… /-->` splits the Classic block around it; another plugin's paired
- * delimiters do that and turn the quoted code into a live block; an unclosed
- * opener swallows the whole rest of the post; and a stray closer stops the parse
- * dead, so every real block after it loses its block-ness. The last two damage
- * content which has nothing to do with this plugin. Masking each snippet with a
- * placeholder first means the grammar never sees a delimiter inside one.
- *
- * That makes the conversion conditional on things it does not control, and
- * every one of them fails towards leaving the post alone: not converting is the
- * status quo the plugin shipped for twenty years, converting from mangled bytes
- * is not recoverable.
+ * WordPress parses a classic post into one `core/freeform` block, so editing
+ * any paragraph re-serialises every snippet in it through TinyMCE. Snippets
+ * are masked out before the grammar runs, because a snippet quoting a block
+ * delimiter is taken apart by it — an unclosed opener swallows the rest of the
+ * post and a stray closer stops the parse. Everything fails towards leaving
+ * the post alone.
  */
 
 import { createBlock, parse } from '@wordpress/blocks';
@@ -68,14 +36,11 @@ const ENTITY_KIND = 'postType';
 const WATCH_TIMEOUT_MS = 10000;
 
 /**
- * Post types this conversion has no business touching.
+ * Post types this conversion never touches.
  *
- * The whole argument for converting is that classic content damages code in
- * TinyMCE, and classic content only ever reaches templates, template parts,
- * navigation and global styles by accident. Those are also the entities the
- * site editor loads through a block editor that is not the post editor, where
- * the block list on screen is the template's and not the record's — so a
- * conversion run there would be splitting somebody else's blocks.
+ * Classic content only reaches these by accident, and the site editor loads
+ * them through a block editor whose block list is the template's, not the
+ * record's.
  */
 const EXCLUDED_POST_TYPES = [
 	'wp_template',
@@ -87,18 +52,15 @@ const EXCLUDED_POST_TYPES = [
 /**
  * Probe content for the `__unstableSkipAutop` feature detection.
  *
- * A newline is all it takes: `autop()` turns one into `<br />`, so a parse that
- * gives the string back unchanged is a parse that did not run `autop()`.
+ * A newline is enough: `autop()` turns one into `<br />`.
  */
 const PROBE_CONTENT = 'igsh\nprobe';
 
 /**
  * How a masked snippet is named while the grammar runs over the post.
  *
- * Deliberately NOT an HTML comment, for the reason the server's placeholder is
- * not one: a comment carrying `-->` closes any comment it lands inside, which is
- * exactly what a block delimiter is. It carries no `[` either, so it cannot look
- * like a shortcode to a second pass.
+ * Not an HTML comment: a comment carrying `-->` closes the one it lands inside.
+ * Carries no `[` either, so a second pass cannot read it as a shortcode.
  */
 const PLACEHOLDER_PREFIX = '{igshx';
 
@@ -194,14 +156,14 @@ interface MaskedContent {
 	opener: string;
 
 	/**
-	 * Whether any slot became a block. A post which only holds escaped or empty
-	 * snippets has nothing to convert, but may still need repairing.
+	 * Whether any slot became a block. A post holding only escaped or empty
+	 * snippets has nothing to convert but may still need repairing.
 	 */
 	converted: boolean;
 }
 
 /**
- * What the store is to be told, once everything has been proved.
+ * What the store is to be told, once everything has been checked.
  */
 interface ConversionPlan {
 	/**
@@ -219,10 +181,7 @@ type Range = [ number, number ];
 
 /**
  * The one substring of the shortcode pattern that is rewritten, and what it
- * becomes. Kept beside each other because they are only meaningful as a pair.
- *
- * Mirrors `Helper::get_shortcode_pattern()` in PHP, which does the same thing to
- * the same substring of the pattern `get_shortcode_regex()` builds.
+ * becomes. Mirrors `Helper::get_shortcode_pattern()` in PHP.
  */
 const CLOSER_GUARD = '\\[(?!\\/\\2\\])';
 const ESCAPED_CLOSER = '(?:\\[\\[\\/\\2\\]\\]|\\[(?!\\/\\2\\]))';
@@ -230,19 +189,10 @@ const ESCAPED_CLOSER = '(?:\\[\\[\\/\\2\\]\\]|\\[(?!\\/\\2\\]))';
 /**
  * Builds the pattern that matches this plugin's shortcodes.
  *
- * `@wordpress/shortcode` builds the same pattern `get_shortcode_regex()` builds
- * in PHP, so escaped, self closing and unclosed tags are all treated the way
- * `do_shortcode()` treats them. The tag list comes from PHP: a tag the plugin
- * has never shipped belongs to somebody else and is never matched.
- *
- * It is handed the same one addition PHP's is: a closing tag whose brackets are
- * doubled is consumed as part of the snippet's code rather than ending the
- * snippet, so a snippet may quote this plugin's own tags. The escaped form goes
- * in as the first alternative, so it is what a match takes when both would fit.
- *
- * A pattern that no longer holds the substring exactly once is handed back
- * untouched, the same fail-safe PHP has: a change in `@wordpress/shortcode` then
- * costs the escape, and nothing else.
+ * A closing tag with doubled brackets is consumed as code rather than ending
+ * the snippet, and goes in as the first alternative. A pattern no longer
+ * holding the substring exactly once is returned untouched — the same
+ * fail-safe PHP has.
  *
  * @param tags Shortcode tags the plugin claims.
  */
@@ -297,15 +247,10 @@ function parseLikeTheEditor( content: string ): ParsedBlock[] | null {
 /**
  * Whether `parse()` still honours `__unstableSkipAutop`.
  *
- * The option is unstable by name and could be renamed or dropped, and the day
- * it is, a parse that silently keeps running `autop()` would put the mangled
- * bytes straight back into the block attributes this exists to protect. So it
- * is proved rather than assumed, on every run, by parsing a string `autop()`
- * would visibly rewrite.
- *
- * It doubles as the check that `core/freeform` is the registered fallback
- * handler: where it is not — the widget editor, for one — there are no Classic
- * blocks to convert and the probe says so.
+ * The option is unstable and could be dropped; a silent `autop()` would put
+ * mangled bytes into the very attributes this protects, so it is checked on
+ * every run. It doubles as the check that `core/freeform` is the registered
+ * fallback handler.
  */
 function skipAutopWorks(): boolean {
 	const probe = parseWithoutAutop( PROBE_CONTENT );
@@ -360,9 +305,8 @@ function getStoredContent(): string | null {
 	}
 
 	/*
-	 * The block list on screen is the parse of the record's content only while
-	 * nothing has edited either. Once something has, the two no longer describe
-	 * the same post and the clientIds cannot be lined up against a re-parse.
+	 * Once anything has edited the record or the blocks, the two no longer
+	 * describe the same post and clientIds cannot be lined up.
 	 */
 	const edits = core.getEntityRecordEdits( ENTITY_KIND, postType, postId );
 
@@ -413,12 +357,9 @@ function createSnippetBlock( match: RegExpExecArray ): CreatedBlock | null {
 /**
  * Appends a Classic block holding one stretch of untouched content.
  *
- * A stretch of nothing but whitespace is dropped. It is what sits between two
- * adjacent snippets and at either end of the post, it carries no content, and
- * `serialize()` puts a blank line back between blocks anyway — where keeping it
- * would leave an empty Classic block on screen that the next `parse()` discards
- * regardless, so the post would not even be stable across a reload. Everything
- * else is carried over byte for byte, whitespace included.
+ * A whitespace-only stretch is dropped: `serialize()` puts a blank line back
+ * between blocks, and the next `parse()` would discard the empty Classic block
+ * anyway.
  *
  * @param blocks  Blocks being assembled.
  * @param content Content to carry over.
@@ -436,13 +377,9 @@ function pushClassicBlock( blocks: CreatedBlock[], content: string ): void {
 /**
  * Where every HTML comment in the post begins and ends.
  *
- * Found by scanning rather than by matching the block grammar. A tempered
- * pattern over a delimiter's attribute JSON backtracks catastrophically past a
- * few tens of kilobytes, which is exactly the size a snippet reaches, and this
- * only has to know where a comment is — not what it says.
- *
- * A comment which is never closed runs to the end of the post, which is what
- * the browser does with it too.
+ * Scanned rather than matched: a tempered pattern over delimiter attribute
+ * JSON backtracks catastrophically at snippet sizes. An unclosed comment runs
+ * to the end of the post, as it does in a browser.
  *
  * @param content Post content.
  */
@@ -470,16 +407,10 @@ function getCommentRanges( content: string ): Range[] {
 /**
  * Where every Classic block's content sits in the stored post.
  *
- * These are the only stretches a snippet may be lifted out of. Everything else
- * is either a block delimiter — where a match is the block's own data and not
- * content, and where a match running past the end of it would take the
- * delimiter with it — or another block's inner HTML, where a shortcode is left
- * alone today and stays left alone.
- *
- * The ranges are read off a parse rather than worked out from the grammar: a
- * Classic block's content is always one unbroken stretch of the string it was
- * parsed from, so it can be found in it. Anything that cannot be found means
- * this is not the parse of this string, and the whole conversion is abandoned.
+ * The only stretches a snippet may be lifted from; everything else is a block
+ * delimiter or another block's inner HTML. Read off a parse: a Classic block's
+ * content is always one unbroken stretch of the string it came from, so
+ * anything not findable means this is not that parse.
  *
  * @param content Post content.
  * @param blocks  The same content, parsed without `autop()`.
@@ -578,20 +509,12 @@ function buildPlaceholderOpener( content: string ): string {
 /**
  * Lifts every one of this plugin's snippets out of the post.
  *
- * The matches are walked one at a time with an explicit resume position rather
- * than handed to a replace callback, because where matching resumes has to be
- * decided here: a match which is declined cannot be un-consumed, and a match
- * beginning inside a block delimiter can run a long way past the end of it —
- * so a declined match would otherwise take every real snippet it spans with it.
- *
- * A match beginning inside a Classic block is masked whole even where it runs
- * across a delimiter, because that is a snippet whose code is block markup and
- * the snippet is the construct the author wrote. That is the whole point of
- * doing this before the grammar runs.
- *
- * Escaped and empty snippets are masked as well, and come back as the bytes
- * they were. They convert to nothing, but their code shreds the post just the
- * same, and masking is what stops it.
+ * Matches are walked with an explicit resume position, not a replace callback:
+ * a declined match cannot be un-consumed and one beginning inside a delimiter
+ * can run far past it. A match beginning inside a Classic block is masked
+ * whole even across a delimiter — that is the point of masking before the
+ * grammar runs. Escaped and empty snippets are masked too: they convert to
+ * nothing but shred the post the same.
  *
  * @param content  Post content.
  * @param pattern  Pattern matching this plugin's shortcodes.
@@ -628,10 +551,8 @@ function maskSnippets(
 		}
 
 		/*
-		 * The bracket the pattern captures either side of a shortcode is content,
-		 * not shortcode: `do_shortcode()` and `@wordpress/shortcode`'s own
-		 * `replace()` both re-emit it. So `[note: [php]…[/php]] more` keeps its
-		 * closing bracket, which is only half of an escape and belongs to the prose.
+		 * The bracket either side of a shortcode is content, not shortcode —
+		 * `do_shortcode()` re-emits it.
 		 */
 		const start = match.index + ( match[ 1 ] ?? '' ).length;
 		const end =
@@ -681,8 +602,8 @@ function maskSnippets(
 /**
  * Turns one masked Classic block back into blocks.
  *
- * Every snippet's bytes come from the slot it was masked into, never from the
- * parse: the parse is only ever asked where the snippet was, not what it said.
+ * Bytes come from the slot, never from the parse — the parse is only asked
+ * where the snippet was.
  *
  * @param masked Content of one masked `core/freeform` block.
  * @param mask   The masked post.
@@ -745,11 +666,8 @@ function splitMaskedContent(
 /**
  * Rebuilds a whole block tree out of the masked parse.
  *
- * This is what a post the grammar took apart needs: the block list on screen is
- * not a list of this post's blocks at all, so there is no block in it to replace
- * in place. Every Classic block is split at its placeholders and everything else
- * is carried over as it parsed — which is what it would have parsed to all
- * along, had the grammar not been shown a delimiter inside somebody's code.
+ * For a post the grammar took apart: the block list on screen is not this
+ * post's, so there is nothing to replace in place.
  *
  * @param list The masked post, parsed without `autop()`.
  * @param mask The masked post.
@@ -796,14 +714,9 @@ function rebuildBlocks(
 /**
  * Pairs every Classic block in the store with the masked bytes it came from.
  *
- * The two trees are the same post parsed twice, so where the grammar was shown
- * nothing it should not have been they agree block for block — `autop()`
- * rewrites freeform content and nothing else, and content that is empty before
- * it is empty after it, so no block appears in one and not the other. That is
- * asserted rather than trusted, and a disagreement is meaningful: with the store
- * already proved to be the parse of the stored content, the only thing left that
- * can have changed the shape is the masking, and that means the grammar had been
- * reading somebody's source code as markup.
+ * The two trees are the same post parsed twice; `autop()` only rewrites
+ * freeform content, so they must agree block for block. A disagreement means
+ * the grammar had been reading somebody's source code as markup.
  *
  * @param storeBlocks Blocks as the editor holds them.
  * @param cleanBlocks The masked post, parsed without `autop()`.
@@ -860,14 +773,9 @@ function pairFreeformBlocks(
 /**
  * Whether any Classic block on screen could possibly hold a shortcode.
  *
- * `autop()` inserts markup, it never removes a bracket, so a Classic block with
- * no `[` in it had none before `autop()` either. Answering NO here is what keeps
- * the extra parses of the post off the load path of every post that has nothing
- * to convert.
- *
- * A post the grammar took apart still answers YES: whatever the delimiter inside
- * the code did to the rest of the post, the snippet's own opening tag is in a
- * Classic block in every one of the four cases.
+ * `autop()` never removes a bracket, so a Classic block with no `[` had none
+ * before it. Answering NO keeps the extra parses off the load path of every
+ * post with nothing to convert.
  *
  * @param blocks Blocks to walk.
  */
@@ -894,13 +802,8 @@ function hasClassicBracket( blocks: EditorBlock[] ): boolean {
 /**
  * Whether the editor's block list really is the parse of the stored content.
  *
- * Everything downstream rests on that: what is on screen is replaced with what
- * the stored string says should be there, and if the two came from different
- * strings the conversion would replace one post's blocks with another post's
- * code. Parsing the stored content a second time — this time the way the editor
- * parsed it, `autop()` and all — and requiring every Classic block to come back
- * byte identical is what settles it. Anything that has touched the block list,
- * from a restored autosave to a hooked block, shows up here.
+ * Everything downstream rests on that. Re-parsing the way the editor did and
+ * requiring byte-identical Classic blocks is what settles it.
  *
  * @param storeBlocks Blocks as the editor holds them.
  * @param reparsed    The stored content, parsed the same way the editor did.
@@ -946,11 +849,10 @@ function blockTreesAgree(
 }
 
 /**
- * Works out what the store should be told, and proves it before saying so.
+ * Works out what the store should be told, and checks it before saying so.
  *
- * Free of the data stores on purpose: everything here is decided from the stored
- * string and the block list, which is what lets it be tested against the real
- * block grammar rather than against a description of it.
+ * Free of the data stores on purpose, so it can be tested against the real
+ * block grammar.
  *
  * @param content     The stored post content.
  * @param storeBlocks Blocks as the editor holds them.
@@ -1015,12 +917,8 @@ export function planConversion(
 		: planWholeTree( maskedBlocks, mask, used );
 
 	/*
-	 * Every masked snippet has to have been put back, or the post would be
-	 * dispatched still carrying a placeholder where the author's code was. Nothing
-	 * above should be able to leave one behind — a snippet is only ever lifted out
-	 * of a Classic block, and a Classic block is the one thing here that is split
-	 * — but this is the file where being wrong rewrites somebody's post, so it is
-	 * checked rather than reasoned about.
+	 * Every masked snippet must have been put back, or a placeholder would be
+	 * dispatched where the author's code was.
 	 */
 	if ( plan === null || used.size !== mask.slots.length ) {
 		return null;
@@ -1032,9 +930,7 @@ export function planConversion(
 /**
  * The plan for a post the grammar read correctly: split each Classic block.
  *
- * Keeping the other blocks where they are is worth the extra path. They keep
- * their client ids, and with them their selection, their focus and anything else
- * the editor is holding against them.
+ * Other blocks keep their clientIds, and with them selection and focus.
  *
  * @param pairs Classic blocks in the store, with their masked bytes.
  * @param mask  The masked post.
@@ -1068,9 +964,7 @@ function planInPlace(
 /**
  * The plan for a post the grammar took apart: replace the whole root list.
  *
- * The client ids go, which is the price of the block list on screen not having
- * been this post's block list in the first place. The change is marked non
- * persistent either way, so nothing about the post is dirtied by it.
+ * The clientIds go — the price of the block list not having been this post's.
  *
  * @param maskedBlocks The masked post, parsed without `autop()`.
  * @param mask         The masked post.
@@ -1101,11 +995,9 @@ function planWholeTree(
 /**
  * Whether `replaceBlocks()` will go through with a replacement.
  *
- * It returns without dispatching anything when a block cannot be inserted where
- * it would land — a locked template, a restricted container — and the
- * "not persistent" mark is set before the call. A mark that is never spent sits
- * there and swallows the user's next real edit out of the undo stack, so the
- * same check is made first and the mark is not spent at all.
+ * `replaceBlocks()` returns without dispatching when a block cannot be
+ * inserted, and the not-persistent mark is set beforehand. An unspent mark
+ * swallows the user's next real edit out of the undo stack.
  *
  * @param selectors    Block editor selectors.
  * @param rootClientId Container the blocks would land in, NULL for the root.
@@ -1155,10 +1047,8 @@ function canReplaceBlock(
 /**
  * Converts every legacy snippet the post holds outside a block.
  *
- * Idempotent by construction: once the post has been converted, the snippets
- * live in block attributes — inside a delimiter, where a match is never lifted
- * out of — and none of the Classic blocks left behind holds one of this
- * plugin's tags, so a second run finds nothing to do.
+ * Idempotent: converted snippets live inside delimiters, which are never
+ * lifted from.
  */
 function convertFreeformBlocks(): void {
 	const selectors = select( BLOCK_EDITOR_STORE ) as unknown as
@@ -1177,10 +1067,7 @@ function convertFreeformBlocks(): void {
 		return;
 	}
 
-	/*
-	 * Without this the conversion would mark the post dirty on open, which is
-	 * worse than not converting: it invites a save nobody asked for.
-	 */
+	// Without this the conversion marks the post dirty on open.
 	if (
 		typeof actions.__unstableMarkNextChangeAsNotPersistent !== 'function'
 	) {
@@ -1221,9 +1108,8 @@ function convertFreeformBlocks(): void {
 		}
 
 		/*
-		 * A non-persistent block change reaches the post entity through `onInput`,
-		 * which edits only transient keys. The post is therefore not marked dirty:
-		 * opening a post and closing it again changes nothing.
+		 * A non-persistent change reaches the post entity through `onInput`,
+		 * which edits only transient keys.
 		 */
 		actions.__unstableMarkNextChangeAsNotPersistent();
 		actions.replaceBlocks( clientIds, replacement.blocks );

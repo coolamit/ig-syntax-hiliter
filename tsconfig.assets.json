@@ -1,19 +1,10 @@
 {
-	// The plugin's own scripts: assets/src/js/ -> assets/build/js/.
-	//
-	// Separate from tsconfig.json because nothing about that file applies here.
-	// These are classic scripts, not modules — WordPress enqueues them with
-	// wp_enqueue_script() and they run in the global scope — so there is no JSX,
-	// no bundler resolution and no module system at all.
-	//
-	// Unlike tsconfig.json this one EMITS. `npm run build:js` compiles with it and
-	// then minifies what came out, so `noEmitOnError` is what makes a type error
-	// fail the build rather than ship. `npm run lint:types` runs it again with
-	// --noEmit on the command line, which overrides the setting below.
+	// The plugin's own scripts: assets/src/js/ -> assets/build/js/. Classic global scripts, no modules.
+	// Unlike tsconfig.json this one emits: `npm run build:js` compiles with it, and `noEmitOnError`
+	// makes a type error fail the build. `npm run lint:types` passes --noEmit on the command line.
 	"compilerOptions": {
-		// ES2018 rather than src/'s ES2022: ig-prism-setup runs for every visitor
-		// to the site, not only for somebody with the block editor open. The lib
-		// has to reach ES2018 in any case for Promise.prototype.finally.
+		// ES2018 rather than src/'s ES2022: ig-prism-setup runs for every visitor.
+		// The lib needs ES2018 for Promise.prototype.finally.
 		"target": "ES2018",
 		"module": "none",
 		"lib": [ "ES2018", "DOM", "DOM.Iterable" ],
@@ -29,8 +20,7 @@
 		"allowJs": false,
 		"forceConsistentCasingInFileNames": true,
 
-		// Every file here is a global script with no import or export, which is
-		// exactly what isolatedModules refuses to compile (TS1208).
+		// Global scripts with no import or export, which isolatedModules refuses (TS1208).
 		"isolatedModules": false,
 
 		"skipLibCheck": true,
@@ -42,7 +32,6 @@
 		"outDir": "node_modules/.cache/igsh-js"
 	},
 
-	// The whole directory, so a script added to it needs no change here or in
-	// package.json — the same property the sass compile of assets/src/scss/ has.
+	// The whole directory, so a new script needs no change here or in package.json.
 	"include": [ "assets/src/js/**/*" ]
 }

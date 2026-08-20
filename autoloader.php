@@ -2,17 +2,13 @@
 /**
  * Autoloader for the PHP classes of this plugin.
  *
- * This file has no WordPress dependency, on purpose — the unit test tier loads
- * it with no WordPress present at all.
+ * No WordPress dependency: the unit tier loads it with no WordPress present.
  *
  * @package iG_Syntax_Hiliter
  *
  * @author Amit Gupta <https://amitgupta.in/>
  */
 
-/*
- * Register resource autoloader
- */
 spl_autoload_register( 'ig_syntax_hiliter_autoloader' );
 
 /**
@@ -30,27 +26,20 @@ function ig_syntax_hiliter_autoloader( string $class_name = '' ): void {
 	$class_name = trim( $class_name, '\\' );
 
 	if ( empty( $class_name ) || false === strpos( $class_name, '\\' ) || 0 !== strpos( $class_name, $namespace_root ) ) {
-		//not our namespace, bail out
+		// not our namespace, bail out
 		return;
 	}
 
-	//remove the namespace root and grab the actual resource
 	$parts = array_slice( explode( '\\', $class_name ), 2 );
 
-	//the resource's own name, which is the only segment carrying a file name prefix
 	$name = strtolower( str_replace( '_', '-', (string) array_pop( $parts ) ) );
 
 	$directory = ( empty( $parts ) ) ? '' : strtolower( str_replace( '_', '-', implode( '/', $parts ) ) ) . '/';
 
 	/*
-	 * WordPress file naming: a file declaring a class is `class-<name>.php` and one
-	 * declaring a trait is `trait-<name>.php`. Which of the two a resource is cannot
-	 * be known before the file is read, so both names are tried in turn rather than
-	 * this function being taught which namespaces hold traits.
-	 *
-	 * rtrim() rather than untrailingslashit(): this autoloader must have no
-	 * WordPress dependency at all, so that the unit test tier can exercise the
-	 * plugin's classes with no WordPress loaded and nothing shimmed.
+	 * WordPress names files `class-<name>.php` or `trait-<name>.php`; which one
+	 * cannot be known before reading, so both are tried. rtrim() and not
+	 * untrailingslashit(): no WordPress dependency.
 	 */
 	$root = rtrim( IG_SYNTAX_HILITER_ROOT, '/\\' );
 
@@ -68,5 +57,4 @@ function ig_syntax_hiliter_autoloader( string $class_name = '' ): void {
 	}
 }
 
-
-//EOF
+// EOF

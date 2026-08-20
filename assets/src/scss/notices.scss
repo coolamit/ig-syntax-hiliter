@@ -1,48 +1,27 @@
 /*
- * Styles for the notice stack in assets/src/js/notices.ts.
- *
- * Compiled to assets/build/css/notices.css by the `sass` CLI, via the
- * `build:css` script in package.json. Never edit the compiled file.
- *
- * A stylesheet of its own because the script is a script of its own: a
- * reusable notice stack whose styles live in some other screen's stylesheet is
- * not reusable. Whatever enqueues `notices.js` enqueues this beside it.
- *
- * Every colour below is copied out of wp-admin's own notices, in
- * `wp-admin/css/common.css`, so that one of these looks like the notices
- * WordPress itself draws on the same screen.
- *
- * Note the shape of that: core carries the colour on a 4px left border and
- * fills the box with a near white tint of it. **Nothing in wp-admin is filled
- * with a saturated green or red**, and a box that is reads as much louder than
- * anything WordPress would put on the page.
+ * Styles for the notice stack in `assets/src/js/notices.ts`.
+ * Colours are copied from wp-admin's own notices in `wp-admin/css/common.css`.
  */
 
-// `.notice-success` / `div.updated`, common.css:1554.
+// Colours from wp-admin `common.css` (`.notice-success`, `.notice-error`,
+// `.notice-info`, `.notice p`).
 $igsh-notice-success: #4ab866;
 $igsh-notice-success-bg: #eff9f1;
 
-// `.notice-error` / `div.error`, common.css:1574.
 $igsh-notice-error: #cc1818;
 $igsh-notice-error-bg: #fcf0f0;
 
-// `.notice-info`, common.css:1585. Nothing is wrong; it is happening.
 $igsh-notice-busy: #3858e9;
 $igsh-notice-busy-bg: #fff;
 
-$igsh-notice-text: #1e1e1e;       // `.notice p`, common.css:1477
+$igsh-notice-text: #1e1e1e;
 $igsh-notice-radius: 3px;
 $igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices.ts
 
 /*
- * Top right, clear of the admin bar. WordPress publishes the bar's height as a
- * custom property and keeps it up to date across breakpoints, which is why that
- * is read rather than hard coded; the fallback is the desktop height, and the
- * media query below covers the narrow layout for a WordPress old enough not to
- * publish it.
- *
- * A flex column, so a new message prepended by the script pushes the ones
- * already there down without anything having to be measured or repositioned.
+ * Top right, clear of the admin bar; the bar's height is a custom property
+ * WordPress keeps current across breakpoints. A flex column, so prepending
+ * pushes the rest down.
  */
 .igsh-notices {
 	position: fixed;
@@ -59,11 +38,8 @@ $igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices
 }
 
 /*
- * The padding and the text metrics are core's too, from `.notice` and
- * `.notice p`. The one departure is the shadow: a wp-admin notice sits in the
- * flow of the document and needs no elevation, while this one floats over the
- * page and would otherwise have nothing at all separating a near white box from
- * the content behind it.
+ * Padding and text metrics are core's; the shadow is the one departure — this
+ * floats over the page.
  */
 .igsh-notice {
 	padding: 8px 12px;
@@ -115,9 +91,8 @@ $igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices
 }
 
 /*
- * With motion off a message appears and goes at once. The script's removal
- * timer still runs, so nothing is left behind — it just has nothing to wait
- * for.
+ * With motion off a message appears and goes at once; the removal timer still
+ * runs.
  */
 @media (prefers-reduced-motion: reduce) {
 

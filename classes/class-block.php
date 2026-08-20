@@ -44,8 +44,7 @@ class Block {
 	/**
 	 * Directory holding the built Gist block, relative to the plugin directory.
 	 *
-	 * The build mirrors the source tree under `build/`, so this follows
-	 * `src/block/gist/` rather than sitting beside the block above.
+	 * The build mirrors the source tree, so this follows `src/block/gist/`.
 	 *
 	 * @var string
 	 */
@@ -61,12 +60,10 @@ class Block {
 	/**
 	 * Priority the block is registered at.
 	 *
-	 * The plugin boots on `init` at priority 10, so this is one step behind it and
-	 * that is the whole of what is needed. A callback added at a priority which does
-	 * **not** yet exist makes `WP_Hook::resort_active_iterations()` rebuild the live
-	 * iteration array and move the pointer on past the priorities already run, so a
-	 * later priority added during a run is reached in that same run. Only a callback
-	 * appended to the priority currently running is missed.
+	 * One step behind the plugin's own `init` priority. A callback added at a priority
+	 * that does not yet exist makes `WP_Hook::resort_active_iterations()` rebuild the
+	 * live iteration, so a later priority added during a run is still reached; only the
+	 * priority currently running is missed.
 	 *
 	 * @var int
 	 */
@@ -79,13 +76,12 @@ class Block {
 
 		$this->_register_hooks();
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Method to hook this class up to WordPress.
 	 *
-	 * The block registers on `init` at `PRIORITY_REGISTER`, which is one step behind
-	 * the priority the plugin itself boots on. The constant carries the reasoning.
+	 * The block registers on `init` at `PRIORITY_REGISTER`, one step behind the plugin's boot.
 	 *
 	 * @return void
 	 */
@@ -95,21 +91,17 @@ class Block {
 
 		add_action( 'enqueue_block_editor_assets', [ $this, 'add_editor_data' ] );
 
-		/*
-		 * `enqueue_block_assets` and not `enqueue_block_editor_assets`, because the
-		 * editor canvas is an iframe and only the former is fired again while core
-		 * builds what goes inside it. On admin it runs on block editor screens alone.
-		 */
+		// `enqueue_block_assets` and not `enqueue_block_editor_assets`: the editor canvas is
+		// an iframe and only the former is fired again while core builds what goes inside it.
 		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_font' ] );
 
-	}    //end _register_hooks()
+	}
 
 	/**
 	 * Method to put the chosen font on the block while it is being edited.
 	 *
-	 * Only in the editor. `enqueue_block_assets` fires on the front end as well, where
-	 * the asset manager decides during `wp_footer` and loads nothing at all until a
-	 * code box has actually been rendered — a rule this must not go around.
+	 * Only in the editor: on the front end the asset manager decides during `wp_footer`
+	 * and loads nothing until a code box has rendered.
 	 *
 	 * @return void
 	 */
@@ -123,14 +115,12 @@ class Block {
 			(string) Option::get_instance()->get( 'font' )
 		);
 
-	}    //end enqueue_editor_font()
+	}
 
 	/**
 	 * Method to register the block from its built metadata.
 	 *
-	 * A checkout which has never been built has no `build/` directory. That is a
-	 * perfectly ordinary state for a source tree, so it is passed over quietly
-	 * rather than fataling.
+	 * An unbuilt checkout has no `build/`, so a missing `block.json` is passed over quietly.
 	 *
 	 * @return void
 	 */
@@ -158,16 +148,14 @@ class Block {
 
 		}
 
-	}    //end register_block()
+	}
 
 	/**
 	 * Method to render one block as a code box.
 	 *
-	 * Blocks are rendered by `do_blocks()` at `the_content` priority 9, which is
-	 * after the protector has lifted the shortcodes out and before the filters it
-	 * protects against have run. Markup handed back as-is there would face
-	 * `wptexturize`, `wpautop` and every priority 10 filter a site has, so during
-	 * a protected run it is stashed and comes back once they have all finished.
+	 * `do_blocks()` runs at `the_content` priority 9, after the protector has lifted the
+	 * shortcodes out and before the filters it protects against run, so during a
+	 * protected run the markup is stashed and comes back once they have finished.
 	 *
 	 * @param mixed $attributes Block attributes.
 	 *
@@ -185,9 +173,7 @@ class Block {
 			Shortcode_Handler::show_line_numbers()
 		);
 
-		// An empty snippet renders as nothing on the shortcode path; the two must agree.
-		// `'' ===` and not `empty()`, for the reason `Content_Protector::_render_entry()`
-		// gives: `0` is code, and `empty( '0' )` is TRUE.
+		// `'' ===` and not `empty()`: `0` is code.
 		if ( '' === trim( $snippet->code ) ) {
 			return '';
 		}
@@ -202,19 +188,13 @@ class Block {
 
 		return $markup;
 
-	}    //end render()
+	}
 
 	/**
 	 * Method to render one Gist block.
 	 *
-	 * Handed straight to `Gist_Embed`, which is the one place a Gist becomes an
-	 * embed. That is what keeps the block and the twenty year old `[github]`
-	 * shortcode behaving alike: the same id sanitising, the same link instead of a
-	 * script where a script cannot go, and the same setting deciding whether an
-	 * embed is allowed in a comment.
-	 *
-	 * A Gist carries no code of its own, only a reference to one, so none of the
-	 * protect then restore machinery around the code block applies here.
+	 * Handed straight to `Gist_Embed`, so the block and the `[github]` shortcode behave
+	 * alike. A Gist carries no code, so none of the protect/restore machinery applies.
 	 *
 	 * @param mixed $attributes Block attributes.
 	 *
@@ -232,16 +212,14 @@ class Block {
 
 		return Gist_Embed::get_instance()->render( [ 'gist' => $url ] );
 
-	}    //end render_gist()
+	}
 
 	/**
 	 * Method to check whether the block is being rendered into a summary.
 	 *
-	 * `wp_trim_excerpt()` builds an automatic excerpt by rendering the blocks
-	 * `excerpt_allowed_blocks` names and then taking the markup off whatever comes
-	 * back, so a code box built there would reach the page as prose. This block is
-	 * not on that list by default; the check holds the line if a site puts it
-	 * there.
+	 * `wp_trim_excerpt()` renders the blocks `excerpt_allowed_blocks` names and strips the
+	 * markup off, so a code box built there would reach the page as prose. This block is
+	 * not on that list by default; the check holds if a site puts it there.
 	 *
 	 * @return bool
 	 */
@@ -256,13 +234,12 @@ class Block {
 
 		return false;
 
-	}    //end _is_excerpt_context()
+	}
 
 	/**
 	 * Method to hand the editor the data it cannot work out for itself.
 	 *
-	 * Attached to the script handle the block registration generated, so nothing
-	 * here has to guess what that handle is called.
+	 * Attached to the script handle the block registration generated.
 	 *
 	 * @return void
 	 */
@@ -290,14 +267,13 @@ class Block {
 			'before'
 		);
 
-	}    //end add_editor_data()
+	}
 
 	/**
 	 * Method to collect the data the editor needs.
 	 *
-	 * The tag list is sent over rather than written into the JavaScript, so that
-	 * the editor claims exactly the tags PHP claims — including whatever the
-	 * `ig_syntax_hiliter/shortcode_tags` filter has made of them.
+	 * The tag list is sent from PHP so the editor claims exactly the tags PHP claims,
+	 * the `ig_syntax_hiliter/shortcode_tags` filter included.
 	 *
 	 * @return array
 	 */
@@ -312,17 +288,14 @@ class Block {
 			'defaultLineNumbers' => Shortcode_Handler::show_line_numbers(),
 		];
 
-	}    //end _get_editor_data()
+	}
 
 	/**
 	 * Method to build the map the editor resolves a language name with.
 	 *
-	 * The language dropdown is built from canonical ids alone, so a snippet converted
-	 * from `[html]` would sit there holding a name no option carries — the control
-	 * would show the first option instead, and writing that back would destroy a
-	 * language which was highlighting perfectly well. Resolving before the name ever
-	 * reaches a block attribute is what closes that, and this is the table it resolves
-	 * against.
+	 * The dropdown is built from canonical ids alone, so a converted `[html]` snippet
+	 * would hold a name no option carries, and writing that back would destroy a working
+	 * language.
 	 *
 	 * @return array Alias or legacy tag to canonical language id.
 	 */
@@ -330,12 +303,8 @@ class Block {
 
 		$registry = Language_Registry::get_instance();
 
-		/*
-		 * The plugin's own legacy tags go on top of the highlighter's aliases, so that a
-		 * tag this plugin has always owned keeps the meaning this plugin gave it. `text`
-		 * is the case that matters: here it has meant "show it, do not highlight it"
-		 * since 2004, whatever the library may one day decide it means.
-		 */
+		// The plugin's own legacy tags go on top of the highlighter's aliases, so a tag this
+		// plugin has always owned keeps its meaning: `text` means "show it, do not highlight it".
 		$aliases = array_merge( $registry->get_aliases(), Legacy_Map::get_language_map() );
 		$map     = [];
 
@@ -348,13 +317,9 @@ class Block {
 				continue;
 			}
 
-			/*
-			 * An entry pointing at a language this site cannot load is dropped rather than
-			 * offered. Taking it would put an id into a block attribute which nothing on
-			 * the site can highlight, and would throw away the author's own word — which
-			 * the `ig_syntax_hiliter/languages` filter may yet make good. The sentinel is
-			 * kept: it names no language, which is exactly why `has()` says no to it.
-			 */
+			// An entry pointing at a language this site cannot load is dropped: it would put an
+			// unhighlightable id into a block attribute and throw away the author's own word.
+			// The sentinel is kept; it names no language, which is why `has()` says no to it.
 			if ( Language_Registry::NO_LANGUAGE !== $id && ! $registry->has( $id ) ) {
 				continue;
 			}
@@ -365,9 +330,8 @@ class Block {
 
 		return $map;
 
-	}    //end _get_language_aliases()
+	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

@@ -15,13 +15,9 @@ namespace iG\Syntax_Hiliter;
 /**
  * Common wiring shared by the plugin's WordPress facing classes.
  *
- * There is no singleton here, deliberately. A child which wants one uses the
- * `Singleton` trait, which gives that child an instance slot of its own — that is
- * what a per class singleton trait is for, and putting the store on this class
- * instead was how it came to hold a map keyed by class name to work around being
- * in the wrong place. A child using the trait **must declare a constructor calling
- * `parent::__construct()`**, or it takes the trait's empty one and never runs the
- * two lines below; `Admin` says so at greater length.
+ * No singleton here; a child that wants one uses the `Singleton` trait. A child using
+ * the trait must declare a constructor calling `parent::__construct()`, or it gets the
+ * trait's empty one and never sets `$_option` or runs `Migrate`.
  */
 abstract class Base {
 
@@ -34,11 +30,6 @@ abstract class Base {
 
 	/**
 	 * Plugin name, for display.
-	 *
-	 * `public` although only the `Admin` subclass reads it, where `protected` would
-	 * do. Its twin above cannot be narrowed — `Migrate`, `Option` and the test tiers
-	 * all reach for `Base::PLUGIN_ID` by name — and two constants which are the same
-	 * kind of thing, declared together, should not disagree about their visibility.
 	 *
 	 * @var string
 	 */
@@ -56,16 +47,11 @@ abstract class Base {
 	 */
 	protected function __construct() {
 
-		//init options
 		$this->_option = Option::get_instance();
 
-		/*
-		 * Migrate settings if the plugin has been upgraded and a migration is
-		 * needed.
-		 */
 		$this->_maybe_migrate_older_settings();
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Migrates the settings of older versions of the plugin to the current one.
@@ -76,8 +62,8 @@ abstract class Base {
 
 		Migrate::get_instance()->settings();
 
-	}    //end _maybe_migrate_older_settings()
+	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

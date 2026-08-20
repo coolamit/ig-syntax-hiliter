@@ -2,20 +2,9 @@
 /**
  * The Gatekeeper's version comparison.
  *
- * In the unit tier, because none of it needs WordPress. The Gatekeeper touches
- * WordPress at exactly three points — `$GLOBALS['wp_version']`, which is skipped
- * when a version is passed to it; `add_action()` in `run()`; and `esc_html()` and
- * `__()` in `show_admin_notice()` — and every case below passes both versions and
- * calls only `is_environment_supported()`. They used to boot a database backed
- * suite to compare two strings.
- *
- * The class is deliberately the plugin's one non-namespaced class, so it is not
- * autoloadable and is required by name. `tests/compat/refusal-check.php` does the
- * same on a bare interpreter with no Composer at all, which is what says this
- * works.
- *
- * The floors themselves are asserted in `Plugin_Bootstrap_Test`, against the
- * plugin header which declares them.
+ * In the unit tier because none of it needs WordPress: every case passes both
+ * versions and calls only `is_environment_supported()`. The class is non-namespaced,
+ * so it is required by name. The floors themselves are asserted in `Plugin_Bootstrap_Test`.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -120,7 +109,6 @@ class Gatekeeper_Versions_Test extends TestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

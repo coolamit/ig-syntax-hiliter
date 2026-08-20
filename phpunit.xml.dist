@@ -1,22 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-	PHPUnit is pinned to 9.6 because the WordPress test library still calls
-	PHPUnit 9 only APIs (`PHPUnit\Util\Test::parseTestMethodAnnotations()` and
-	`TestCase::getName()` in includes/abstract-testcase.php), which PHPUnit 10
-	removed — every integration test errors out on PHPUnit 10 and up. Move both
-	the version and this config file forward once WordPress core supports it.
-
-	`make test-unit` / `make test-integration` map to the two suites below.
-	Running the `phpunit` binary without naming a test suite is rejected by
-	tests/bootstrap.php, because each tier needs a different bootstrap.
-
-	Test case files follow WordPress file naming like every other file in the
-	plugin, so a case class lands in `class-<name>-test.php` and the suffix below
-	is what picks it out. Everything a case leans on but which is not a case
-	itself lives beside them in `tests/integration/traits/` and
-	`tests/integration/fixtures/`, mirroring its namespace the way `classes/`
-	does. The suffix is what keeps those out of the suites; the directories are
-	so that a reader can tell at a glance which files are tests.
+	PHPUnit is pinned to 9.6: the WordPress test library calls PHPUnit 9 only APIs that 10 removed.
+	`make test-unit` / `make test-integration` map to the two suites below. Running `phpunit`
+	without naming a suite is rejected by tests/bootstrap.php, because each tier needs its own bootstrap.
+	The `-test.php` suffix is what keeps the traits and fixtures beside the cases out of the suites.
 -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

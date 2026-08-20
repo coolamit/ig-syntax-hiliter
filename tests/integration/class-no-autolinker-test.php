@@ -150,7 +150,6 @@ class No_Autolinker_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

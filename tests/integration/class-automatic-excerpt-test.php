@@ -14,10 +14,8 @@ use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_UnitTestCase;
 
 /**
- * `Legacy_Content_Test` covers the plain case. These cover what generating an
- * excerpt must not do to the rest of the request — leave state behind which blanks
- * a code box rendered after it, or around it — and the code which core's own
- * shortcode strip cannot be trusted with.
+ * Generating an excerpt must leave no state behind which blanks a code box rendered
+ * after or around it, and must strip the code core's own shortcode strip cannot.
  */
 class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
@@ -99,11 +97,7 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Code which carries a `<` that opens no element.
-	 *
-	 * `<?php` is the first token of a great many of this plugin's snippets, and the
-	 * rest of these are ordinary source too: a heredoc opener, a comparison, an
-	 * unclosed HTML comment, a generic type argument.
+	 * Code which carries a `<` that opens no element, all of it ordinary source.
 	 *
 	 * @return array
 	 */
@@ -124,12 +118,9 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * A snippet whose code carries an unclosed `<` neither reaches the excerpt nor
 	 * takes the prose after it away.
 	 *
-	 * The body an automatic excerpt is built from goes through core's
-	 * `strip_shortcodes()`, which escapes every `[` and `]` inside anything
-	 * `wp_html_split()` reads as an element — and a `<` with no `>` after it makes an
-	 * element of everything left, this snippet's own closing tag included. Core then
-	 * strips an opening tag it thinks is self closing and leaves the code behind, so
-	 * this plugin has to take the snippet off the body itself.
+	 * Core's `strip_shortcodes()` escapes every bracket inside what `wp_html_split()`
+	 * reads as an element, and a `<` with no `>` makes an element of everything left,
+	 * the closing tag included — so the plugin strips the snippet off the body itself.
 	 *
 	 * @test
 	 *
@@ -151,9 +142,8 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 	 * Prose which carries an unclosed `<` ahead of a snippet does not drag the snippet
 	 * into the excerpt with it.
 	 *
-	 * The same escaping, reaching the other way: an element which begins in the prose
-	 * swallows the snippet's opening tag, so core strips nothing at all and the whole
-	 * body arrives at `wp_trim_words()` with the code in it.
+	 * The same escaping the other way: an element begun in the prose swallows the
+	 * opening tag, so core strips nothing and the code reaches `wp_trim_words()`.
 	 *
 	 * @test
 	 *
@@ -266,7 +256,6 @@ class Automatic_Excerpt_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

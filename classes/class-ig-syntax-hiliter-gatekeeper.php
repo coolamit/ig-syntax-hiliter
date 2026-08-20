@@ -3,13 +3,10 @@
  * Gatekeeper class for the plugin, which loads the plugin only if the minimum
  * requirements are satisfied.
  *
- * IMPORTANT: this file is parsed by whatever PHP version the site is running.
- * If it fails to parse, the site fatals before the version check can run and a
- * graceful refusal becomes impossible. It therefore contains no PHP 8.4 only
- * syntax — no typed properties, no return types, no arrow functions, no named
- * arguments, no union or intersection types, no constructor promotion and no
- * `match`. It is also, deliberately, the only class in this plugin that is not
- * namespaced. Everything loaded past this gate may use full PHP 8.4 syntax.
+ * This file is parsed by whatever PHP version the site is running, so it must
+ * contain no PHP 7+ syntax: if it fails to parse, the refusal can never run. It
+ * is the only class in the plugin that is not namespaced. Everything loaded past
+ * this gate may use full PHP 8.4 syntax.
  *
  * @package iG_Syntax_Hiliter
  *
@@ -25,8 +22,7 @@
 final class iG_Syntax_Hiliter_Gatekeeper {
 
 	/**
-	 * Plugin name, for display. Hardcoded because none of the plugin's classes
-	 * are loaded when the Gatekeeper refuses passage.
+	 * Plugin name, for display. Hardcoded because no other class is loaded on refusal.
 	 *
 	 * @var string
 	 */
@@ -47,8 +43,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	const MIN_WP_VERSION_REQUIRED = '6.9';
 
 	/**
-	 * PHP version this Gatekeeper judges. Untyped: typed properties are PHP 7.4
-	 * and up, and this file is parsed by whatever PHP the site is running.
+	 * PHP version this Gatekeeper judges. Untyped: typed properties are PHP 7.4 and up.
 	 *
 	 * @var string
 	 */
@@ -64,16 +59,10 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	/**
 	 * Constructor.
 	 *
-	 * Reads the environment and does nothing else. **It must stay that way.** The
-	 * work is in run(), which is what lets a test build one of these and ask it
-	 * questions — including about a PHP or a WordPress the test suite is not
-	 * running on, which is the whole point of the class and cannot be arranged any
-	 * other way.
-	 *
-	 * The WordPress version is read straight off the global that WordPress sets in
-	 * `wp-includes/version.php`, so that no WordPress API needs to exist for the
-	 * check to work. An unreadable one is `0`, so an unknown WordPress is refused
-	 * rather than waved through.
+	 * Reads the environment and does nothing else, so a test can build one and ask it
+	 * about a PHP or WordPress it is not running on. The WP version is read straight
+	 * off `$GLOBALS['wp_version']` so no WordPress API need exist; an unreadable one
+	 * is `0`, so an unknown WordPress is refused.
 	 *
 	 * @param string $php_version Optional PHP version to judge instead of this one.
 	 * @param string $wp_version  Optional WordPress version to judge instead of this one.
@@ -90,14 +79,12 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 			$this->_wp_version = '0';
 		}
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Factory method to initialize the class.
 	 *
-	 * The one static in this class, and the only one wanted: everything else is
-	 * asked of an object. `new self()` rather than late static binding, because
-	 * the class is final and so there is no other class it could ever resolve to.
+	 * `new self()` rather than late static binding, because the class is final.
 	 *
 	 * @return iG_Syntax_Hiliter_Gatekeeper
 	 */
@@ -109,14 +96,12 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		return $gatekeeper;
 
-	}    //end activate()
+	}
 
 	/**
 	 * Loads the plugin, or arranges to say why it was not loaded.
 	 *
-	 * Everything in this class which changes anything is here, and nothing else in
-	 * it changes anything. That is what makes the rest of it safe to call from a
-	 * test.
+	 * Every side effect the class has is here, so the rest is safe to call from a test.
 	 *
 	 * @return void
 	 */
@@ -132,7 +117,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		add_action( 'admin_notices', [ $this, 'show_admin_notice' ] );
 
-	}    //end run()
+	}
 
 	/**
 	 * Checks the versions this Gatekeeper was built with against the plugin's
@@ -152,7 +137,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		return true;
 
-	}    //end is_environment_supported()
+	}
 
 	/**
 	 * Compares two versions, ignoring any pre release suffix on either.
@@ -165,12 +150,12 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		return version_compare( $this->_normalize_version( $version ), $this->_normalize_version( $minimum ), '>=' );
 
-	}    //end _is_version_at_least()
+	}
 
 	/**
 	 * Reduces a version to three numeric components.
 	 *
-	 * WordPress ships versions such as `6.9`, `7.0.3` and `6.9-beta1`, and PHP
+	 * WordPress ships versions such as `6.9`, `7.0.3` etc, and PHP
 	 * ships versions such as `8.5.0RC1`. version_compare() ranks `6.9` below
 	 * `6.9.0` and any pre release below its own release, so both shapes are
 	 * flattened before they are compared: the first non numeric character and
@@ -192,7 +177,7 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 
 		return implode( '.', array_map( 'intval', $parts ) );
 
-	}    //end _normalize_version()
+	}
 
 	/**
 	 * Loads the plugin.
@@ -201,22 +186,18 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 	 */
 	private function _load_plugin() {
 
-		//load up the autoloader
 		require_once IG_SYNTAX_HILITER_ROOT . '/autoloader.php';
 
-		//hand off to the orchestrator
 		\iG\Syntax_Hiliter\Plugin::get_instance();
 
-	}    //end _load_plugin()
+	}
 
 	/**
-	 * Called on the 'admin_notices' hook, this shows an error message on all
-	 * admin screens (on purpose) telling the administrator that the plugin's
-	 * minimum requirements are not met, and what the environment actually is.
+	 * Shows an error notice on every admin screen saying the requirements are not
+	 * met and what the environment is.
 	 *
 	 * The versions named are the ones this Gatekeeper judged, not a fresh lookup,
-	 * so the message and the refusal it explains can never be about different
-	 * things.
+	 * so the message and the refusal can never disagree.
 	 *
 	 * @return void
 	 */
@@ -237,8 +218,8 @@ final class iG_Syntax_Hiliter_Gatekeeper {
 			)
 		);
 
-	}    //end show_admin_notice()
+	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

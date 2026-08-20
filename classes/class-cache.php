@@ -16,11 +16,10 @@ use ErrorException;
  * A cache which keeps one dataset in one option, with an expiry and a callback
  * which refills it.
  *
- * It is built by chaining, and nothing is read or written until `get()` is called:
+ * Built by chaining, and nothing is read or written until `get()` is called:
  * `Cache::create( $key )->expires_in( $seconds )->updates_with( $callback )->get()`.
- * `delete()` is the exception — it removes the option the moment it is called.
- * The data and the timestamp it expires at are stored together, in an option named
- * after an MD5 of the cache key, which is not autoloaded.
+ * `delete()` is the exception and removes the option at once. Data and expiry are
+ * stored together in a non-autoloaded option named after an MD5 of the key.
  */
 class Cache {
 
@@ -55,19 +54,8 @@ class Cache {
 	/**
 	 * Callable which produces a fresh dataset once the cached one has expired.
 	 *
-	 * `callable` is not a legal property type in PHP, so the union spells out what a
-	 * callable actually is: a Closure, a function name, or a `[ class, method ]` pair.
-	 * `mixed` stood here and said less than it could — it admits an int, a float and a
-	 * bool, none of which a callable can ever be.
-	 *
-	 * The one form left out is an object with `__invoke()`. Nothing in this plugin uses
-	 * one, and `updates_with()` still asks for a `callable`, which is what a caller
-	 * should be asked for.
-	 *
-	 * The `null` is the state before `updates_with()` has been called, which is what
-	 * `_refresh_cache()` refuses. Neither of the type's other jobs is checking that the
-	 * value resolves to anything — that is `is_callable()`, and a string or an array can
-	 * satisfy this type and still name nothing at all.
+	 * `callable` is not a legal property type, so the union spells out the three forms
+	 * this plugin uses; `null` is the state before `updates_with()` has been called.
 	 *
 	 * @var callable|null
 	 */
@@ -91,9 +79,11 @@ class Cache {
 	/**
 	 * Class constructor
 	 *
-	 * @param string $cache_key A string for use as unique identifier for current dataset stored in cache.
+	 * @param string $cache_key A string for use as unique identifier for current dataset stored
+	 *                          in cache.
 	 *
-	 * @throws \ErrorException If the cache key is empty by `empty()`, so both '' and '0', since there is then no option name to store the dataset under.
+	 * @throws \ErrorException If the cache key is empty by `empty()`, so both '' and '0', since
+	 *                         there is then no option name to store the dataset under.
 	 */
 	public function __construct( string $cache_key ) {
 
@@ -115,11 +105,13 @@ class Cache {
 	/**
 	 * Factory method to facilitate single call data fetch using method chaining
 	 *
-	 * @param string $cache_key A string for use as unique identifier for current dataset stored in cache.
+	 * @param string $cache_key A string for use as unique identifier for current dataset stored
+	 *                          in cache.
 	 *
 	 * @return \iG\Syntax_Hiliter\Cache
 	 *
-	 * @throws \ErrorException If the cache key is empty by `empty()`, so both '' and '0'. Raised by the constructor.
+	 * @throws \ErrorException If the cache key is empty by `empty()`, so both '' and '0'. Raised
+	 *                         by the constructor.
 	 */
 	public static function create( string $cache_key ): self {
 		return new self( $cache_key );
@@ -139,7 +131,9 @@ class Cache {
 	/**
 	 * This function accepts the cache expiry
 	 *
-	 * @param int $expiry How long the dataset stays fresh, in seconds. Anything below `self::_MIN_EXPIRY` is raised to it, and zero or less is ignored, leaving whatever expiry is in place.
+	 * @param int $expiry How long the dataset stays fresh, in seconds. Anything below
+	 *                    `self::_MIN_EXPIRY` is raised to it, and zero or less is ignored,
+	 *                    leaving whatever expiry is in place.
 	 *
 	 * @return \iG\Syntax_Hiliter\Cache
 	 */
@@ -174,9 +168,12 @@ class Cache {
 	 * This function returns the data from cache if it exists or returns the
 	 * data it gets back from the callback and caches it as well
 	 *
-	 * @return mixed Returns data stored in cache or FALSE if no data/cache found. If the dataset had expired and the callback failed to produce a new one, whatever was stored before is returned, stale, and FALSE when there was nothing.
+	 * @return mixed Returns data stored in cache or FALSE if no data/cache found. If the dataset
+	 *               had expired and the callback failed to produce a new one, whatever was
+	 *               stored before is returned, stale, and FALSE when there was nothing.
 	 *
-	 * @throws \ErrorException If the cached dataset has expired and no usable callback has been set. Raised by `_refresh_cache()`.
+	 * @throws \ErrorException If the cached dataset has expired and no usable callback has been
+	 *                         set. Raised by `_refresh_cache()`.
 	 */
 	public function get(): mixed {
 
@@ -226,10 +223,10 @@ class Cache {
 			return;
 		}
 
-		//delete existing cache
 		$this->delete();
 
-		//not autoloaded: the language registry alone is ~33KB and is only read when a snippet renders
+		// not autoloaded: the language registry alone is ~33KB and is only read when a
+		// snippet renders
 		update_option( $this->_key, $this->_cache, false );
 
 	}
@@ -255,14 +252,11 @@ class Cache {
 	 *
 	 * @return void
 	 *
-	 * @throws \ErrorException If no usable callback has been set, ie. `updates_with()` was not called before `get()`.
+	 * @throws \ErrorException If no usable callback has been set, ie. `updates_with()` was not
+	 *                         called before `get()`.
 	 */
 	protected function _refresh_cache(): void {
-		/*
-		 * If we don't have a callback to get data from or if it's not a valid
-		 * callback then throw an exception. This will happen in the case when
-		 * updates_with() is not called before get()
-		 */
+
 		if ( empty( $this->_callback ) || ! is_callable( $this->_callback ) ) {
 			throw new ErrorException( 'No valid callback set' );
 		}
@@ -272,17 +266,10 @@ class Cache {
 			$data = call_user_func_array( $this->_callback, $this->_params );
 
 		} catch ( Throwable $e ) {
-			/*
-			 * Throwable, not Exception: a TypeError raised inside somebody else's hook
-			 * is every bit as likely as an exception, and letting one out of here puts
-			 * a fatal on whatever page was being rendered.
-			 *
-			 * Nothing is stored, either. The callback produced no dataset, and writing
-			 * the empty one down would leave every read until the expiry ran out being
-			 * served a failure that has already stopped happening. Leaving the store
-			 * alone means the caller gets whatever was there before, and the next
-			 * request tries again.
-			 */
+
+			// Throwable, not Exception: a TypeError in someone else's hook would otherwise fatal
+			// the page. Nothing is stored, so the caller gets the previous dataset and the next
+			// request retries.
 			return;
 
 		}
@@ -296,6 +283,6 @@ class Cache {
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

@@ -1,28 +1,12 @@
 /**
  * Transforms into the Gist block.
  *
- * A `[github]` on the clipboard becomes this block. Existing `[github]`
- * shortcodes in stored posts are deliberately left alone: a Gist shortcode holds
- * an address and not code, so nothing damages it where it stands, and rewriting
- * somebody's post to gain a block is not a trade this plugin makes on its own.
- *
- * There are two transforms because one of them cannot fire for the form of the
- * shortcode almost everybody writes. `pasteHandler()` sends a plain text paste
- * through its markdown converter first — `marked`, `gfm: true` — and `gfm` turns
- * on autolink literals, so the bare address inside `gist="…"` becomes an `<a>`
- * element before anything has looked for a shortcode. Core then declines to
- * convert: a self-closing shortcode is only converted when a newline, `</p>` or
- * `<br>` follows it, and what follows this one is the `</a>` the converter itself
- * put there. The shortcode transform is never called, and the Gist is lost.
- *
- * The `raw` transform below picks the paste up one stage later, off the finished
- * paragraph. `textContent` is the repair and it is exact: the autolink left the
- * address as the element's own text as well as in its `href`, so the paragraph's
- * text is the author's bytes back, character for character. Nothing is unpicked
- * and nothing is guessed at.
- *
- * The `[github id="…"]` form carries no address, is not autolinked, and goes on
- * being converted by the shortcode transform.
+ * A `[github]` on the clipboard becomes this block; existing stored `[github]`
+ * shortcodes are left alone. Two transforms, because `pasteHandler()` sends a
+ * plain-text paste through `marked` with `gfm` on, which autolinks the bare
+ * address inside `gist="…"` — core then declines the self-closing shortcode
+ * because an `</a>` follows it, so the shortcode transform never fires. The
+ * `raw` transform picks the paste up off the finished paragraph.
  */
 
 import { createBlock } from '@wordpress/blocks';
@@ -46,8 +30,8 @@ interface GistShortcodeAttributes {
 /**
  * The Gist address one matched shortcode stands for.
  *
- * The `gist` attribute is the address itself. The older `id` attribute is the
- * last segment of one, which is how `Gist_Embed::render()` reads the two as well.
+ * `gist` is the address; the older `id` is its last segment, as
+ * `Gist_Embed::render()` reads them.
  *
  * @param named Named attributes of the shortcode.
  */
@@ -65,17 +49,10 @@ function gistUrl( named: GistShortcodeAttributes ): string {
  * The attributes of a paragraph which is one `[github]` shortcode and nothing
  * else, or `NULL` for anything else.
  *
- * Matching is done with core's own shortcode matcher rather than a regular
- * expression of this plugin's, so this reads the paste exactly as the stage
- * before it did. The match has to cover the whole of the text: a paragraph which
- * only mentions the shortcode in a sentence stays a paragraph, which is the rule
- * core applies one stage earlier too.
- *
- * The answer to the last question asked is kept, because `isMatch` and
- * `transform` are handed the same node one after the other and would otherwise
- * trim the string, build a `RegExp`, run it and parse the attributes twice for
- * every paragraph of the paste. One entry is all that is needed: the two calls
- * are consecutive by construction.
+ * Matched with core's own shortcode matcher so this reads the paste as the
+ * stage before it did; the match must cover the whole text. The last answer is
+ * cached because `isMatch` and `transform` are handed the same node
+ * consecutively.
  *
  * @param text Text content of the node being offered.
  */
@@ -100,6 +77,10 @@ const transforms = {
 	from: [
 		{
 			type: 'shortcode',
+			/*
+			 * The `[github id="…"]` form carries no address to autolink, so it
+			 * still arrives here.
+			 */
 			tag: TAG,
 			transform: ( attributes: { named?: GistShortcodeAttributes } ) =>
 				createBlock( metadata.name, {
@@ -109,9 +90,8 @@ const transforms = {
 		{
 			type: 'raw',
 			/*
-			 * `findTransform()` settles equal priorities by registration order, and
-			 * core's blocks are always registered before a plugin's, so the default
-			 * would lose every paragraph to `core/paragraph`.
+			 * Equal priorities settle by registration order and core registers
+			 * first, so the default loses every paragraph to `core/paragraph`.
 			 */
 			priority: 9,
 			/*
@@ -121,6 +101,10 @@ const transforms = {
 			isMatch: ( node: Element ) =>
 				'P' === node.nodeName &&
 				null !== loneGistShortcode( node.textContent ?? '' ),
+			/*
+			 * `textContent` is exact: the autolink left the address as the
+			 * element's text as well as in `href`.
+			 */
 			transform: ( node: Element ) =>
 				createBlock( metadata.name, {
 					url: gistUrl(

@@ -37,10 +37,8 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 	const { languages, defaultLineNumbers } = getEditorData();
 
 	/*
-	 * Memoised because this runs in a render body and `PlainText` below is
-	 * controlled: without it, every character typed into the snippet rebuilt an
-	 * array of close to three hundred freshly allocated objects, none of which can
-	 * change while the page is open.
+	 * Runs in a render body with a controlled `PlainText`; without the memo
+	 * every keystroke rebuilds ~300 objects that cannot change.
 	 */
 	const languageOptions = useMemo( () => {
 		const options = [
@@ -52,13 +50,9 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 		];
 
 		/*
-		 * A language this site cannot currently load still gets an option of its own,
-		 * because a select whose value matches no option shows the first one instead —
-		 * and merely opening this panel would then write that back and destroy a
-		 * language which was highlighting perfectly well. It covers a language the
-		 * `ig_syntax_hiliter/languages` filter used to add and no longer does, a snippet
-		 * saved by an older version of the plugin, and a block written by hand or by
-		 * WP-CLI.
+		 * A language this site cannot load still gets its own option — a
+		 * select whose value matches no option shows the first one, and
+		 * opening the panel would write that back.
 		 */
 		if (
 			language !== '' &&

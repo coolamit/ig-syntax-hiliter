@@ -2,10 +2,8 @@
 /**
  * Removes everything the plugin stored, when it is deleted from WordPress.
  *
- * WordPress runs this file on its own, with the plugin not loaded — no
- * autoloader, no constants and none of the plugin's classes. It is therefore
- * plain PHP, and the option names it deletes are spelled out here rather than
- * read from the classes that write them.
+ * Runs with the plugin not loaded — no autoloader, no constants — so the option
+ * names are spelled out here.
  *
  * @package iG_Syntax_Hiliter
  *
@@ -31,31 +29,21 @@ function ig_syntax_hiliter_uninstall_site(): void {
 		'ig-syntax-hiliter-migrated-from',
 
 		/*
-		 * Migrate removes the two below as well, which is not a reason to drop
-		 * them from here. Migrate only runs when the plugin boots: it is
-		 * triggered from Base's constructor, which is reached on `init`. A
-		 * plugin already deactivated when WordPress updated it to v6 never
-		 * gets there, and neither does one the Gatekeeper refuses to load for
-		 * being below the PHP 8.4 / WordPress 6.9 floor. Those are exactly the
-		 * installs still carrying these two rows — where migration never ran is
-		 * where the clean up still has work to do — and deleting the plugin is
-		 * the only pass which reaches them.
+		 * Migrate deletes these two as well, but only runs when the plugin boots:
+		 * an install deactivated before the v6 update, or one the Gatekeeper
+		 * refuses, never reaches it.
 		 */
-
 		'ig-syntax-hiliter-lang-time',
-		'igsh_options',    //the option name used up to v3.5
+		'igsh_options',    // the option name used up to v3.5
 	];
 
 	foreach ( $options as $option ) {
 		delete_option( $option );
 	}
 
-	/*
-	 * Cache option names carry an MD5 of the cache key, so they can only be
-	 * found by their prefix.
-	 */
+	// Cache option names carry an MD5 of the cache key, so only the prefix finds them.
 
-	//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One off lookup of option names by prefix, which no WordPress API offers.
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One off lookup of option names by prefix, which no WordPress API offers.
 	$cache_keys = $wpdb->get_col(
 		$wpdb->prepare(
 			"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -78,11 +66,9 @@ if ( ! is_multisite() ) {
 }
 
 /*
- * Options are per site, so every site in the network has its own copy to
- * remove. Sites are walked in batches, because a large network will not fit
- * into one query's worth of memory.
+ * Options are per site, so every site in the network has its own copy.
+ * Sites are walked in batches so a large network fits in memory.
  */
-
 $ig_syntax_hiliter_batch_size = 200;
 $ig_syntax_hiliter_offset     = 0;
 
@@ -122,4 +108,4 @@ unset(
 	$ig_syntax_hiliter_site_id
 );
 
-//EOF
+// EOF

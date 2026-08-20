@@ -51,18 +51,9 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * The editor's own strings can be translated.
 	 *
-	 * Nothing in this plugin calls `wp_set_script_translations()`. Core does it, in
-	 * `register_block_script_handle()`, and only when **both** halves of a condition
-	 * hold: `block.json` declares a `textdomain`, and the built script lists `wp-i18n`
-	 * among its dependencies. Both halves are ours to keep — the first is a line in
-	 * `src/block/block.json`, the second comes from the editor actually importing
-	 * `@wordpress/i18n` and is written into `index.asset.php` at build time.
-	 *
-	 * Lose either and every inspector label, the placeholder and the transform names
-	 * silently revert to English while `block.json`'s title and description, which
-	 * core translates by a different route, go on speaking the site's language. That
-	 * split is what makes the gap easy to miss, which is why it is asserted here
-	 * rather than trusted to review.
+	 * Core calls `wp_set_script_translations()` in `register_block_script_handle()`,
+	 * but only when `block.json` declares a `textdomain` and the built script lists
+	 * `wp-i18n` among its dependencies. Lose either and the editor reverts to English.
 	 *
 	 * @test
 	 *
@@ -109,7 +100,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * The dropdown is drawn from canonical ids alone, so an alias which never
 	 * reaches the editor is a snippet converted to a block holding a name no option
 	 * carries — where the control shows the first option instead and writing that
-	 * back destroys a language which was highlighting perfectly well.
+	 * back overwrites the language.
 	 *
 	 * @test
 	 *
@@ -194,12 +185,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 		$handle = $this->_get_editor_handle();
 
-		/*
-		 * `wp_scripts()` is a global which outlives a test, and inline scripts are
-		 * appended rather than replaced, so a run which has already called this method
-		 * leaves a copy behind. Start from nothing so what is read below is what this
-		 * call wrote.
-		 */
+		// Inline scripts are appended, not replaced, so drop what an earlier call left.
 		unset( wp_scripts()->registered[ $handle ]->extra['before'] );
 
 		Block::get_instance()->add_editor_data();
@@ -292,9 +278,9 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * A chosen font reaches the editor, and reaches nothing but this plugin's block.
 	 *
 	 * The rule sets two custom properties on the block wrapper and says nothing else,
-	 * which is what keeps it away from every other block on the screen. Firing the
-	 * hook twice is not academic: core fires it a second time while it builds the
-	 * editor iframe, and the two passes share the registered style objects.
+	 * which is what keeps it away from every other block on the screen. Core fires the
+	 * hook a second time while it builds the editor iframe, and the two passes share
+	 * the registered style objects.
 	 *
 	 * @test
 	 *
@@ -341,15 +327,9 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 	 * The editor and the front end name the same family, and only the front end asks
 	 * for ligatures.
 	 *
-	 * The family has to match: two rules describing one font is two chances to
-	 * disagree, and both are built from the same map.
-	 *
-	 * The ligatures have to differ, and that is the point of this case. A textarea is
-	 * where an author counts characters and puts a caret between them, and a caret
-	 * cannot sit inside one glyph standing for two — typing `__construct` and reading
-	 * back what looks like ` _construct` is alarming enough to make somebody correct
-	 * code which was never wrong. Putting them back here would look like tidying up an
-	 * inconsistency, so this is what says the inconsistency is deliberate.
+	 * Both rules are built from the same map, so the family cannot disagree. The
+	 * ligatures differ on purpose: a caret cannot sit inside one glyph standing for two,
+	 * so `__construct` in a textarea reads back as ` _construct` and invites a wrong fix.
 	 *
 	 * @test
 	 *
@@ -372,10 +352,7 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 		}
 
-		/*
-		 * The control. Without this the case above would go on passing if the front end
-		 * quietly stopped asking for ligatures too.
-		 */
+		// The control: the loop above would still pass if the front end stopped asking too.
 		$this->assertStringContainsString(
 			'--igsh-code-ligatures',
 			Fonts::get_font_css( 'fira-code' ),
@@ -412,7 +389,6 @@ class Block_Editor_Assets_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

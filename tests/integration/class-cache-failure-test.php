@@ -79,10 +79,8 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	/**
 	 * An `Error` raised while the cache is being filled does not escape it.
 	 *
-	 * The cache used to catch `Exception`, which an `Error` is not. A type error in
-	 * somebody else's callback — or in the plugin's own build — therefore travelled
-	 * out through the language registry, out through the renderer and out through
-	 * `the_content`, and the page it was rendering became a white screen.
+	 * The cache catches `Throwable`, not `Exception`: a type error in somebody else's
+	 * callback would otherwise travel out through `the_content` and white-screen the page.
 	 *
 	 * @test
 	 *
@@ -106,10 +104,8 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	/**
 	 * A build which produced nothing is not written down as though it had.
 	 *
-	 * A failure used to be stored — an empty dataset carrying the full expiry — so a
-	 * cache with a year on it, which is what the language registry asks for, served
-	 * that emptiness for a year. Every request after the one that went wrong was
-	 * answered with the failure rather than being allowed to try again.
+	 * A stored failure carries the full expiry, so an empty registry would be served
+	 * until it ran out instead of being rebuilt on the next request.
 	 *
 	 * @test
 	 *
@@ -145,9 +141,8 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	/**
 	 * A refresh which fails leaves the dataset that was already there alone.
 	 *
-	 * Overwriting it with the failure is the same defect seen from the other side:
-	 * a site with a perfectly good cached registry lost it the first time anything
-	 * went wrong while it was being rebuilt.
+	 * Overwriting it with the failure would lose a good cached registry the first time
+	 * a rebuild went wrong.
 	 *
 	 * @test
 	 *
@@ -192,11 +187,8 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	/**
 	 * A registry cache entry holding something which is not a registry is rebuilt.
 	 *
-	 * This is a control: it passes against the code as it was too. It is here
-	 * because it is the state every site which hit the defect above is sitting in —
-	 * an empty dataset under the registry's key with a year still to run — and
-	 * reading that back as an empty registry would mean no language on the site
-	 * resolving, every snippet rendering unhighlighted, until the year was up.
+	 * An empty dataset under the registry's key with a year still to run would otherwise
+	 * read back as an empty registry, and no language on the site would resolve.
 	 *
 	 * @test
 	 *
@@ -224,7 +216,6 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

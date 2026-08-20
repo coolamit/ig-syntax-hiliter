@@ -46,7 +46,7 @@ class Uninstall_Test extends WP_UnitTestCase {
 
 		global $wpdb;
 
-		//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Asserting on the table itself is the point of this test.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Asserting on the table itself is the point of this test.
 		$leftovers = $wpdb->get_col(
 			"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'ig-syntax-hiliter%' OR option_name LIKE 'igsh%'"
 		);
@@ -55,7 +55,6 @@ class Uninstall_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

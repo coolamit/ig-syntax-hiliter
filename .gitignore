@@ -26,15 +26,8 @@ node_modules/
 .agents/
 CLAUDE.md
 
-# Compiled output. Nothing generated is committed.
-#
-#   src/         -> build/            (@wordpress/scripts)
-#   assets/src/  -> assets/build/     (sass, terser)
-#
-# A pattern with no leading slash matches at any depth, so `build/` already
-# covers assets/build/. The second line is spelled out anyway: it is the one
-# that says the plugin's own css and js are generated, and it must not become
-# collateral damage if `build/` is ever anchored to the root.
+# Compiled output: src/ -> build/, assets/src/ -> assets/build/. Nothing generated is committed.
+# `build/` already matches assets/build/; the second line stays so it survives `build/` ever being anchored.
 build/
 assets/build/
 
@@ -43,6 +36,3 @@ assets/build/
 .phpunit.result.cache
 
 # composer.lock and package-lock.json are committed on purpose. Do not ignore them.
-
-
-

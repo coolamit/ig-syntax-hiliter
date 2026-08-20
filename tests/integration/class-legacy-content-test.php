@@ -15,13 +15,9 @@ use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
 /**
- * Renders a fixture post carrying the whole legacy payload — a script tag, entities,
- * PHP tags, mixed HTML/JS — through the display chain, and checks the code comes
- * back byte for byte, escaped exactly once.
- *
- * The tag matrix itself is `Backward_Compatibility_Test`'s: every shipped tag and
- * alias runs through a data provider there. What is checked here is the contexts a
- * post is displayed in, and the attribute grammar which has to survive them.
+ * Renders a fixture post carrying the whole legacy payload through the display chain
+ * and checks the code comes back byte for byte, escaped exactly once, in every context
+ * a post is displayed in.
  */
 class Legacy_Content_Test extends WP_UnitTestCase {
 
@@ -377,7 +373,6 @@ class Legacy_Content_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

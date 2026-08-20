@@ -29,13 +29,7 @@ trait Asset_Test_Helpers {
 	 * @return void
 	 */
 	protected function _reset_asset_state(): void {
-		/*
-		 * `Admin::$_settings_schema` goes with the theme list, because it embeds the
-		 * theme choices and is memoised for the request. They are a pair now: clear
-		 * one and not the other and the schema goes on describing a list which no
-		 * longer exists, which is the arrangement that produces a green suite over a
-		 * wrong answer.
-		 */
+		// `Admin::$_settings_schema` embeds the theme choices and is memoised for the request, so it is cleared with the theme list.
 		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
 
 		$manager = Asset_Manager::get_instance();
@@ -52,11 +46,7 @@ trait Asset_Test_Helpers {
 			( new ReflectionProperty( Asset_Manager::class, $name ) )->setValue( $manager, $value );
 		}
 
-		/*
-		 * Only this plugin's handles are taken out. Rebuilding the whole registry
-		 * would re-run every other plugin's registration in the install under test,
-		 * and their notices would land on whichever test happened to trigger it.
-		 */
+		// Only this plugin's handles are taken out; rebuilding the whole registry would re-run every other plugin's registration.
 		foreach ( array_keys( wp_scripts()->registered ) as $handle ) {
 
 			if ( ! str_starts_with( (string) $handle, Asset_Manager::HANDLE_PREFIX ) ) {
@@ -84,9 +74,7 @@ trait Asset_Test_Helpers {
 	/**
 	 * Method to list the `wp_footer` priorities the asset manager is registered at.
 	 *
-	 * Read off the hook rather than asserted against a constant, so that this says
-	 * "whenever the manager decides" and not "at the priorities it happens to use
-	 * today".
+	 * Read off the hook rather than from a constant, so it means "whenever the manager decides".
 	 *
 	 * @return array Numerically indexed list of priorities, in the order they run.
 	 */
@@ -116,9 +104,8 @@ trait Asset_Test_Helpers {
 	 * Method to render a post the way a single post view renders it, then run the
 	 * footer pass over what that left behind.
 	 *
-	 * The two halves belong together: the assets are decided during `wp_footer`, and
-	 * they are decided from a signal only rendering the content can raise. Rendering
-	 * without the footer pass asserts nothing about what the page loads.
+	 * The assets are decided during `wp_footer` from a signal only rendering raises,
+	 * so rendering without the footer pass asserts nothing about what the page loads.
 	 *
 	 * @param string $content Post content.
 	 *
@@ -148,19 +135,10 @@ trait Asset_Test_Helpers {
 	/**
 	 * Method to run the asset manager's footer passes.
 	 *
-	 * Everything else on `wp_footer` is taken off first: the WordPress install under
-	 * test brings its own callbacks, which print markup and raise deprecations that
-	 * have nothing to do with this plugin. The assertion above them is what keeps
-	 * this honest — the manager really is wired to the hook it is being run through.
-	 *
-	 * Every priority the manager sits at goes back on, not just the first. It decides
-	 * more than once during a footer, and a helper which restored one of those passes
-	 * would quietly stop the tests using it from seeing what the other one does.
-	 *
-	 * Callbacks of the caller's own can be wired in beside the manager's, which is how
-	 * a test puts something on the hook that renders content from the footer, or
-	 * prints at the moment core prints. Anything they print is in the return, so a
-	 * caller can tell "enqueued" from "enqueued in time".
+	 * Everything else on `wp_footer` is removed first — the install under test brings
+	 * callbacks that print markup and raise deprecations. Every priority the manager
+	 * sits at goes back on. Anything printed is in the return, so a caller can tell
+	 * "enqueued" from "enqueued in time".
 	 *
 	 * @param array $extra Optional. Callbacks to add, each a `[ priority, callable ]` pair.
 	 *
@@ -194,9 +172,7 @@ trait Asset_Test_Helpers {
 	/**
 	 * Method to list every script and style handle this plugin has put into play.
 	 *
-	 * Registered handles count as well as enqueued ones, because the plugin only
-	 * ever registers by enqueuing — anything of ours in either list means assets
-	 * were loaded.
+	 * Registered handles count as well as enqueued ones: the plugin only ever registers by enqueuing.
 	 *
 	 * @return array Sorted list of `script:`/`style:` prefixed handles.
 	 */
@@ -266,8 +242,8 @@ trait Asset_Test_Helpers {
 	 * Method to make the class forget the theme list it read earlier in this request.
 	 *
 	 * The static memo sits in front of the option, so nothing planted in the option
-	 * is seen until it is cleared. `Admin::$_settings_schema` goes with it for the
-	 * reason given on `_reset_asset_state()` above.
+	 * is seen until it is cleared. `Admin::$_settings_schema` embeds the theme choices
+	 * and goes with it.
 	 *
 	 * @return void
 	 */
@@ -281,9 +257,8 @@ trait Asset_Test_Helpers {
 	/**
 	 * Method to put a theme list of the test's own into the cache.
 	 *
-	 * Written straight into the option rather than through `Cache`, because what is
-	 * being proved is that the reader goes to the option at all — and a list built
-	 * by the same code that reads it could not tell a cache hit from a rebuild.
+	 * Written straight into the option rather than through `Cache`, so a cache hit
+	 * can be told from a rebuild.
 	 *
 	 * @param array $themes Theme list to plant.
 	 *
@@ -307,9 +282,7 @@ trait Asset_Test_Helpers {
 	/**
 	 * Method to throw the cached theme list away entirely, option and memo alike.
 	 *
-	 * What a test which warmed the list owes whatever runs after it. Neither half is
-	 * rolled back by the transaction a test case runs in: the memo is memory, and the
-	 * option is written before the assertions rather than by them.
+	 * Neither the memo nor the option is rolled back by the test transaction.
 	 *
 	 * @return void
 	 */
@@ -321,7 +294,6 @@ trait Asset_Test_Helpers {
 
 	}
 
-}    //end of trait
+} // end of trait
 
-
-//EOF
+// EOF

@@ -1,16 +1,10 @@
 /**
  * Pasting a `[github]` shortcode into the block editor.
  *
- * The shortcode transform on its own cannot convert the form of the shortcode
- * almost everybody writes. `pasteHandler()` runs a plain text paste through its
- * markdown converter first, `gfm` autolinks the bare address inside `gist="…"`,
- * and core then refuses to convert a self-closing shortcode which is followed by
- * the `</a>` the converter itself added. Nothing appeared in the editor and the
- * Gist was lost on save.
- *
- * So these fixtures go through `pasteHandler()` itself rather than through a
- * description of it, the same as the code block's cases next door. Neither
- * PHPUnit tier can reach any of this.
+ * `pasteHandler()` runs a plain-text paste through its markdown converter
+ * first, `gfm` autolinks the bare address inside `gist="…"`, and core then
+ * declines a self-closing shortcode followed by the `</a>` it added. These
+ * fixtures go through `pasteHandler()` itself.
  */
 
 import { registerBlockType, unregisterBlockType } from '@wordpress/blocks';
@@ -63,11 +57,6 @@ afterAll( () => {
 } );
 
 describe( 'pasting a Gist shortcode', () => {
-	/*
-	 * The defect. The markdown pass autolinks the address, core declines the
-	 * shortcode, and before the raw transform existed this paste produced a
-	 * paragraph holding a link and no Gist at all.
-	 */
 	it( 'reads the address out of a paste the markdown pass rewrote', () => {
 		expect( pastedUrl( `[github gist="${ GIST_URL }"]` ) ).toBe( GIST_URL );
 	} );
@@ -86,10 +75,7 @@ describe( 'pasting a Gist shortcode', () => {
 		expect( blocks[ 1 ]?.attributes?.url ).toBe( GIST_URL );
 	} );
 
-	/*
-	 * The older form, which carries no address, is not autolinked and is converted
-	 * by the shortcode transform. It is the one shape which worked already.
-	 */
+	// The `id` form carries no address and is not autolinked.
 	it( 'builds an address out of the id form', () => {
 		expect( pastedUrl( '[github id="abc123"]' ) ).toBe(
 			'https://gist.github.com/abc123'

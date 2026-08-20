@@ -1,11 +1,8 @@
 /**
- * The block registrations and the paste helper every editor test needs.
+ * Block registrations and the paste helper the editor tests share.
  *
- * **Not under `__tests__/`, deliberately.** `@wordpress/jest-preset-default`
- * matches `**\/__tests__\/**\/*.[jt]s?(x)` — every file in that directory,
- * whatever it is called — so a helper module put there would be collected as a
- * suite and fail for having no tests in it. `__fixtures__` matches none of the
- * three patterns, which is why it needs no jest config of its own.
+ * Not under `__tests__/` because the jest preset collects every file there as
+ * a suite.
  */
 
 import { createElement, RawHTML } from '@wordpress/element';
@@ -27,12 +24,10 @@ export interface PastedBlock {
 
 /**
  * A block type which keeps whatever inner HTML it is given and saves it back
- * verbatim, which is the shape `core/freeform` itself has.
+ * verbatim, the shape `core/freeform` has.
  *
- * `@wordpress/jest-console` fails a test on any unexpected console output, and
- * both a lower api version and an invalid parse produce some — so every fixture,
- * including the ones where the block grammar swallows half a post, has to parse
- * to something valid.
+ * `@wordpress/jest-console` fails on unexpected console output, so every
+ * fixture must parse to something valid.
  */
 export const rawBlock = {
 	apiVersion: 3,
@@ -45,10 +40,8 @@ export const rawBlock = {
 /**
  * Registers the two blocks a Classic post is parsed with.
  *
- * `core/missing` is not asserted on anywhere; it is the floor under the fallback.
- * `createBlock()` falls back to it for a block the fixture has not registered, and
- * calls itself to do it — so with `core/missing` absent as well it recurses until
- * the stack runs out and the failure reads `RangeError` and nothing else.
+ * `core/missing` is the floor under the fallback — without it `createBlock()`
+ * recurses until the stack runs out and the failure reads only `RangeError`.
  */
 export function registerRawBlocks(): void {
 	registerBlockType( FREEFORM_BLOCK, {
@@ -67,12 +60,8 @@ export function registerRawBlocks(): void {
 /**
  * Registers `core/paragraph`, with the raw transform and the schema.
  *
- * A fixture which drives a paste needs this. The schema `pasteHandler()` filters a
- * paste against is built from whatever blocks are registered, so without it a `<p>`
- * is not valid content: every paragraph of the paste is unwrapped and the whole
- * thing is run back together into one. That is a paste no editor would ever
- * produce, and a fixture which answers questions about itself rather than about
- * the editor.
+ * The paste schema is built from registered blocks; without `core/paragraph` a
+ * `<p>` is not valid content and every paragraph is unwrapped into one.
  */
 export function registerParagraph(): void {
 	registerBlockType( PARAGRAPH_BLOCK, {
@@ -124,14 +113,9 @@ export function unregisterRawBlocks( withParagraph = false ): void {
 /**
  * The blocks a plain text paste produces.
  *
- * `plainText` with no `HTML` is what a paste out of a plain text editor or an HTML
- * source view looks like, and it is exactly the branch which sends the clipboard
- * through the markdown converter first — which is the stage every one of these
- * tests is about.
- *
- * `pasteHandler()` logs what it was given and what it made of it whenever the
- * bundle is not a production build, which `@wordpress/jest-console` fails a test
- * for unless it is told to expect it.
+ * `plainText` with no `HTML` is the branch that runs the clipboard through the
+ * markdown converter. `pasteHandler()` logs outside a production build, which
+ * `@wordpress/jest-console` fails unless expected.
  *
  * @param text Text on the clipboard.
  */

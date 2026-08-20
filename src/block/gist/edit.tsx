@@ -1,10 +1,8 @@
 /**
  * Editor UI for the Gist block.
  *
- * There is deliberately no live preview. A Gist embed is a third party
- * `<script>` from gist.github.com, and running one inside the editor would put
- * somebody else's code into the page an author is writing in. The editor shows
- * the URL; the front end shows the Gist.
+ * No live preview: a Gist embed is a third-party `<script>` from
+ * gist.github.com and must not run inside the editor.
  */
 
 import { __ } from '@wordpress/i18n';

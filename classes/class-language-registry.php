@@ -13,12 +13,8 @@ use Throwable;
 /**
  * Every language the highlighter can load, and every alias for it.
  *
- * `parse_manifest()` and `merge()` are pure and take their paths as arguments.
- * `_load()` is the only method which touches WordPress: it resolves the paths,
- * caches the result and applies the extension filter. Nothing calls it directly —
- * it runs the first time anything asks this object a question, which is late
- * enough that the shared instance has already been handed out. That timing is the
- * whole design and the reason for it is written on `_load()` itself.
+ * `parse_manifest()` and `merge()` are pure. `_load()` is the only method which
+ * touches WordPress, and it runs on first use rather than on construction.
  */
 class Language_Registry {
 
@@ -48,9 +44,7 @@ class Language_Registry {
 	/**
 	 * How long a built registry is cached for, in seconds.
 	 *
-	 * The plugin version is part of the cache key, and the bundled library can only
-	 * change when the plugin is updated, so this is not what picks a new language up;
-	 * it is only a backstop. Rebuilding costs a couple of milliseconds, once a day.
+	 * Only a backstop: the version in the cache key is what picks up a new library.
 	 *
 	 * @var int
 	 */
@@ -59,9 +53,8 @@ class Language_Registry {
 	/**
 	 * Whether the dataset has been loaded.
 	 *
-	 * An object built with a registry in hand is loaded already — that is the unit
-	 * tier, and it is what keeps the domain core free of WordPress. An object built
-	 * with nothing loads the first time it is asked a question.
+	 * An object built with a registry in hand is loaded already; one built with
+	 * nothing loads on first use.
 	 *
 	 * @var bool
 	 */
@@ -84,12 +77,11 @@ class Language_Registry {
 	/**
 	 * Class constructor.
 	 *
-	 * It sets properties and returns, and that is deliberate rather than minimal —
-	 * see `_load()`. A registry handed in is the whole dataset, so such an object is
-	 * loaded and never reads a cache or fires a filter; that is how the unit tier
-	 * builds one, and what keeps this class usable with no WordPress present.
+	 * A registry handed in is the whole dataset, so such an object never reads a
+	 * cache or fires a filter.
 	 *
-	 * @param array $registry Registry array in the shape `parse_manifest()` returns. Loads itself on first use when this is empty.
+	 * @param array $registry Registry array in the shape `parse_manifest()` returns. Loads
+	 *                        itself on first use when this is empty.
 	 */
 	public function __construct( array $registry = [] ) {
 
@@ -97,14 +89,13 @@ class Language_Registry {
 
 		$this->_loaded = ( ! empty( $registry ) );
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Method to read a registry array into this object, replacing whatever it held.
 	 *
-	 * Separate from the constructor so that `_load()` can fill this object in after
-	 * the extension filter has run, rather than swapping it for a second one which
-	 * anything holding a reference to the first would never see.
+	 * Separate from the constructor so `_load()` can refill this object in place
+	 * after the filter has run.
 	 *
 	 * @param array $registry Registry array in the shape `parse_manifest()` returns.
 	 *
@@ -145,28 +136,18 @@ class Language_Registry {
 
 		}
 
-	}    //end _ingest()
+	}
 
 	/**
 	 * Method to fill the registry in, the first time it is asked anything.
 	 *
-	 * **The timing is the design, and it is not tidiness.** The extension filter has
-	 * to run somewhere, and a callback listening on it will very likely ask this
-	 * class what it currently holds before deciding what to change. If the filter ran
-	 * while the object was being built — in `get_instance()`, as it used to, or in
-	 * the constructor, which looks like the tidier answer — then `static::$_instance`
-	 * would not be assigned yet, because that assignment only happens once `new`
-	 * returns. The callback would build a second registry, fire the filter again, and
-	 * go round until the process died.
-	 *
-	 * Loading on first use dissolves that: by the time anything can ask a question,
-	 * the instance has been handed out, and a callback which asks gets the same
-	 * object back. The flag is set before the filter runs, so such a callback sees
-	 * the dataset as the cache produced it — which is exactly what it saw before —
-	 * rather than re-entering this method.
-	 *
-	 * `_ingest()` refills this same object in place rather than swapping in a second
-	 * one, so a reference a callback took ends up holding the filtered registry.
+	 * Loading on first use, not in the constructor or `get_instance()`: a callback
+	 * on the filter will likely ask this class what it holds, and while `new` has
+	 * not returned `static::$_instance` is unassigned, so the callback would build a
+	 * second registry, fire the filter again, and recurse. The flag is set before the
+	 * filter runs, so a callback which asks sees the cached dataset rather than
+	 * re-entering. `_ingest()` refills in place so a reference a callback took ends up
+	 * holding the filtered registry.
 	 *
 	 * @return void
 	 */
@@ -183,11 +164,8 @@ class Language_Registry {
 
 		if ( ! is_array( $registry ) ) {
 			/*
-			 * Nothing usable came back, which covers a first run with no option to read
-			 * as well as a build which failed inside the cache. Build it once more here,
-			 * but do not let a failure take the page down with it: an empty registry
-			 * means every snippet renders as unhighlighted code, which is a far cheaper
-			 * outcome than a fatal part way through `the_content`.
+			 * Build once more here, but never let a failure take the page down: an empty
+			 * registry renders every snippet unhighlighted, which beats a fatal.
 			 */
 			try {
 				$registry = static::build();
@@ -205,26 +183,21 @@ class Language_Registry {
 		 *
 		 * Runs after the cache, so a callback is never baked into the cached value.
 		 *
-		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding a `title`; and `aliases`, mapping alias to canonical id.
+		 * @param array $registry Two keys: `languages`, keyed by canonical id and holding a
+		 *                        `title`; and `aliases`, mapping alias to canonical id.
 		 */
 		$filtered = apply_filters( static::FILTER_LANGUAGES, $registry );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
 		/*
-		 * Reading three hundred languages in takes long enough to be worth not doing
-		 * twice for nothing. With no callback listening, the filter hands back the very
-		 * array it was given and this comparison is a pointer check.
-		 *
-		 * Anything but an array is ignored rather than cast. A callback which forgets to
-		 * return, or returns early, hands back NULL — and casting that would empty the
-		 * registry, leaving every language on the site unknown and every snippet
-		 * unhighlighted. Keeping what came out of the cache is the far cheaper reading of
-		 * a callback that plainly did not mean to replace anything.
+		 * With no callback listening the filter hands back the same array, so this is a
+		 * pointer check. Anything but an array is ignored rather than cast: a callback
+		 * which forgets to return hands back NULL, and casting would empty the registry.
 		 */
 		if ( $filtered !== $registry && is_array( $filtered ) ) {
 			$this->_ingest( $filtered );
 		}
 
-	}    //end _load()
+	}
 
 	/**
 	 * Method to build the registry from the bundled library.
@@ -244,13 +217,12 @@ class Language_Registry {
 			)
 		);
 
-	}    //end build()
+	}
 
 	/**
 	 * Method to parse the library's language manifest.
 	 *
-	 * Only languages whose file is readable in `$components_dir` are kept, so the
-	 * registry can never promise a language the browser would then fail to fetch.
+	 * Only languages whose file is readable in `$components_dir` are kept.
 	 *
 	 * @param string $manifest_path  Absolute path of the manifest JSON file.
 	 * @param string $components_dir Absolute path of the directory holding the language files.
@@ -290,14 +262,8 @@ class Language_Registry {
 				continue;
 			}
 
-			/*
-			 * The file name is what the readability test above was for and is not kept.
-			 * Nothing on the server ever needs it — the browser resolves a language file
-			 * for itself, from the directory `Asset_Manager::get_components_url()` names —
-			 * and storing it put a `prism-<id>.min.js` for three hundred languages into
-			 * the cached option and through the ingest loop on every request that reads
-			 * the registry.
-			 */
+			// The file name is not kept: the browser resolves it from
+			// `Asset_Manager::get_components_url()`.
 			$registry['languages'][ $id ] = [
 				'title' => (string) ( $language['title'] ?? $id ),
 			];
@@ -320,15 +286,13 @@ class Language_Registry {
 
 		return $registry;
 
-	}    //end parse_manifest()
+	}
 
 	/**
 	 * Method to overlay one registry on top of another and tidy the result.
 	 *
-	 * The overlay wins, so a caller of the extension filter can replace a bundled
-	 * language with its own. Called with no overlay it does the tidying alone, which
-	 * is what `build()` wants of it: an alias pointing at no language, or shadowing a
-	 * language id, is dropped, and both lists come back sorted.
+	 * The overlay wins. With no overlay it tidies alone: an alias pointing at no
+	 * language, or shadowing a language id, is dropped, and both lists come back sorted.
 	 *
 	 * @param array $base    Registry to overlay on to.
 	 * @param array $overlay Optional. Registry to overlay.
@@ -364,7 +328,7 @@ class Language_Registry {
 			'aliases'   => $aliases,
 		];
 
-	}    //end merge()
+	}
 
 	/**
 	 * Method to resolve a language name to its canonical id.
@@ -391,7 +355,7 @@ class Language_Registry {
 
 		return $this->_aliases[ $lang ] ?? null;
 
-	}    //end resolve()
+	}
 
 	/**
 	 * Method to check whether a canonical language id is in the registry.
@@ -406,7 +370,7 @@ class Language_Registry {
 
 		return isset( $this->_languages[ strtolower( trim( $id ) ) ] );
 
-	}    //end has()
+	}
 
 	/**
 	 * Method to get every language in the registry.
@@ -419,15 +383,13 @@ class Language_Registry {
 
 		return $this->_languages;
 
-	}    //end get_languages()
+	}
 
 	/**
 	 * Method to get every alias in the registry.
 	 *
-	 * `resolve()` answers one name at a time, which is all the server ever needs. The
-	 * editor needs the whole table: its language dropdown is built from canonical ids
-	 * alone, so it has to be able to turn an alias into the id the dropdown holds
-	 * before it ever puts a language into a block attribute.
+	 * The editor needs the whole table to turn an alias into the canonical id its
+	 * dropdown holds.
 	 *
 	 * @return array Alias to canonical language id.
 	 */
@@ -437,7 +399,7 @@ class Language_Registry {
 
 		return $this->_aliases;
 
-	}    //end get_aliases()
+	}
 
 	/**
 	 * Method to get the languages as a list fit for a dropdown.
@@ -466,14 +428,13 @@ class Language_Registry {
 
 		return $choices;
 
-	}    //end get_choices()
+	}
 
 	/**
 	 * Method to build the cache key.
 	 *
-	 * The plugin version is the whole of the key. The registry is built from the
-	 * bundled library and from nothing else, so it can only change when the plugin
-	 * is updated — and that is what moves the version.
+	 * The plugin version is the whole key: the registry is built from the bundled
+	 * library alone, which only changes when the plugin is updated.
 	 *
 	 * @return string
 	 */
@@ -483,8 +444,8 @@ class Language_Registry {
 
 		return sprintf( 'ig-syntax-hiliter-languages-%s', $version );
 
-	}    //end _get_cache_key()
+	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

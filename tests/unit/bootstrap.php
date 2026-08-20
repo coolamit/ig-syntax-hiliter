@@ -2,13 +2,8 @@
 /**
  * Bootstrap for the unit test tier.
  *
- * Nothing here loads WordPress. The v6 domain code is written to have no
- * WordPress dependency, and this tier exists to keep it that way — if a class
- * under test starts needing WordPress, its unit tests break loudly instead of
- * quietly leaning on a global that happened to be defined.
- *
- * All this tier needs is the Composer autoloader (loaded by the parent
- * bootstrap) and the plugin's own hand rolled autoloader.
+ * Loads no WordPress: the domain code has no WordPress dependency and this tier
+ * is what keeps it that way.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -20,15 +15,11 @@ if ( ! defined( 'IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR' ) ) {
 	exit( 1 );
 }
 
-/*
- * The plugin's autoloader resolves class names against this constant, which is
- * normally defined by the plugin's main file when WordPress loads it.
- */
+// The plugin's autoloader resolves paths against this constant, normally defined by the main plugin file.
 if ( ! defined( 'IG_SYNTAX_HILITER_ROOT' ) ) {
 	define( 'IG_SYNTAX_HILITER_ROOT', IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR );
 }
 
 require_once IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/autoloader.php';
 
-
-//EOF
+// EOF

@@ -18,12 +18,9 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 
 /**
- * The settings route is the only way into the plugin's settings, so it is the only
- * thing standing between a stranger and the site's configuration.
- *
- * Every test here asserts the stored settings as well as the status code. A 403
- * that wrote anyway would be worse than no check at all, and a status code on its
- * own cannot tell the two apart.
+ * The settings route is the only way into the plugin's settings. Every test here
+ * asserts the stored settings as well as the status code: a 403 that wrote anyway
+ * would be worse than no check at all.
  */
 class Rest_Option_Security_Test extends WP_UnitTestCase {
 
@@ -55,12 +52,7 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 		Admin::get_instance();
 		Block_Converter::get_instance();
 
-		/*
-		 * Each class hooks itself from its constructor, which runs once per process,
-		 * and the test case puts the hook registry back the way it found it after
-		 * every test. So the actions are put back by hand when they have been taken
-		 * away — asking for the instance again cannot do it, the object already exists.
-		 */
+		// Each class hooks from its constructor, which runs once per process, and the test case restores the hook registry after every test, so the action is put back by hand.
 		foreach ( [ Admin::get_instance(), Block_Converter::get_instance() ] as $service ) {
 
 			if ( false === has_action( 'rest_api_init', [ $service, 'register_rest_routes' ] ) ) {
@@ -75,14 +67,8 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Throws away the theme list this file's refresh case warms.
-	 *
-	 * `Admin::refresh_themes()` calls `Themes::get_themes( 'yes' )`, which
-	 * rebuilds the cached option and repopulates a static in front of it. A static is
-	 * memory: the transaction this case runs in rolls the option row back and cannot
-	 * touch it, so without this the static would go on holding a real list while the
-	 * option it is supposed to be fronting had been rolled away — and the two would
-	 * disagree for every later suite in the same process.
+	 * Throws away the theme list the refresh case warms: the static in front of the
+	 * cached option is memory, which the transaction cannot roll back.
 	 *
 	 * @return void
 	 */
@@ -109,10 +95,8 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to send a well formed save request.
-	 *
-	 * The body is always valid, so that what the response reports is the access
-	 * check and never a quarrel about the parameters.
+	 * Method to send a well formed save request, so that what the response reports
+	 * is the access check and never a quarrel about the parameters.
 	 *
 	 * @param string $name  Setting name to send.
 	 * @param string $value Value to send.
@@ -218,12 +202,9 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A setting name which is not a string is refused, and refused cleanly.
-	 *
-	 * Nothing is written either way, so this is about what the caller is told. A PHP
-	 * warning is printed ahead of the response body on a site showing errors, which
-	 * makes the body unparseable: the screen then reports a generic failure instead
-	 * of saying what was wrong with the request.
+	 * A setting name which is not a string is refused cleanly. A PHP warning printed
+	 * ahead of the response body makes it unparseable, and the screen then reports a
+	 * generic failure instead of what was wrong.
 	 *
 	 * @test
 	 *
@@ -268,9 +249,8 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The control for everything above: an administrator sending a valid request does
-	 * get the setting saved. Without this, every refusal here could be passing
-	 * because the route does not work at all.
+	 * The control: an administrator sending a valid request does get the setting
+	 * saved, so the refusals above are not passing because the route does not work.
 	 *
 	 * @test
 	 *
@@ -300,11 +280,8 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The theme refresh is refused to a stranger and to a subscriber.
-	 *
-	 * It deletes an option and reads the disk, so it is a write and is behind the
-	 * same capability as the settings themselves. The two refusals are told apart
-	 * because a caller which is merely logged out has something to do about it.
+	 * The theme refresh is refused to a stranger and to a subscriber. It deletes an
+	 * option and reads the disk, so it is behind the same capability as the settings.
 	 *
 	 * @test
 	 *
@@ -323,18 +300,9 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An administrator gets the rebuilt list back, and not merely a "done".
-	 *
-	 * The button exists for the case where what is on disk is not what was cached,
-	 * so an answer which does not carry the list cannot tell a site owner whether
-	 * the theme they went looking for is there now.
-	 *
-	 * A list of this test's own is planted in the cache first, and the assertion that
-	 * it is **gone** from the answer is what makes this a test of the rebuild. Without
-	 * it the case compared the route's answer against the very method the route calls,
-	 * moments later and over the same warmed cache — so a route which answered a stale
-	 * list would have passed, because the assertion would have read that same stale
-	 * list.
+	 * An administrator gets the rebuilt list back, and not merely a "done". A list
+	 * is planted in the cache first, and its absence from the answer is what makes
+	 * this a test of the rebuild rather than of the cache.
 	 *
 	 * @test
 	 *
@@ -371,7 +339,6 @@ class Rest_Option_Security_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

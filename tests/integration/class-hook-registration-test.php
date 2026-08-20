@@ -25,22 +25,9 @@ use WP_UnitTestCase;
 /**
  * One case per service, asserting every `add_action()` and `add_filter()` it makes.
  *
- * This file exists because the tool for it was built and then pointed at one class.
- * `Hook_Test_Helpers` arrived in session 29 for exactly this job — it sees every
- * priority a callback sits at, where `has_action()` reports only the first, and it
- * tells a priority-0 registration apart from an absent one. It was then used on
- * `Block` alone, which left `Asset_Manager`'s two registrations, `Shortcode_Handler`'s
- * eleven, `Gist_Embed`'s six, `Admin`'s five and `Block_Converter`'s one unasserted:
- * any one of them could have been deleted with all three tiers green.
- *
- * That is not hypothetical. The registrations were moved out of `Plugin` and into the
- * classes which own them, and then moved again inside those classes, with nothing
- * watching either move.
- *
- * Everything here is named by the class constant rather than by the number behind it,
+ * Every priority is named by the class constant rather than by the number behind it,
  * so an assertion travels with the constant it is about. A test which spelled `1` out
- * would go on passing after `PRIORITY_PROTECT` moved, and would be asserting a number
- * nothing in the plugin uses any more.
+ * would go on passing after `PRIORITY_PROTECT` moved.
  */
 class Hook_Registration_Test extends WP_UnitTestCase {
 
@@ -50,10 +37,7 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * Services this case rebuilt, to be put back in `tear_down()`.
 	 *
-	 * A rewired service is a different object with different callbacks, and its
-	 * registrations land in the global filter registry. Leaving one there hands every
-	 * later suite in the process a plugin whose wiring is not the wiring it booted
-	 * with.
+	 * A rewired service's registrations land in the global filter registry, and leaving one there hands every later suite a plugin wired differently from the one it booted.
 	 *
 	 * @var array
 	 */
@@ -85,10 +69,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * The asset manager decides twice, and one `has_action()` cannot see the second.
 	 *
-	 * Both priorities are asserted because the second pass is the whole point of the
-	 * arrangement: plenty of things render content from `wp_footer` itself, and a
-	 * snippet which appeared that way reaches the page with no Prism at all if the
-	 * registration at `PRIORITY_DECIDE_AGAIN` goes missing. Core prints the footer
+	 * A snippet rendered from `wp_footer` itself reaches the page with no Prism if the
+	 * registration at `PRIORITY_DECIDE_AGAIN` goes missing; core prints the footer
 	 * scripts at 20, so 19 is the last moment which still reaches the page.
 	 *
 	 * @test
@@ -132,9 +114,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	 * The shortcode handler's eleven registrations, on the settings it boots with.
 	 *
 	 * `PRIORITY_STRIP_BODY` is 0, which `has_filter()` reports as a falsy `0` and an
-	 * absent callback as `false`. That is the registration this file is least able to
-	 * lose quietly, and it is the earlier of the two strips the automatic excerpt
-	 * needs — core's own `strip_shortcodes()` cannot be trusted with source code.
+	 * absent callback as `false`; it is the earlier of the two strips the automatic
+	 * excerpt needs, since core's `strip_shortcodes()` cannot be trusted with source code.
 	 *
 	 * @test
 	 *
@@ -206,15 +187,9 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * With `hilite_comments` on, comments render code and are not stripped.
 	 *
-	 * The setting is read when the handler registers and never again, so the only way
-	 * to exercise the other branch is to take the wiring down and put it back up —
-	 * the pattern `Backward_Compatibility_Test::_rewire_with_option()` already proves.
-	 * The assertions go against the **new** object, whose callbacks are distinct
-	 * identities from the booted one's, so the two cannot be confused.
-	 *
-	 * `_assert_not_hooked()` is what pins the other half. Without it a handler which
-	 * registered `comment_text` on both lists would pass, and a comment would be
-	 * stripped and rendered at once.
+	 * The setting is read once, when the handler registers, so the wiring is taken down
+	 * and put back up, and the assertions go against the new object whose callbacks
+	 * are distinct from the booted one's. `_assert_not_hooked()` pins the other half.
 	 *
 	 * @test
 	 *
@@ -281,13 +256,9 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * The Gist embed's six registrations, on the settings it boots with.
 	 *
-	 * `PRIORITY_EMBED` is 9, which is ahead of `wptexturize` — that would curl the
-	 * quotes in the `gist="…"` URL and the address would stop resolving.
-	 *
-	 * The two `wp_footer` registrations are the asset manager's own priorities and
-	 * are named from that class, because they are the same two moments and for the
-	 * same reason. A page carrying nothing but a Gist loads no stylesheet of this
-	 * plugin's otherwise, which is why this class does its own enqueuing at all.
+	 * `PRIORITY_EMBED` is 9, ahead of `wptexturize`, which would curl the quotes in the
+	 * `gist="…"` URL. The two `wp_footer` registrations are named from the asset
+	 * manager's constants because they are the same two moments for the same reason.
 	 *
 	 * @test
 	 *
@@ -353,10 +324,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * With `gist_in_comments` off, a comment gets a link.
 	 *
-	 * The priorities are equal, so `parse()` cannot be asked which list it is on by
-	 * priority alone — the callback is the same method either way. What separates the
-	 * two branches is the property the constructor appends `comment_text` to, so this
-	 * case asserts the list rather than the number.
+	 * The priorities are equal and the callback is the same method either way, so the
+	 * case asserts the list the constructor appended `comment_text` to, not the number.
 	 *
 	 * @test
 	 *
@@ -384,20 +353,10 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * The block registers the hooks the rest of the block suite calls by hand.
 	 *
-	 * Every case in `Block_Editor_Assets_Test` reaches for `Block::get_instance()->…()`
-	 * directly. That is fast and it keeps each assertion on what the method does, but
-	 * it leaves the `add_action()` lines themselves invisible: delete the one on
-	 * `enqueue_block_assets` and the editor silently loses its font while that whole
-	 * file stays green.
-	 *
-	 * The `init` priority is asserted and not merely the registration, because the
-	 * priority is the whole of why this works. The plugin boots on `init` at priority
-	 * 10, and a callback added at a priority which does not yet exist is picked up in
-	 * that same run — `WP_Hook::resort_active_iterations()` rebuilds the live
-	 * iteration array and moves the pointer past what has already run. Register the
-	 * block at priority 10 instead and it is appended to the priority currently
-	 * running, which the loop never reaches: the block silently vanishes, which looks
-	 * exactly like a checkout that was never built.
+	 * The `init` priority is asserted and not merely the registration. The plugin boots
+	 * on `init` at 10, and a callback added at a priority which does not yet exist is
+	 * picked up in that same run; one appended to the priority currently running is
+	 * never reached, and the block silently vanishes.
 	 *
 	 * @test
 	 *
@@ -439,10 +398,9 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * The settings screen's five registrations.
 	 *
-	 * `plugin_action_links` is the plugin's only multi-argument registration, and it
-	 * is the one thing here which no priority assertion can see: `get_action_links()`
-	 * takes two parameters, so a registration asking for one fatals on every admin
-	 * screen while the hook and the priority are both perfectly correct.
+	 * `plugin_action_links` is the plugin's only multi-argument registration:
+	 * `get_action_links()` takes two parameters, so a registration asking for one
+	 * fatals on every admin screen with the hook and the priority both correct.
 	 *
 	 * @test
 	 *
@@ -498,9 +456,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * The revert tool's one registration.
 	 *
-	 * It is one line and it is the whole of the tool's reachability: the settings
-	 * screen drives it entirely over REST, so without this the Uninstall section's
-	 * buttons answer 404 and a site cannot get its snippets back out of blocks.
+	 * The settings screen drives the tool entirely over REST, so without this the
+	 * Uninstall section's buttons answer 404.
 	 *
 	 * @test
 	 *
@@ -522,11 +479,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * Method to rebuild the shortcode handler against a different option value.
 	 *
-	 * The handler reads `hilite_comments` once, when it registers, so the only way to
-	 * exercise the other setting is to take the wiring down and put it back up. The
-	 * old filters are removed first, because the booted handler is registered on every
-	 * one of them and a stale registration would be indistinguishable from a fresh
-	 * one at the same priority.
+	 * The old filters are removed first, because a stale registration of the booted
+	 * handler would be indistinguishable from a fresh one at the same priority.
 	 *
 	 * @param string $name  Option name.
 	 * @param string $value Option value.
@@ -593,9 +547,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * Method to note a service's booted instance and clear its slot for a rebuild.
 	 *
-	 * `Option` goes with it, because the service reads its settings through that
-	 * singleton and the booted one is holding the array as it was before this case
-	 * wrote to it.
+	 * `Option` goes with it, because the booted one holds the array as it was before
+	 * this case wrote to it.
 	 *
 	 * @param string $class_name Service class name.
 	 *
@@ -615,11 +568,8 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 	/**
 	 * Method to read the filters a Gist embed hands a link to.
 	 *
-	 * The list is protected, and it is protected for the right reason — nothing
-	 * outside the class has any business changing it. It is read through reflection
-	 * rather than duplicated here because which filters are on it is exactly what
-	 * `gist_in_comments` decides, so a copy in this file would agree with itself
-	 * whatever the plugin did.
+	 * Read through reflection rather than copied here, because which filters are on
+	 * the list is what `gist_in_comments` decides.
 	 *
 	 * @param Gist_Embed $gist The embed to read.
 	 *
@@ -631,7 +581,6 @@ class Hook_Registration_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

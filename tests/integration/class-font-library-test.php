@@ -40,13 +40,9 @@ class Font_Library_Test extends WP_UnitTestCase {
 	/**
 	 * The four families which are programming ligature faces.
 	 *
-	 * Read out of each family's `GSUB` table — `liga` and `calt` lookups — from the
-	 * files the service actually serves, and not from anybody's catalogue. Two traps
-	 * live here. **Google Sans Code has none at all**, whatever its name suggests.
-	 * And **Azeret Mono is not on this list although it has lookups**: one `liga` and
-	 * two `calt`, against Victor Mono's 89, Fira Code's 100, Cascadia Code's 108 and
-	 * JetBrains Mono's 138. The measurement stands and the classification is a
-	 * judgment on top of it, which is why this constant is a list and not a filter.
+	 * Read from the `liga` and `calt` lookups in each family's `GSUB` table, in the files
+	 * the service serves. Google Sans Code has none; Azeret Mono has three against the
+	 * others' 89 to 138, so the classification is a judgment and the constant is a list.
 	 *
 	 * @var array
 	 */
@@ -81,11 +77,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 		$this->_reset_asset_state();
 
-		/*
-		 * The options object reads the stored array once and holds it for the rest of
-		 * the request. The database is rolled back after each test, so the object has
-		 * to go with it or the next test reads a font nobody saved.
-		 */
+		// The options object holds the stored array for the request; the database is rolled back after each test, so the object goes with it.
 		$this->_set_singleton( Option::class, null );
 
 		parent::tear_down();
@@ -121,12 +113,12 @@ class Font_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * **The promise of the default.** A page with code on it, and the font setting
-	 * left alone, reaches out to nobody.
+	 * The promise of the default: a page with code on it, and the font setting left
+	 * alone, reaches out to nobody.
 	 *
-	 * This is the case that matters most in this file. Every other asset the plugin
-	 * loads is a file it ships; a font is not, and a plugin which quietly fetched one
-	 * from a third party would be making a decision that belongs to the site owner.
+	 * Every other asset the plugin loads is a file it ships; a font is not, and a
+	 * plugin which quietly fetched one from a third party would be making a decision
+	 * that belongs to the site owner.
 	 *
 	 * @test
 	 *
@@ -195,10 +187,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$this->assertNotNull( $style, 'The webfont stylesheet is registered.' );
 		$this->assertSame( Fonts::get_font_url( 'jetbrains-mono' ), (string) $style->src );
 
-		/*
-		 * No version on a URL which belongs to somebody else. `wp_enqueue_style()` was
-		 * passed NULL, which is what stops WordPress appending the plugin's own.
-		 */
+		// No version on a URL which belongs to somebody else: `wp_enqueue_style()` is passed NULL.
 		$this->assertStringNotContainsString( 'ver=', (string) $style->src );
 
 		$rules = $this->_inline_chrome_rules();
@@ -206,10 +195,7 @@ class Font_Library_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( '"JetBrains Mono"', $rules );
 		$this->assertStringContainsString( '--igsh-code-font', $rules );
 
-		/*
-		 * Values and not a rule: the selectors live in the stylesheet, which is what
-		 * keeps the cascade readable and adding a font a one file job.
-		 */
+		// Values and not a rule: the selectors live in the stylesheet.
 		$this->assertStringNotContainsString( Renderer::ID_PREFIX, $rules );
 		$this->assertStringStartsWith( ':root {', $rules );
 
@@ -294,12 +280,8 @@ class Font_Library_Test extends WP_UnitTestCase {
 	/**
 	 * Every offered font is in exactly one group, and `None` is in neither.
 	 *
-	 * The dropdown is split on the one question a reader picking a code font is
-	 * actually asking — does it draw `=>` as one glyph or two — and a font which fell
-	 * out of both groups would simply not be offered, while one in both would be
-	 * offered twice. Neither shows up anywhere else: the grouping is a display
-	 * structure, `choices` stays the flat allowlist storage is checked against, and
-	 * every other case in this file is about `choices`.
+	 * A font in neither group would not be offered and one in both would be offered
+	 * twice; `choices` stays the flat allowlist, so nothing else would show either.
 	 *
 	 * @test
 	 *
@@ -399,17 +381,9 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * A font which asks for ligatures also zeroes the letter spacing, and one which
 	 * does not asks for no letter spacing at all.
 	 *
-	 * The two belong together and neither is any use alone. **A non-zero
-	 * `letter-spacing` suppresses ligatures outright** — specified behaviour, not a
-	 * quirk — the property is inherited, and a theme setting it on its article text is
-	 * enough to switch off the ligatures a site owner picked the font for. That is
-	 * exactly what happened: `letter-spacing: 0.013rem` on a theme's `.entry-content`
-	 * meant the settings preview ligated and the published post did not.
-	 *
-	 * The other half matters as much. A site running one of the eleven fonts without
-	 * ligatures, or no font at all, keeps whatever letter spacing its theme asks for —
-	 * this plugin has no business changing how a theme sets type where nothing of ours
-	 * depends on it.
+	 * A non-zero `letter-spacing` suppresses ligatures outright, and the property is
+	 * inherited, so a theme setting it on its article text switches off the ligatures
+	 * the font was picked for. A font without ligatures keeps the theme's letter spacing.
 	 *
 	 * @test
 	 *
@@ -449,9 +423,8 @@ class Font_Library_Test extends WP_UnitTestCase {
 	 * some other font.
 	 *
 	 * The theme setting falls back the other way, to the default theme, because a
-	 * code box with no colours looks broken. There is no equivalent here: the only
-	 * thing worse than the wrong typeface is a request to another host that nobody
-	 * asked for.
+	 * code box with no colours looks broken. There is no equivalent here: a wrong
+	 * typeface is not worth a request to another host.
 	 *
 	 * @test
 	 *
@@ -540,7 +513,6 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

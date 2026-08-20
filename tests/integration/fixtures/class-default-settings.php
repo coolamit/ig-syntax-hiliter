@@ -12,16 +12,8 @@ namespace iG\Syntax_Hiliter\Tests\Integration\Fixtures;
 /**
  * What a fresh v6 install has in the database.
  *
- * **A literal, and it stays a literal.** Reading it out of `Validate` would make
- * every case which asserts against it agree with the plugin by construction, and
- * the whole point of the cases which use it is to notice a default moving. Two
- * files carried byte identical copies of this before, which is a different problem
- * with the same answer: one literal, in one place, and a diff on it when a default
- * really does move.
- *
- * `Migrate_Test` still writes its *migrated* array out inline, and must: that one
- * is what a v5 site turns into, not what a fresh install starts as, and the two
- * happening to agree today is not a reason to write them once.
+ * A literal on purpose: reading it from `Validate` would make every case that
+ * asserts against it agree by construction.
  */
 class Default_Settings {
 
@@ -43,6 +35,6 @@ class Default_Settings {
 		'gist_limit_height' => 'yes',
 	];
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

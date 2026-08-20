@@ -1,31 +1,22 @@
 /**
- * The globals the scripts in this directory read and write, and nothing else.
+ * Globals the classic scripts in this directory read and write.
  *
- * All three are classic scripts rather than modules — they are enqueued with
- * `wp_enqueue_script()` and run in the global scope — so what they can see is
- * whatever PHP printed before them, whatever Prism put on `window`, and whatever
- * another of these scripts published there. None of that has types of its own,
- * and this file is where they are written down.
- *
- * `types/` is for declarations that patch a third-party package. These describe
- * this plugin's own contract with itself, so they live beside the code.
+ * They are enqueued with `wp_enqueue_script()`, so what they see is what PHP
+ * printed, what Prism put on `window`, and what a sibling published.
  */
 
 /**
  * What a message says about the thing it reports.
  *
- * `busy` is something still happening, and is the one tone that does not take
- * itself off the screen.
+ * `busy` does not take itself off the screen.
  */
 type IgshNoticeTone = 'busy' | 'success' | 'error';
 
 /**
  * One message on screen, as its caller holds it.
  *
- * A caller keeps this for as long as it has more to say about the same thing —
- * a save reports itself as `busy` and then settles that same message into a
- * `success` or an `error`, rather than leaving the first one up and stacking a
- * second beside it.
+ * A caller keeps this while it has more to say about the same thing — `busy`
+ * then settled into `success`/`error`.
  */
 interface IgshNotice {
 	settle: ( message: string, tone: IgshNoticeTone ) => void;
@@ -42,9 +33,8 @@ interface IgshNotices {
 /**
  * Every string `Admin::_get_script_data()` sends over.
  *
- * Keep this list and that method in step. A key added there and not here is
- * simply unreachable; a key removed there and left here reads as `undefined` on
- * screen, which is what the settings page would show a site owner.
+ * Keep in step with that method; a key removed there reads as `undefined` on
+ * screen.
  */
 interface IgshAdminStrings {
 	saving: string;
@@ -81,32 +71,28 @@ interface IgshAdminConfig {
 	/**
 	 * Every theme the dropdown offers, to the stylesheet it loads.
 	 *
-	 * `none` is in it and carries an empty string, because it is a choice like any
-	 * other and the preview has to be able to look it up and find nothing to load.
+	 * `none` is in it with an empty string — the preview must look it up and
+	 * find nothing to load.
 	 */
 	themes?: Record< string, string > | undefined;
 
 	/**
 	 * Id of the `link` tag carrying the theme stylesheet.
 	 *
-	 * Sent rather than spelled out here: WordPress builds it from the handle, and
-	 * the handle belongs to `Asset_Manager`.
+	 * Sent rather than spelled out: WordPress builds it from the handle.
 	 */
 	themeStyleId?: string | undefined;
 
 	/**
-	 * Every font the dropdown offers, to the stylesheet it fetches and the rule
-	 * which puts it on the code box. A font needs both: fetching a family does not
-	 * apply it to anything.
+	 * Every font the dropdown offers, to its stylesheet and the rule that
+	 * applies it.
 	 *
-	 * `none` is in it carrying two empty strings, for the reason `none` is in
-	 * `themes`.
+	 * `none` is in it with two empty strings, as in `themes`.
 	 */
 	fonts?: Record< string, { url: string; css: string } > | undefined;
 
 	/**
-	 * Id of the `link` tag carrying the webfont stylesheet, sent for the same
-	 * reason `themeStyleId` is.
+	 * Id of the `link` tag carrying the webfont stylesheet.
 	 */
 	fontStyleId?: string | undefined;
 	i18n: IgshAdminStrings;
@@ -129,14 +115,9 @@ interface IgshPrismAutoloader {
 /**
  * Prism itself.
  *
- * Deliberately not `@types/prismjs`. Prism is loaded from `assets/lib/` and is
- * never imported, so a full declaration set would describe a library this code
- * does not link against and would go stale without anything noticing. Declared
- * here is the one thing the setup script touches, and no more — the same
- * reasoning as `types/wordpress-block-editor.d.ts`.
- *
- * Every member is optional because the whole point of the setup script is to
- * cope with a Prism whose plugins did not load.
+ * Not `@types/prismjs`: Prism is loaded from `assets/lib/` and never imported,
+ * so only what the setup script touches is declared. Every member is optional
+ * because the setup script exists to cope with plugins that did not load.
  */
 interface IgshPrism {
 	plugins?:
@@ -148,9 +129,7 @@ interface IgshPrism {
 	/**
 	 * Highlights one element again.
 	 *
-	 * The settings page preview needs it: line numbers are drawn by a Prism plugin
-	 * when the box is highlighted, so switching them on means asking Prism to go
-	 * over the same box a second time.
+	 * The settings preview re-highlights a box to add or remove line numbers.
 	 */
 	highlightElement?: ( ( element: Element ) => void ) | undefined;
 }

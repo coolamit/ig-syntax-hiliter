@@ -1,19 +1,9 @@
 /**
  * Pasting a legacy snippet into the block editor.
  *
- * A paste of plain text does not reach the shortcode transform as plain text.
- * `pasteHandler()` decides the paste is plain, runs the whole clipboard through
- * its markdown converter — `marked`, configured `gfm: true, breaks: true` — and
- * only then looks for shortcodes in the HTML that came out. Every newline is a
- * `<br>` by then, and the transform used to store that verbatim: a post copied
- * out of an HTML source view came back with `<br />` on the end of every line of
- * code.
- *
- * The whole of that chain belongs to `@wordpress/blocks`, so the fixtures below
- * go through `pasteHandler()` itself rather than through a description of it.
- * Writing the description was tried first and it was wrong twice over — the
- * markdown pass does not escape an inline HTML run, and it does not keep a blank
- * line as anything rich text can see. Neither PHPUnit tier can reach any of this.
+ * `pasteHandler()` runs a plain-text paste through `marked` (`gfm`, `breaks`)
+ * before looking for shortcodes, so every newline is a `<br>` by then. These
+ * fixtures go through `pasteHandler()` itself.
  */
 
 import { registerBlockType, unregisterBlockType } from '@wordpress/blocks';
@@ -73,10 +63,9 @@ beforeAll( () => {
 	registerRawBlocks();
 
 	/*
-	 * `transforms.ts` reads the claimed tag list at module scope, the way the
-	 * editor bundle does — after PHP has printed the data object above it. An
-	 * `import` is hoisted above everything in this file, so it has to be required
-	 * here or the shortcode transform claims no tags at all and never fires.
+	 * `transforms.ts` reads the claimed tag list at module scope; an `import`
+	 * is hoisted above the data object set above, so it must be `require`d
+	 * here.
 	 */
 
 	const transforms = require( '../transforms' ).default;
@@ -98,10 +87,6 @@ afterAll( () => {
 } );
 
 describe( 'pasting a legacy shortcode', () => {
-	/*
-	 * The defect as it was reported: a post copied out of an HTML source view and
-	 * pasted into the editor came back with a `<br />` on the end of every line.
-	 */
 	it( 'keeps a newline a newline', () => {
 		const code = [
 			'video-conf-app/',
@@ -118,11 +103,9 @@ describe( 'pasting a legacy shortcode', () => {
 	} );
 
 	/*
-	 * The reason the repair works on the string and never parses it as HTML.
-	 * `marked` passes an inline HTML run through untouched, so this arrives holding
-	 * a literal `<?php … $a < $b && $c > $d` — and an HTML parser eats every byte
-	 * from that `<?` to the first `>` after it. Reading it as HTML was tried, and
-	 * it stored `$d ) {}\n?>` and threw the rest of the snippet away.
+	 * `marked` passes an inline HTML run through untouched, so this arrives
+	 * holding a literal `<?php … $a < $b` and an HTML parser would eat to the
+	 * first `>`.
 	 */
 	it( 'keeps a snippet an HTML parser would have eaten', () => {
 		const code = '<?php\nif ( $a < $b && $c > $d ) {\n\techo "x";\n}\n?>';
@@ -130,21 +113,14 @@ describe( 'pasting a legacy shortcode', () => {
 		expect( pastedCode( `[php]\n${ code }\n[/php]` ) ).toBe( code );
 	} );
 
-	/*
-	 * The other half of that. Only the exact bytes `marked` emits for a line break
-	 * are read as one, so the author's own tag survives being pasted.
-	 */
+	// Only the exact bytes `marked` emits for a line break are read as one.
 	it( 'keeps a line break the author typed', () => {
 		const code = 'one<br />two<br/>three';
 
 		expect( pastedCode( `[html]\n${ code }\n[/html]` ) ).toBe( code );
 	} );
 
-	/*
-	 * Markdown turns a blank line into a paragraph boundary, which is neither a
-	 * newline nor anything rich text has a notion of. Left alone, two stanzas of
-	 * code came back run together on one line.
-	 */
+	// Markdown turns a blank line into a paragraph boundary, not a newline.
 	it( 'keeps a blank line inside the code', () => {
 		const code = 'function one() {}\n\nfunction two() {}';
 

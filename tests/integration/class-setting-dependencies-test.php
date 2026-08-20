@@ -19,22 +19,11 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 
 /**
- * Two settings do nothing on their own, and the route is what keeps them honest.
- *
- * The copy button is drawn inside the toolbar and the brace colours are painted on
- * spans the brace matching creates, so either one switched on alone is a control a
- * site owner has set and which does nothing. `save_option()` therefore moves the
- * setting each one needs, in the same request.
- *
- * **The route and not the settings page**, which is why these are asserted here and
- * not in a browser. The page locks every control for the length of a save precisely
- * so that a second request cannot overlap the first — all the settings live in one
- * stored array and the second would write its own idea of that array back over the
- * first — so a screen answering one click with two saves would be doing the thing
- * the lock exists to prevent.
- *
- * The two moves which must *not* happen are asserted as carefully as the two which
- * must. Somebody may well want the toolbar without the copy button.
+ * Two settings do nothing on their own: the copy button is drawn inside the toolbar
+ * and the brace colours are painted on spans the brace matching creates, so
+ * `save_option()` moves the setting each one needs in the same request. It is the
+ * route and not the page, because the page locks every control for the length of a
+ * save so that two requests cannot overlap.
  */
 class Setting_Dependencies_Test extends WP_UnitTestCase {
 
@@ -58,12 +47,7 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 
 		Admin::get_instance();
 
-		/*
-		 * The class hooks itself from its constructor, which runs once per process,
-		 * and the test case puts the hook registry back the way it found it after
-		 * every test. So the action is put back by hand when it has been taken away —
-		 * asking for the instance again cannot do it, the object already exists.
-		 */
+		// The class hooks from its constructor, which runs once per process, and the test case restores the hook registry after every test, so the action is put back by hand.
 		if ( false === has_action( 'rest_api_init', [ Admin::get_instance(), 'register_rest_routes' ] ) ) {
 			add_action( 'rest_api_init', [ Admin::get_instance(), 'register_rest_routes' ] );
 		}
@@ -77,12 +61,9 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Puts the settings object back for whatever runs next.
-	 *
-	 * **After the rollback and not before it.** The options object reads the stored
-	 * array once when it is built, and every case here writes settings; without this
-	 * the object `Admin` is holding would go on reporting values whose database row
-	 * had been rolled away, for every later suite in the same process.
+	 * Puts the settings object back for whatever runs next. After the rollback and not
+	 * before it: the options object reads the stored array once, and the object `Admin`
+	 * holds would otherwise report values whose row had been rolled away.
 	 *
 	 * @return void
 	 */
@@ -96,10 +77,8 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 
 	/**
 	 * Method to give `Admin` a settings object which has just read the database.
-	 *
-	 * Dropping the singleton is not enough on its own: `Base::__construct()` binds
-	 * the instance it was given when it ran, and asking for a new one cannot reach a
-	 * property on an object which already exists.
+	 * Dropping the singleton is not enough: `Base::__construct()` bound the instance
+	 * it was given when it ran.
 	 *
 	 * @return void
 	 */
@@ -112,10 +91,8 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to put a known set of settings in the database.
-	 *
-	 * Written straight to the option rather than saved through the plugin, so that
-	 * the starting point of a case cannot itself be changed by the rule under test.
+	 * Method to put a known set of settings in the database, written straight to the
+	 * option so the starting point cannot be changed by the rule under test.
 	 *
 	 * @param array $settings Settings to set, over the shipped defaults.
 	 *
@@ -173,10 +150,8 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Switching the brace colours on switches the brace matching on with them.
-	 *
-	 * The colours are painted on the spans the matching creates, so this is the move
-	 * without which the setting a site owner just switched on would do nothing at all.
+	 * Switching the brace colours on switches the brace matching on with them; the
+	 * colours are painted on spans the matching creates.
 	 *
 	 * @test
 	 *
@@ -230,16 +205,9 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	/**
 	 * Switching a dependent off says nothing about what it needed.
 	 *
-	 * This is half of what makes the rule a dependency rather than a pair of settings
-	 * welded together. Somebody who switches the colours off has said nothing at all
-	 * about whether they still want to see a bracket's partner on hover.
-	 *
-	 * **Both starting points, because each one catches a different mistake.** From
-	 * matching on, this fails if the rule ever takes the requirement off with the
-	 * setting that needed it. From matching off — the state WP-CLI can still write —
-	 * it fails if the rule which switches a requirement *on* is ever let loose on a
-	 * value of `no`. Either seed alone passes whether that half works or not, which
-	 * is what breaking each guard in turn showed.
+	 * Both starting points, because each catches a different mistake: from matching
+	 * on, a rule taking the requirement off with the dependent; from matching off,
+	 * the state WP-CLI can still write, a rule switching a requirement on for a `no`.
 	 *
 	 * @test
 	 *
@@ -276,15 +244,9 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	/**
 	 * Switching a requirement on says nothing about what depends on it.
 	 *
-	 * The other half, and it needs the awkward starting point to mean anything. The
-	 * route can no longer produce colours-on-with-matching-off, but WP-CLI and any
-	 * other writer of the option still can, and it is the state the front end is
-	 * built to render — so this is the site owner who has it, opens the settings page
-	 * and switches the matching on. **Their colours must survive that.**
-	 *
-	 * Seeding both off instead would pass whether the rule worked or not: the reverse
-	 * move skips a setting which is already off, so there would be nothing to see.
-	 * That is exactly what this case did until removing the guard failed nothing.
+	 * The route cannot produce colours-on-with-matching-off, but WP-CLI still can, and
+	 * a site owner who has it and switches the matching on must keep their colours.
+	 * Seeding both off would pass whether the rule worked or not.
 	 *
 	 * @test
 	 *
@@ -311,11 +273,7 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 
 	/**
 	 * The copy button takes the toolbar with it, because it is drawn in the toolbar.
-	 *
-	 * This pair has depended on each other since 6.0 and was documented rather than
-	 * enforced, which left a site owner able to switch on a button that is never
-	 * drawn. It is here to make sure one rule covers both pairs rather than the
-	 * brackets getting a rule of their own.
+	 * Asserted so that one rule covers both pairs.
 	 *
 	 * @test
 	 *
@@ -367,11 +325,8 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A partner already where it needs to be is not named in the answer.
-	 *
-	 * `also` is a list of controls the screen has to put right, so naming one which
-	 * did not move would have the page repaint a control nobody touched and the notice
-	 * report a change nobody made.
+	 * A partner already where it needs to be is not named in the answer: `also` is
+	 * the list of controls the screen has to repaint.
 	 *
 	 * @test
 	 *
@@ -397,12 +352,8 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every declared dependency names a setting this plugin actually has.
-	 *
-	 * A `requires` naming a setting which does not exist fails silently: nothing is
-	 * ever switched on with the setting that declares it, and the screen looks exactly
-	 * as it does when the rule is working. The same goes for a setting requiring
-	 * itself, which would ask the route to save the value it has just saved.
+	 * Every declared dependency names a toggle this plugin has, and not itself. A
+	 * `requires` naming a setting which does not exist fails silently.
 	 *
 	 * @test
 	 *
@@ -443,6 +394,6 @@ class Setting_Dependencies_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

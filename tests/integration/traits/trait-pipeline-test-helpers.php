@@ -13,14 +13,8 @@ use iG\Syntax_Hiliter\Block;
 use ReflectionProperty;
 
 /**
- * The three things nearly every case in this tier does before it can assert
- * anything: run content through one of WordPress' own filters, build a block
- * delimiter, and put a singleton back where it found it.
- *
- * Each of them was written out in full in file after file — nine copies of the
- * filter helper alone, byte for byte, `phpcs:ignore` and all. A copy of a line
- * whose only content is a suppression is not a fixture; it is the same line nine
- * times.
+ * The three things nearly every case in this tier does: run content through a
+ * WordPress filter, build a block delimiter, and put a singleton back.
  */
 trait Pipeline_Test_Helpers {
 
@@ -40,9 +34,7 @@ trait Pipeline_Test_Helpers {
 	 * Method to build a block delimiter exactly as WordPress writes it.
 	 *
 	 * Core does the serializing, so a fixture carries the bytes the block editor
-	 * would really submit rather than a hand written approximation of them — which
-	 * matters most for the attribute escaping, since that is what the save path has
-	 * to survive.
+	 * really submits.
 	 *
 	 * @param array  $attributes Block attributes.
 	 * @param string $block_name Optional. Block name. This plugin's code block by default.
@@ -77,10 +69,8 @@ trait Pipeline_Test_Helpers {
 	/**
 	 * Method to put a singleton's instance slot back to a known state.
 	 *
-	 * Every singleton in the plugin lives for the whole process, so an object built
-	 * by one test is handed to every test after it. A case which changes what a
-	 * singleton was built from has to put the old one back, and one which wants a
-	 * fresh build passes `NULL`.
+	 * A singleton lives for the whole process, so a case which rebuilt one has to
+	 * put the old one back; `NULL` leaves it unbuilt.
 	 *
 	 * @param string      $class_name Class whose instance slot is to be set.
 	 * @param object|null $instance   Instance to put there, or NULL to leave it unbuilt.
@@ -91,6 +81,6 @@ trait Pipeline_Test_Helpers {
 		( new ReflectionProperty( $class_name, '_instance' ) )->setValue( null, $instance );
 	}
 
-}    //end of trait
+} // end of trait
 
-//EOF
+// EOF

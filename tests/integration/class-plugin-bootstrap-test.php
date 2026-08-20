@@ -22,10 +22,8 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 	/**
 	 * The version and the environment floor say the same thing in the constant, the
-	 * plugin header, readme.txt and the Gatekeeper.
-	 *
-	 * These drift apart easily and a mismatch fails the release build, so it is
-	 * caught here instead.
+	 * plugin header, readme.txt and the Gatekeeper. A mismatch fails the release
+	 * build, so it is caught here instead.
 	 *
 	 * @test
 	 *
@@ -52,13 +50,7 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		$this->assertSame( $header['RequiresPHP'], iG_Syntax_Hiliter_Gatekeeper::MIN_PHP_VERSION_REQUIRED );
 		$this->assertSame( $header['RequiresWP'], iG_Syntax_Hiliter_Gatekeeper::MIN_WP_VERSION_REQUIRED );
 
-		/*
-		 * And so does the coding standard, which is what stops a sniff waving
-		 * through syntax the plugin's own floor forbids — or objecting to syntax it
-		 * allows. Asserted here so that moving a floor names every file that has to
-		 * move with it, rather than leaving one of them to be found later by
-		 * somebody wondering why the linter disagrees with the plugin header.
-		 */
+		// The coding standard checks the same floors, so moving one names every file that has to move with it.
 		$phpcs = (string) file_get_contents( IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/phpcs.xml.dist' );
 
 		$this->assertStringContainsString(
@@ -75,12 +67,7 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 		$readme = (string) file_get_contents( IG_SYNTAX_HILITER_TESTS_PLUGIN_DIR . '/readme.txt' );
 
-		/*
-		 * The release workflow's guard compares the stable tag against the header
-		 * version byte for byte, so this reads the constant rather than spelling a
-		 * version out — and the plugin spells its version with two parts, `6.0`, not
-		 * three.
-		 */
+		// The release guard compares the stable tag against the header byte for byte, so this reads the constant.
 		$this->assertMatchesRegularExpression(
 			sprintf( '/^Stable tag:\s*%s\s*$/m', preg_quote( IG_SYNTAX_HILITER_VERSION, '/' ) ),
 			$readme
@@ -95,14 +82,9 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 	 * plugin directory is not named after the repository (the repo is
 	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
 	 *
-	 * The version is asserted here as well, because `Helper::get_version()` is the
-	 * one place the constant is read now — four classes open coded it before.
-	 *
-	 * That the constant is defined at all is asserted first. Nothing else could see
-	 * it go: every reader goes through `Helper::get_version()`, which answers the
-	 * caller's fallback rather than failing, so a boot which stopped defining it
-	 * would show up as an asset URL with no cache buster on it and as a migration
-	 * which read the install as fresh.
+	 * That the version constant is defined is asserted first: every reader goes
+	 * through `Helper::get_version()`, which answers the caller's fallback rather
+	 * than failing, so nothing else could see it go.
 	 *
 	 * @test
 	 *
@@ -188,13 +170,7 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 		$this->assertDirectoryDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/geshi' );
 
-		/*
-		 * The pre-6.0 asset layout is gone too. Every stylesheet and script the
-		 * plugin owns is now a source under assets/src/ compiled into
-		 * assets/build/, so these three directories must not come back: rsync
-		 * packages the release zip from disk, and a stale one in a working copy
-		 * would ship files nothing enqueues.
-		 */
+		// The release zip is packaged from disk, so a stale pre-6.0 asset directory would ship files nothing enqueues.
 		$retired = [
 			'assets/css',
 			'assets/js',
@@ -207,7 +183,6 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

@@ -1,14 +1,8 @@
 /**
  * Ambient declarations for `@wordpress/block-editor`.
  *
- * The package ships compiled declarations in `build-types/`, but only for
- * `components/` and `utils/` — there is no root `index.d.ts` and no `types`
- * field in its package.json, so TypeScript resolves the entry point to plain
- * JavaScript and `tsc` fails with TS7016. There is no `@types/` package for it
- * either.
- *
- * Without this file the whole of `src/` goes unchecked. With it, the loss is
- * confined to the three symbols below. Delete this file once the package
+ * The package ships no root `index.d.ts` and no `types` field, so `tsc` fails
+ * with TS7016 and the whole of `src/` goes unchecked. Delete once the package
  * declares its own root types.
  */
 

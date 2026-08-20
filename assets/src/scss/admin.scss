@@ -1,11 +1,6 @@
 /*
- * Styles for the iG:Syntax Hiliter settings page.
- *
- * Compiled to assets/build/css/admin.css by the `sass` CLI, via the
- * `build:css` script in package.json. Never edit the compiled file.
- *
- * Colours are taken from the wp-admin palette rather than invented, so the
- * page looks like the rest of wp-admin and follows it if the palette moves.
+ * Settings page styles, compiled to `assets/build/css/admin.css`.
+ * Colours are wp-admin's own.
  */
 
 $igsh-accent: #2271b1;
@@ -20,12 +15,7 @@ $igsh-radius: 3px;
 		max-width: 46rem;
 	}
 
-	/*
-	 * The settings keep the left column and the preview sits beside them, so
-	 * that a theme being picked and the box it repaints are both on screen at
-	 * once. Below the breakpoint the two stack and the preview goes underneath,
-	 * which is the only sensible order: the controls are what the page is for.
-	 */
+	/* Below the breakpoint the preview goes under the controls. */
 	&__layout {
 		display: flex;
 		flex-wrap: wrap;
@@ -59,26 +49,11 @@ $igsh-radius: 3px;
 	}
 
 	/*
-	 * Square, so it reads as an action on the control beside it rather than as a
-	 * second setting. 40px is wp-admin's own `min-height` for both a `.button` and
-	 * a `select`, so the two sit flush; the width is set to match rather than left
-	 * to the icon, and 20px is the grid dashicons are drawn on.
-	 *
-	 * **The `.wp-core-ui` and `.button` in this selector are load-bearing. Do not
-	 * simplify it back to a single class.** wp-admin styles `.wp-core-ui .button`
-	 * at 0-2-0 and `.wp-core-ui .button .dashicons` at 0-3-0. `&__refresh`
-	 * alone is 0-1-0, so core won every property both set — `display`,
-	 * `padding`,
-	 * `min-height`, `line-height` — and the centring below was inert from the day
-	 * it was written. The button was not a flex container at all. That went unseen
-	 * for as long as it did because core's button used to be shorter with less
-	 * padding, which left an 18px icon looking roughly centred by accident;
-	 * WordPress 7.0 grew the padding to 16px and the icon ended up hard
-	 * against the right
-	 * border. This selector is 0-3-0, and the icon's is 0-4-0.
-	 *
-	 * No test tier can see any of this. It is CSS, and the suites only ever assert
-	 * what the server sends.
+	 * 40px matches wp-admin's `min-height` for `.button` and `select`. The
+	 * `.wp-core-ui` and `.button` in this selector are load-bearing: wp-admin
+	 * styles `.wp-core-ui .button` at 0-2-0 and `.wp-core-ui .button .dashicons`
+	 * at 0-3-0, so a bare `&__refresh` at 0-1-0 loses `display`, `padding`,
+	 * `min-height` and `line-height`.
 	 */
 	.wp-core-ui &__refresh.button {
 		display: inline-flex;
@@ -98,14 +73,9 @@ $igsh-radius: 3px;
 		}
 
 		/*
-		 * The icon turns while the list is being reread. The class is put on by
-		 * the click handler rather than by the page lock, because the lock
-		 * disables every control on the page during any request and only this
-		 * one is doing the work.
-		 *
-		 * This lands at 0-5-0, so the `prefers-reduced-motion` block at the foot of
-		 * this file has to match it. The two move together or the reduced motion
-		 * override silently stops winning.
+		 * The class is put on by the click handler, not the page lock. Lands at
+		 * 0-5-0, so the `prefers-reduced-motion` block at the foot of this file
+		 * must match it.
 		 */
 		&.is-busy .dashicons {
 			animation: igsh-spin 1s linear infinite;
@@ -125,11 +95,10 @@ $igsh-radius: 3px;
 }
 
 /*
- * Toggle switch. It is a button, not a checkbox: wp-admin styles
- * `input[type="checkbox"]` at a higher specificity than a class of ours and
- * forced the box back to 16px in the corner of the switch, leaving all but that
- * corner unclickable. A button carries no such baggage, and `role="switch"`
- * gives it the keyboard behaviour and the announcement the checkbox had.
+ * Toggle switch. A button, not a checkbox: wp-admin styles
+ * `input[type="checkbox"]` above any class of ours and forces the box back to
+ * 16px, leaving most of the switch unclickable. `role="switch"` gives the
+ * keyboard behaviour.
  */
 .igsh-toggle {
 	display: inline-block;
@@ -191,25 +160,20 @@ $igsh-radius: 3px;
 	}
 }
 
-/*
- * The preview box, in the right hand column of the layout above.
- */
+/* The preview box, beside the settings. */
 .igsh-preview {
 	flex: 1 1 26rem;
 	max-width: 40rem;
 
 	/*
-	 * A flex item may not shrink below its own content unless it is told it may,
-	 * and the content here is a line of somebody's source code. Without this the
-	 * column refuses to narrow, the flex line overflows and the whole panel wraps
-	 * underneath the settings — which is what a 17px theme did to it.
+	 * A flex item will not shrink below its content unless told it may; without
+	 * this the panel wraps under the settings.
 	 */
 	min-width: 0;
 
 	/*
-	 * Follows the settings down the page, so that the last toggle and the box it
-	 * changes are still together. `top` clears the admin bar, which is fixed on
-	 * screens wide enough for this layout to be two columns at all.
+	 * Sticky so the last toggle and the box it changes stay together; `top`
+	 * clears the admin bar.
 	 */
 	position: sticky;
 	top: 46px;
@@ -219,35 +183,21 @@ $igsh-radius: 3px;
 	}
 
 	/*
-	 * As tall as whatever is in it, and no taller.
-	 *
-	 * The themes disagree about type size by half again — Shades of Purple asks
-	 * for 17px and Z-Touch for 18px, VS and GHColors for .9em of wp-admin's 13px,
-	 * and most of the rest inherit. Each keeps its own size, because that is what
-	 * a reader's own pages will look like, so the box changes height as they are
-	 * switched. **It must not be given a height of its own to stop that.** A box
-	 * sized for the tallest theme leaves every smaller one painting a slab of its
-	 * own background under the last line, which reads as part of the code rather
-	 * than as empty space — and it costs nothing to let it hug the code instead,
-	 * because the settings column beside it is three times as tall and is what
-	 * decides the height of the page.
+	 * As tall as its content. Must not be given a fixed height — a box sized for
+	 * the tallest theme leaves smaller ones painting a slab of their own
+	 * background under the last line.
 	 */
 	&__box {
 
-		/*
-		 * The frame is only here to keep a light theme from disappearing into the
-		 * white of wp-admin.
-		 */
+		/* The frame keeps a light theme from disappearing into wp-admin's white. */
 		padding: 12px;
 		border: 1px solid #dcdcde;
 		background: #f6f7f7;
 		border-radius: $igsh-radius;
 
 		/*
-		 * Beats the themes' own `pre[class*="language-"]` on specificity, so none
-		 * of this needs `!important`. `overflow` is set rather than relied on:
-		 * every vendored theme sets it except Coy without shadows. `max-height` is
-		 * a backstop and nothing more — the tallest theme needs about 360px of it.
+		 * Beats the themes' own `pre[class*="language-"]`, so nothing here needs
+		 * `!important`. `max-height` is a backstop.
 		 */
 		pre[class*="language-"] {
 			margin: 0;
@@ -258,11 +208,8 @@ $igsh-radius: 3px;
 	}
 
 	/*
-	 * The copy button off. On the front end this button is simply not loaded when
-	 * the setting is off, but the preview has to be able to show it coming and
-	 * going without a reload, so every plugin is loaded there and this is what
-	 * "off" looks like. The language name beside it stays, exactly as it does on a
-	 * front end page whose copy setting alone is off.
+	 * On the front end this button is simply not loaded when the setting is off;
+	 * the preview has to show it coming and going without a reload.
 	 */
 	&--no-copy .copy-to-clipboard-button {
 		display: none;
@@ -277,15 +224,9 @@ $igsh-radius: 3px;
 }
 
 /*
- * The section which converts blocks back to shortcodes. Deliberately quieter
- * than a warning notice — it is not an error, but it is not something to click
- * by accident either.
- *
- * The heading is pushed well clear of the settings table above it. A heading
- * sitting a default margin below the last setting reads as one more setting,
- * and this one is a tool which rewrites post content across the whole site and
- * cannot be undone. Top margin only: the bottom one is what keeps the heading
- * attached to its own box.
+ * The revert section. Quieter than a warning notice. The heading is pushed
+ * clear of the settings table so it does not read as one more setting — this
+ * tool rewrites post content site-wide.
  */
 .igsh-revert__heading {
 	margin-top: 9rem;
@@ -326,11 +267,6 @@ $igsh-radius: 3px;
 	}
 }
 
-/*
- * Feedback about a save lives in `assets/src/scss/notices.scss`, beside the
- * script that draws it. This page is only one of its callers.
- */
-
 @media (prefers-reduced-motion: reduce) {
 
 	.igsh-toggle__track,
@@ -339,14 +275,9 @@ $igsh-radius: 3px;
 	}
 
 	/*
-	 * The refresh spinner rotates for as long as the request takes, which is the
-	 * one animation in this plugin with no end of its own. The button still says
-	 * it is working, through being disabled and through the message beside it.
-	 *
-	 * The selector matches the one which sets the animation, specificity for
-	 * specificity, and wins on source order because it is further down this file.
-	 * Anything less and the spinner keeps turning for a reader who asked it
-	 * not to.
+	 * The spinner is the one animation with no end of its own. This selector
+	 * matches the one that sets the animation specificity for specificity and
+	 * wins on source order.
 	 */
 	.wp-core-ui .igsh-settings__refresh.button.is-busy .dashicons {
 		animation: none;

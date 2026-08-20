@@ -45,12 +45,9 @@
 
 						<?php
 						/*
-						 * A button rather than a checkbox. There is no form and no submit button
-						 * on this page, so the control carries a value for nobody but the script
-						 * which reads it — and wp-admin styles `input[type="checkbox"]` at a
-						 * higher specificity than a class of ours, which cut the clickable area
-						 * down to a 16px square in the corner of the switch. `role="switch"`
-						 * brings the keyboard and the screen reader announcement with it.
+						 * A button and not a checkbox: wp-admin styles `input[type="checkbox"]` at a
+						 * higher specificity than a class of ours, and there is no form to submit.
+						 * `role="switch"` brings the keyboard and screen reader behaviour with it.
 						 */
 						?>
 						<button
@@ -80,14 +77,9 @@
 							>
 								<?php
 								/*
-								 * A setting may carry a `groups` key beside its `choices`, and the font
-								 * setting does. `choices` stays a flat allowlist because that is what the
-								 * REST route checks a saved value against; the grouping rides beside it and
-								 * is a fact about this screen alone, which is why it is assembled here and
-								 * not baked into the list.
-								 *
-								 * Anything a group does not claim is rendered first and ungrouped — that is
-								 * how `None` ends up above both groups rather than inside one.
+								 * `choices` stays a flat allowlist because that is what the REST route
+								 * validates against; `groups` rides beside it. Anything ungrouped renders
+								 * first, which is how `None` lands above both groups.
 								 */
 								$igsh_option_groups = [ '' => array_keys( $setting['choices'] ) ];
 
@@ -120,21 +112,11 @@
 							</select>
 
 							<?php
-							/*
-							 * The theme list is a reading of what is on disk and is cached for a
-							 * week, so this is how a site owner who has just put a theme there
-							 * sees it without waiting. It belongs to the theme control alone;
-							 * the font list is a literal in PHP and has nothing to reread.
-							 */
+							// The theme list is a cached reading of the disk; the font list is a literal and has nothing to reread.
 							?>
 							<?php if ( 'theme' === $setting['name'] ) : ?>
 								<?php
-								/*
-								 * One string, said once. The button carries no text of its
-								 * own, so it needs both a tooltip and an accessible name —
-								 * but writing the same words twice is two POT entries for
-								 * one idea and two chances to diverge in translation.
-								 */
+								// One string for both `title` and `aria-label`.
 								$igsh_refresh_label = __( 'Refresh theme cache', 'igsyntax-hiliter' );
 								?>
 								<button
@@ -163,22 +145,10 @@
 
 	<?php
 	/*
-	 * The preview. Every setting above which changes how a code box looks changes
-	 * this box as it is switched, so that picking one of 43 themes does not mean
-	 * saving it, opening the front end and coming back.
-	 *
-	 * `$preview` is the plugin's own renderer's output — the same markup the front
-	 * end gets — so it is printed as it stands. The code inside it was escaped on its
-	 * way through the renderer, which is the one place snippet code is ever escaped.
-	 *
-	 * `match-braces` is on the container unconditionally, for the same reason
-	 * `Asset_Manager::enqueue_for_preview()` loads every engine plugin whatever the
-	 * settings say. That class is the only one the engine reads **once**, while it is
-	 * highlighting, so a box which did not carry it at load can never gain the brace
-	 * markup afterwards and the toggle beside it would do nothing. The three classes
-	 * which decide what is *shown* — the nesting colours and the two which switch the
-	 * hover and the click off — are read at paint time and at event time, so those
-	 * are the ones the script toggles.
+	 * The preview follows the settings live. `$preview` is renderer output and is
+	 * printed as-is; the code inside was escaped there. `match-braces` is unconditional
+	 * because the engine reads that class once at load — the three classes the script
+	 * toggles are read at paint and event time.
 	 */
 	?>
 	<aside class="igsh-preview match-braces" id="igsh-preview" aria-labelledby="igsh-preview-heading">
@@ -226,6 +196,5 @@
 
 </div>
 
-
 <?php
-//EOF
+// EOF

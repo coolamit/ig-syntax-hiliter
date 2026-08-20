@@ -135,7 +135,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			$this->assertStringNotContainsString( $gone, $html, sprintf( 'The removed %s setting is still on the screen.', $gone ) );
 		}
 
-		// Dropped in 6.0: the whitespace setting did nothing visible, and every language Prism has is now shipped.
+		// Neither the whitespace setting nor the language directory exists: the first did nothing visible, and every language Prism has is shipped.
 		$this->assertStringNotContainsString( 'normalize_whitespace', $html );
 		$this->assertStringNotContainsString( 'igsyntax-hiliter/components', $html );
 
@@ -164,11 +164,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	/**
 	 * "None" heads the dropdown and every theme under it is in order by name.
 	 *
-	 * There are more than forty themes on that list. The registry hands them over
-	 * grouped by the directory they were vendored into, which is a fact about this
-	 * plugin's file layout and not one a site owner can be expected to know, so the
-	 * screen sorts them. "None" is not a theme at all and goes on top rather than at
-	 * the end of a list it is not part of.
+	 * The registry hands the themes over grouped by the directory they were vendored
+	 * into, so the screen sorts them. "None" is not a theme and is placed on top.
 	 *
 	 * @test
 	 *
@@ -186,7 +183,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 		$titles = array_values( $choices );
 
-		array_shift( $titles );    //"None" is placed rather than sorted, so it is not part of what is asserted below
+		array_shift( $titles );    // "None" is placed rather than sorted, so it is not part of what is asserted below
 
 		$sorted = $titles;
 
@@ -230,15 +227,9 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	/**
 	 * The preview snippet has lines highlighted in it.
 	 *
-	 * Line highlighting is the one thing a code box does which the settings page has
-	 * no control for, because it is decided per snippet. That makes the preview the
-	 * only place a site owner can ever see it, so a preview which does not show it
-	 * leaves the feature invisible until somebody writes one and publishes it.
-	 *
-	 * The ranges are asserted as the literal string rather than read back off the
-	 * class constant, which would only prove the constant equals itself. `15-19` is
-	 * the whole of the sample's `__construct()` and `23` is the `if` on its own, so
-	 * what is drawn is a run of lines and a single line — both halves of the grammar.
+	 * Line highlighting is decided per snippet and has no control on the screen, so the
+	 * preview is the only place a site owner sees it. The literal covers a run and a
+	 * single line, both halves of the grammar.
 	 *
 	 * @test
 	 *
@@ -285,9 +276,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	/**
 	 * The font control is on the screen, and it is under the theme control.
 	 *
-	 * The order is the schema's, and it is the schema the template walks. Amit asked
-	 * for the font to sit below the theme, so that is asserted where it is decided
-	 * rather than left to whoever next edits the list.
+	 * The order is the schema's, and it is the schema the template walks.
 	 *
 	 * @test
 	 *
@@ -314,13 +303,9 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	/**
 	 * The font dropdown is drawn in two labelled groups with `None` above both.
 	 *
-	 * The grouping is carried on the schema entry beside `choices` rather than being
-	 * nested into it, so the template is the only thing which turns it into markup and
-	 * this is the only place that turn is visible. **The theme dropdown must stay
-	 * flat** — it carries no groups, so the same branch has to render it exactly as it
-	 * rendered it before, and that half is asserted here too because a template branch
-	 * which quietly grouped every select would look right on this page and wrong on
-	 * the one control which has 43 entries and no grouping.
+	 * The grouping is carried on the schema entry beside `choices`, and the template is
+	 * the only thing turning it into markup. The theme dropdown carries no groups and
+	 * must stay flat, so that half is asserted too.
 	 *
 	 * @test
 	 *
@@ -349,13 +334,13 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertSame( 2, substr_count( $html, '<optgroup' ) );
 		$this->assertSame( 2, substr_count( $html, '</optgroup>' ) );
 
-		//None is not a font, so it is drawn ahead of the first group rather than inside one
+		// None is not a font, so it is drawn ahead of the first group rather than inside one.
 		$none = strpos( $html, sprintf( '<option value="%s"', esc_attr( Fonts::FONT_NONE ) ) );
 
 		$this->assertNotFalse( $none );
 		$this->assertLessThan( min( $positions ), $none, 'None sits above both groups.' );
 
-		//the theme control carries no groups, and the same template branch has to leave it alone
+		// The theme control carries no groups, and the same template branch has to leave it alone.
 		$theme = strpos( $html, 'data-igsh-option="theme"' );
 		$font  = strpos( $html, 'data-igsh-option="font"' );
 
@@ -444,10 +429,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	/**
 	 * A toggle is a button the whole of which can be clicked, not a checkbox.
 	 *
-	 * The admin stylesheet styles `input[type="checkbox"]` at a higher specificity
-	 * than a class of this plugin's, which put the real hit area back to a square
-	 * in the corner of the switch: every toggle on this screen could only be
-	 * operated through its label, and no test tier saw it for fifteen sessions.
+	 * The admin stylesheet styles `input[type="checkbox"]` at a higher specificity than
+	 * a class of this plugin's, which shrinks the hit area to a square in the corner.
 	 *
 	 * @test
 	 *
@@ -473,10 +456,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * A stored value the setting does not offer draws the control at that setting's
 	 * own default.
 	 *
-	 * It used to draw the first choice, which for every toggle on this screen is
-	 * "yes". Every reader of a yes/no setting compares it against `yes`, so an
-	 * unrecognised value behaves as off — and the screen said on. A control which
-	 * already looks right is one nobody puts right.
+	 * Drawing the first choice instead would show every toggle as on while the value
+	 * behaves as off, and a control which looks right is one nobody puts right.
 	 *
 	 * @test
 	 *
@@ -495,8 +476,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 			array_merge(
 				(array) $before,
 				[
-					'gist_in_comments' => 'perhaps',    //this setting is off by default
-					'hilite_comments'  => 'perhaps',    //and this one is on by default
+					'gist_in_comments' => 'perhaps',    // This setting is off by default.
+					'hilite_comments'  => 'perhaps',    // And this one is on by default.
 				]
 			)
 		);
@@ -522,10 +503,8 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * The settings screen carries no jQuery dependency, and its assets load on
 	 * that screen and nowhere else.
 	 *
-	 * The one dependency it does declare is this plugin's own notice stack, which
-	 * itself depends on nothing. That is the whole of the chain: two scripts of
-	 * ours and no library, which is what keeps this page cheap. Nothing else may
-	 * be added to either list without a reason good enough to write down here.
+	 * The one dependency it declares is this plugin's own notice stack, which itself
+	 * depends on nothing: two scripts of ours and no library.
 	 *
 	 * @test
 	 *
@@ -554,17 +533,13 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_scripts()->registered[ self::_HANDLE ]->deps );
 		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_styles()->registered[ self::_HANDLE ]->deps );
 
-		//the notice stack knows nothing about this screen, so it asks for nothing
+		// The notice stack knows nothing about this screen, so it asks for nothing.
 		$this->assertSame( [], wp_scripts()->registered[ self::_NOTICES_HANDLE ]->deps );
 		$this->assertSame( [], wp_styles()->registered[ self::_NOTICES_HANDLE ]->deps );
 
 		$this->assertFalse( wp_script_is( 'jquery', 'enqueued' ) );
 
-		/*
-		 * The preview box needs the engine and every plugin that changes how a code box
-		 * looks, whatever the settings currently say — the reader can switch any of them
-		 * while looking at it, and nothing can be fetched at that moment.
-		 */
+		// The preview loads every engine plugin whatever the settings say: nothing can be fetched once the reader switches one.
 		foreach ( self::_PREVIEW_SCRIPTS as $handle ) {
 			$this->assertTrue( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview did not load %s.', $handle ) );
 		}
@@ -572,12 +547,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-theme', 'enqueued' ), 'The preview loaded no theme stylesheet.' );
 		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-chrome', 'enqueued' ) );
 
-		/*
-		 * Asserted beside the script and not left to it. The band over a highlighted
-		 * line is painted entirely by this stylesheet, so the script alone would load,
-		 * run, place an element nobody can see, and pass this test while the preview
-		 * showed a site owner nothing.
-		 */
+		// The band over a highlighted line is painted entirely by this stylesheet, so the script alone would pass while showing nothing.
 		$this->assertTrue(
 			wp_style_is( 'ig-syntax-hiliter-line-highlight', 'enqueued' ),
 			'The preview loaded the line highlight script with no stylesheet to paint the band.'
@@ -595,8 +565,7 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 	 * Both of the screen's compiled assets are where they are enqueued from.
 	 *
 	 * `build/` and `assets/build/` are generated and git-ignored, so a path that
-	 * has gone stale is a 404 in wp-admin and nothing else — no PHP notice, no
-	 * failing request, just a settings page that quietly stops working.
+	 * has gone stale is a 404 in wp-admin and nothing else.
 	 *
 	 * @test
 	 *
@@ -615,7 +584,6 @@ class Admin_Settings_Page_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

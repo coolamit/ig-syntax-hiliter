@@ -16,15 +16,9 @@ use iG\Syntax_Hiliter\Traits\Singleton;
 /**
  * Brings the plugin's stored settings up to date with the installed version.
  *
- * This runs on every page load, and what it migrates is settings: the plugin's
- * own rows in the options table, and nothing else. It never reads or writes post
- * content, so it is not the tool which converts blocks back to shortcodes and it
- * is not what runs when the plugin is deleted.
- *
- * Versions are compared with `version_compare()` and never numerically. Every
- * version this plugin has ever stored is normalised to a three part semantic
- * version first, so that the float `5.1` an old install holds and the two part
- * string `6.0` this one writes are comparable.
+ * Runs on every page load and migrates the plugin's own option rows and nothing
+ * else, never post content. Versions are compared with `version_compare()` after
+ * normalising to three parts, never numerically.
  */
 class Migrate {
 
@@ -38,9 +32,8 @@ class Migrate {
 	public const string V35_OPTION_NAME = 'igsh_options';
 
 	/**
-	 * Version at which the plugin moved to the option array it still uses.
-	 *
-	 * Anything below this is migrated from the v3.5 option instead.
+	 * Version at which the plugin moved to the option array it still uses; anything below
+	 * is migrated from the v3.5 option.
 	 *
 	 * @var string
 	 */
@@ -65,16 +58,14 @@ class Migrate {
 	 */
 	protected function __construct() {
 
-		//init options
 		$this->_option = Option::get_instance();
 
-	}    //end __construct()
+	}
 
 	/**
 	 * Migrates the plugin's settings when the installed version has changed.
 	 *
-	 * This runs on every page load, so the short circuit below is what keeps it
-	 * from costing anything once the install is up to date.
+	 * Runs on every page load; the early return keeps it free once the install is up to date.
 	 *
 	 * @return void
 	 */
@@ -86,7 +77,7 @@ class Migrate {
 
 			$this->_maybe_rewrite_stored_version();
 
-			return;    //up to date, nothing to migrate
+			return;    // up to date, nothing to migrate
 
 		}
 
@@ -109,32 +100,18 @@ class Migrate {
 
 		update_option( Base::PLUGIN_ID . '-version', $this->_get_plugin_version() );
 
-	}    //end settings()
+	}
 
 	/**
 	 * Method to write the running version back when what is stored is the same
 	 * version spelled differently.
 	 *
-	 * Versions are compared normalised, so a stored `6.0.0` or `6.0.0-beta1` reads
-	 * the same as the `6.0` this version declares and never reaches the write at
-	 * the end of `settings()`. The option
-	 * then keeps that spelling for good, and every later read pays to normalise it
-	 * again.
-	 *
-	 * **This is also an upgrade, and the only one which reaches no other clean up.**
-	 * Every version is compared normalised and `_normalize_version()` sends anything
-	 * non numeric through `floatval()`, so `6.0-beta-1`, `6.0-beta-2` and `6.0` are
-	 * all `6.0.0` and `settings()` takes its early return for each of them — which is
-	 * right, there are no settings to migrate between them, and wrong about what is
-	 * cached, because the files on disk really did change. So the caches are cleared
-	 * here, on the one condition which says an upgrade happened: the spelling stored
-	 * is not the spelling running. An ordinary page load on an install which is up to
-	 * date returns above without touching anything.
-	 *
-	 * Only a stored version which normalises to exactly the running one is touched.
-	 * A version from the future is left alone, spelling and all: this version knows
-	 * nothing about what a later one means by it, and rewriting it would be a
-	 * downgrade of the site's record of itself.
+	 * A stored `6.0.0` or `6.0.0-beta1` normalises to the same value as `6.0`, so
+	 * `settings()` returns early and never writes the running spelling back. That early
+	 * return is right about settings and wrong about caches, because the files on
+	 * disk really did change — so the caches are cleared here, on the one condition
+	 * that says an upgrade happened. Only a stored version which normalises to
+	 * exactly the running one is touched.
 	 *
 	 * @return void
 	 */
@@ -143,29 +120,27 @@ class Migrate {
 		$version = $this->_get_plugin_version();
 
 		if ( empty( $version ) || static::_normalize_version( $version ) !== $this->_db_version ) {
-			return;    //some other version is stored, it is not this one's to rewrite
+			return;    // some other version is stored, it is not this one's to rewrite
 		}
 
 		$stored = get_option( Base::PLUGIN_ID . '-version', '' );
 		$stored = ( is_scalar( $stored ) ) ? (string) $stored : '';
 
 		if ( $stored === $version ) {
-			return;    //already spelled the way this version spells it
+			return;    // already spelled the way this version spells it
 		}
 
 		$this->_clean_up();
 
 		update_option( Base::PLUGIN_ID . '-version', $version );
 
-	}    //end _maybe_rewrite_stored_version()
+	}
 
 	/**
 	 * Method to normalise a version to three numeric parts.
 	 *
-	 * Versions up to 5.1 were stored as floats, and the plugin spells its own
-	 * version with two parts, so `version_compare()` would read `5.1` as older
-	 * than `5.1.0` and `6.0` as older than `6.0.0`. Padding both sides of every
-	 * comparison to three parts removes that trap.
+	 * Versions up to 5.1 were stored as floats and the plugin spells its own with
+	 * two parts; `version_compare()` reads `5.1` as older than `5.1.0`.
 	 *
 	 * @param mixed $version Version as it was stored, or as the plugin declares it.
 	 *
@@ -191,10 +166,10 @@ class Migrate {
 
 		$version = implode( '.', array_map( 'intval', $parts ) );
 
-		//there has never been a version zero, so that is junk rather than a version
+		// there has never been a version zero, so that is junk rather than a version
 		return ( '0.0.0' === $version ) ? '' : $version;
 
-	}    //end _normalize_version()
+	}
 
 	/**
 	 * Method to get the version of the plugin which is running.
@@ -203,12 +178,13 @@ class Migrate {
 	 */
 	protected function _get_plugin_version(): string {
 		return Helper::get_version();
-	}    //end _get_plugin_version()
+	}
 
 	/**
 	 * This function returns the last version of plugin that was installed.
 	 *
-	 * @return string Normalised last version of plugin installed. Empty string if its a fresh install.
+	 * @return string Normalised last version of plugin installed. Empty string if its a
+	 *                fresh install.
 	 */
 	protected function _get_last_version(): string {
 
@@ -220,7 +196,7 @@ class Migrate {
 
 		return $db_version;
 
-	}    //end _get_last_version()
+	}
 
 	/**
 	 * Adds a option with last plugin version which is displayed on plugin option page
@@ -232,7 +208,7 @@ class Migrate {
 
 		update_option( Base::PLUGIN_ID . '-migrated-from', $this->_db_version );
 
-	}    //end _add_migrated_from_version()
+	}
 
 	/**
 	 * This function checks whether the plugin's last version in use was v3.5.x
@@ -242,20 +218,14 @@ class Migrate {
 	 */
 	protected function _is_updating_from_35(): bool {
 		return is_array( get_option( static::V35_OPTION_NAME, false ) );
-	}    //end _is_updating_from_35()
+	}
 
 	/**
 	 * Migrate settings from version 3.5 or older
 	 *
-	 * Version 3.5 stored three booleans under its own option name. Two of them still
-	 * exist under the same names; the third, "show plain text", became the copy
-	 * to clipboard button in v6.
-	 *
-	 * Booleans is what that version wrote, but not necessarily what is there twenty
-	 * years later, so each value is read as a flag rather than trusted to be a bool.
-	 * An install holding `0` means the setting off, and `0` handed to Option as it
-	 * stands is refused as an empty value — which would leave the setting on the v6
-	 * default, turning the owner's "off" into "on".
+	 * 3.5 stored three booleans under its own option; "show plain text" became the
+	 * copy button in v6. Each value is read through `to_yesno()` rather than cast, so a
+	 * stored `0` still means off.
 	 *
 	 * @return void
 	 */
@@ -286,18 +256,15 @@ class Migrate {
 
 		}
 
-		delete_option( static::V35_OPTION_NAME );    //delete old options from DB
+		delete_option( static::V35_OPTION_NAME );
 
-	}    //end _settings_from_35()
+	}
 
 	/**
 	 * Migrate settings from version 4.0 up to 5.1
 	 *
-	 * `toolbar`, `show_line_numbers`, `hilite_comments` and `gist_in_comments`
-	 * keep their names and their values, which Option already does on its own
-	 * when it merges the stored array over the defaults. Only the two settings
-	 * whose name or meaning changed are mapped here; `strict_mode`,
-	 * `non_strict_mode` and `link_to_manual` were GeSHi features and are dropped.
+	 * Settings keeping their names survive Option's merge over the defaults; only the
+	 * two whose name or meaning changed are mapped here, and the GeSHi settings are dropped.
 	 *
 	 * @return void
 	 */
@@ -324,21 +291,17 @@ class Migrate {
 			$this->_option->save( 'copy_code', $validate->to_yesno( $old_options['plain_text'], 'yes' ) );
 		}
 
-		/*
-		 * Option holds only the settings v6 has, so committing is what drops the
-		 * removed ones from the DB.
-		 */
+		// Option holds only the v6 settings, so committing drops the removed ones from the DB.
 		$this->_option->commit();
 
-	}    //end _settings_from_5x()
+	}
 
 	/**
 	 * Method to remove what the old version left behind.
 	 *
-	 * The language list cache and its timestamp both belonged to the GeSHi file
-	 * scan, which no longer exists. Every cache this plugin has ever written is
-	 * keyed by the same prefix, so clearing the lot also clears a registry cache
-	 * left by an earlier 6.x build.
+	 * The language timestamp belonged to the GeSHi file scan. Every cache this plugin
+	 * writes shares one prefix, so clearing by prefix also clears an earlier build's
+	 * registry cache.
 	 *
 	 * @return void
 	 */
@@ -348,7 +311,7 @@ class Migrate {
 
 		delete_option( Base::PLUGIN_ID . '-lang-time' );
 
-		//phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One off lookup of option names by prefix, which no WordPress API offers.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One off lookup of option names by prefix, which no WordPress API offers.
 		$cache_keys = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -357,10 +320,10 @@ class Migrate {
 		);
 
 		foreach ( (array) $cache_keys as $cache_key ) {
-			delete_option( $cache_key );    //deleted one at a time so that the options cache stays honest
+			delete_option( $cache_key );    // one at a time so the options cache stays honest
 		}
 
-	}    //end _clean_up()
+	}
 
 	/**
 	 * Initialize settings on fresh install
@@ -371,8 +334,8 @@ class Migrate {
 
 		$this->_option->commit();
 
-	}    //end _initialize_on_fresh_install()
+	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

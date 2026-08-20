@@ -130,12 +130,8 @@ class Snippet_Test extends TestCase {
 	/**
 	 * A first line number at the bottom of the integer range is a number, not a fatal.
 	 *
-	 * `abs( PHP_INT_MIN )` is the one value where taking a magnitude changes the type:
-	 * it does not fit in an integer, so PHP returns a float, and the constructor's
-	 * `int` parameter refuses it. That is an uncaught `TypeError` thrown out of
-	 * `the_content`, on every render of the post, for twenty bytes an author typed.
-	 * Both spellings of the number saturate, the same way one written past the top of
-	 * the range already did.
+	 * `abs( PHP_INT_MIN )` does not fit in an integer, so PHP returns a float and the
+	 * constructor's `int` parameter refuses it. Both spellings of the number saturate.
 	 *
 	 * @test
 	 *
@@ -215,11 +211,8 @@ class Snippet_Test extends TestCase {
 	/**
 	 * Nor can any number of ranges together.
 	 *
-	 * Capping one range bounds nothing on its own: ranges are comma separated and
-	 * unbounded in number, so ten bytes of attribute buys another ten thousand lines.
-	 * Five hundred of them fit in under 5KB and cost 580MB in the VM — on every front
-	 * end render — for an answer which is ten thousand lines long whatever is asked
-	 * for. What is expanded is what is kept.
+	 * Capping one range bounds nothing: ranges are comma separated and unbounded in
+	 * number. What is expanded is what is kept.
 	 *
 	 * @test
 	 *
@@ -242,10 +235,7 @@ class Snippet_Test extends TestCase {
 	/**
 	 * A range at the very top of the integer range ends.
 	 *
-	 * Counting up to an end of `PHP_INT_MAX` overflows the loop variable into a float
-	 * on the last increment, and that float compares equal to the end it is tested
-	 * against and does not advance again. Thirty nine bytes of attribute exhausted the
-	 * memory limit outright.
+	 * Counting up to `PHP_INT_MAX` overflows the loop variable into a float, which never advances again.
 	 *
 	 * @test
 	 *
@@ -342,11 +332,8 @@ class Snippet_Test extends TestCase {
 	/**
 	 * The file label has its whitespace collapsed and is otherwise left alone.
 	 *
-	 * An angle bracket in a file name is a type parameter, and a label is not markup on
-	 * any path it reaches — `Renderer_Test` holds the escaping which is what actually
-	 * makes it safe. Stripping tags took the type out of every generic file name and
-	 * everything after an unbalanced `<`, while leaving the text of a script tag
-	 * sitting there looking like it had been dealt with.
+	 * An angle bracket in a file name is a type parameter; the value object holds what
+	 * the author wrote and the renderer is where it is made safe.
 	 *
 	 * @test
 	 *
@@ -422,7 +409,6 @@ class Snippet_Test extends TestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

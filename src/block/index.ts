@@ -1,9 +1,8 @@
 /**
  * Entry point for the block editor bundle.
  *
- * The block is dynamic: `save` returns nothing and PHP renders the code box, so
- * there is exactly one renderer and the code never becomes inner HTML the filter
- * chain could reach.
+ * The block is dynamic — `save` returns nothing and PHP renders, so the code
+ * never becomes inner HTML the filter chain can reach.
  */
 
 import { registerBlockType } from '@wordpress/blocks';
@@ -16,10 +15,7 @@ import { initLegacyConversion } from './convert';
 
 import './editor.scss';
 
-/*
- * `@wordpress/blocks` does not type `tag` or `schema` on a transform, so the
- * settings are cast rather than the transforms being written around the gap.
- */
+// `@wordpress/blocks` does not type `tag` or `schema` on a transform.
 const settings = {
 	edit: Edit,
 	save: () => null,

@@ -175,7 +175,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->_migrate();
 
-		//a v5 shaped array again: a second migration would rewrite it
+		// A v5 shaped array again: a second migration would rewrite it.
 		update_option( Base::PLUGIN_ID . '-options', [ 'fe-styles' => 'no' ] );
 
 		$this->_migrate();
@@ -222,9 +222,9 @@ class Migrate_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * That version wrote booleans, but twenty years on an install may hold the
-	 * integers or the strings some other hand put there. `0` means the setting off,
-	 * and off is the one answer this must never turn into the v6 default of on.
+	 * That version wrote booleans, but an install may hold the integers or the strings
+	 * some other hand put there. `0` means the setting off, and off must never turn
+	 * into the v6 default of on.
 	 *
 	 * @test
 	 *
@@ -281,8 +281,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 	/**
 	 * A stored version which is this one spelled some other way normalises to this
-	 * one, so the migration correctly does nothing — and used to leave that spelling
-	 * in the option for good.
+	 * one, so the migration does nothing but rewrite the spelling.
 	 *
 	 * @test
 	 *
@@ -297,23 +296,19 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 
-		//the install was already up to date, so nothing was migrated
+		// The install was already up to date, so nothing was migrated.
 		$this->assertSame( Default_Settings::V6, get_option( Base::PLUGIN_ID . '-options' ) );
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
 
 	}
 
 	/**
-	 * And that rewrite clears the caches, because it is the one upgrade which
-	 * reaches no other clean up.
+	 * The spelling rewrite clears the caches: it is the one upgrade which reaches no
+	 * other clean up.
 	 *
-	 * Every beta of 6.0 normalises to `6.0.0`, so `settings()` takes its early
-	 * return on the way from one to the next and `_clean_up()` is never reached
-	 * down that path. Nothing about the settings needs migrating between them and
-	 * that part is right; the theme list is a directory reading cached for a week,
-	 * and the files on disk are exactly what a plugin update changes. Left alone,
-	 * a site upgrading from a beta would go on being served the previous build's
-	 * theme list until the cache ran out or somebody pressed refresh.
+	 * Every beta of 6.0 normalises to `6.0.0`, so `settings()` takes its early return
+	 * between them and `_clean_up()` is never reached down that path; the theme list
+	 * is cached for a week and the files on disk are what a plugin update changes.
 	 *
 	 * @test
 	 *
@@ -342,9 +337,11 @@ class Migrate_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The guard on that: an install already spelling its version the way this one
-	 * does is an ordinary page load, and an ordinary page load must not throw the
-	 * caches away. This runs on every request the site serves.
+	 * An up-to-date install keeps its caches on an ordinary page load.
+	 *
+	 * An install already spelling its version the way this one does is an ordinary
+	 * page load, and that runs on every request the site serves, so it must not throw
+	 * the caches away.
 	 *
 	 * @test
 	 *
@@ -369,10 +366,10 @@ class Migrate_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The guard on the test above: a version from the future is left exactly as it
-	 * is, spelling and all. This version does not know what a later one means by
-	 * what it stored, and rewriting it would downgrade the install's record of
-	 * itself.
+	 * A stored version from the future is left alone, spelling and all.
+	 *
+	 * This version does not know what a later one means by what it stored, and
+	 * rewriting it would downgrade the install's record of itself.
 	 *
 	 * @test
 	 *
@@ -445,11 +442,8 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * The site owner is told about the migration on the first admin page they open,
 	 * whichever one it is, and told once.
 	 *
-	 * The migration itself runs on `init` on every request and always has. Only the
-	 * message waited: it printed on this plugin's settings page and nowhere else, so
-	 * a site owner who upgraded and never opened that page was never told their
-	 * settings had been rewritten — and the one who did open it, three pages in,
-	 * reasonably read the notice as the migration happening only then.
+	 * A notice printed on this plugin's settings page alone never reaches an owner who
+	 * does not open that page, and reads as the migration happening only then.
 	 *
 	 * @test
 	 *
@@ -502,7 +496,6 @@ class Migrate_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

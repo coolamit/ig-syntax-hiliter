@@ -19,12 +19,8 @@ use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
- * The registry's load end to end — the extension filter running over an instance
+ * The registry's load end to end: the extension filter running over an instance
  * which has already been handed out, and the cache it is built through.
- *
- * The unit tier covers `parse_manifest()` and `merge()`, neither of which goes
- * anywhere near a cache or a filter. Everything here does, because that is where
- * the ordering and the caching live.
  */
 class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
@@ -110,20 +106,11 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	/**
 	 * A filter callback may ask the registry what it currently holds.
 	 *
-	 * That is the obvious first move for a callback which means to adjust the
-	 * registry rather than replace it, and it used to be fatal: the instance was
-	 * published only after the filter had returned, so the callback re-entered a
-	 * build which had not finished and went round until the stack ran out — an
-	 * Xdebug loop error with the debugger on, a segmentation fault without it.
-	 *
-	 * The callback counts its own entries and stops calling after the second, so
-	 * that a regression here reports a number instead of taking the process down.
-	 *
-	 * The registry is read after it is fetched, because the filter now runs the
-	 * first time the object is asked a question rather than while it is being built.
-	 * That is what put the recursion out of reach: the instance has been handed out
-	 * before any callback can run, so a callback asking for it gets the same object
-	 * back instead of starting a second build.
+	 * That is the first move of a callback which adjusts the registry rather than
+	 * replacing it, and it recurses until the stack runs out unless the instance has
+	 * been handed out before the filter runs. The callback counts its own entries and
+	 * stops after the second, so a regression reports a number instead of taking the
+	 * process down.
 	 *
 	 * @test
 	 *
@@ -152,7 +139,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
-		//the load, and with it the filter, runs on the first question asked of it
+		// The load, and with it the filter, runs on the first question asked of it.
 		$registry->has( 'php' );
 
 		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
@@ -165,12 +152,9 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	/**
 	 * A filter callback may ask the registry a question, and not merely ask for it.
 	 *
-	 * The sharper half of the case above, and it is what makes this arrangement safe
-	 * to rearrange again. Fetching the object is now cheap and cannot recurse; the
-	 * load is what runs the filter, so a callback which *reads* is the one which
-	 * could re-enter it. It does not, because the loaded flag is set before the
-	 * filter is applied — which also means the callback is shown the dataset as the
-	 * cache produced it, unfiltered, exactly as it was shown before.
+	 * The load is what runs the filter, so a callback which reads is the one which could
+	 * re-enter it. The loaded flag is set before the filter is applied, which also means
+	 * the callback is shown the dataset as the cache produced it, unfiltered.
 	 *
 	 * @test
 	 *
@@ -212,11 +196,10 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * Anything which took hold of the registry during the filter ends up holding the
 	 * filtered one.
 	 *
-	 * The renderer is the collaborator that actually does this: it is handed the
-	 * registry once, in its constructor, and keeps it for the rest of the request.
-	 * Build it from inside a filter callback and it must still see the language that
-	 * same callback is in the middle of adding — which is why the filtered registry
-	 * is read into the published instance rather than swapped in as a second object.
+	 * The renderer is handed the registry once, in its constructor, and keeps it for
+	 * the request. Built from inside a filter callback it must still see the language
+	 * that callback is adding, so the filtered registry is read into the published
+	 * instance rather than swapped in as a second object.
 	 *
 	 * @test
 	 *
@@ -230,12 +213,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 			++$entries;
 
-			/*
-			 * All of this happens on the first entry only. A second entry is the
-			 * recursion this is about; doing the work again inside it would hide the
-			 * very thing being measured, as well as running the stack out before any
-			 * assertion below was reached.
-			 */
+			// First entry only: a second entry is the recursion this is about, and repeating the work inside it would hide it.
 			if ( 1 !== $entries ) {
 				return $registry;
 			}
@@ -256,7 +234,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
-		//asking it anything is what loads it, and this assertion is the asking
+		// Asking it anything is what loads it, and this assertion is the asking.
 		$this->assertTrue( $registry->has( self::_LANGUAGE ), 'The filter did add a language.' );
 
 		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
@@ -273,12 +251,9 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * A callback which hands back something that is not a registry is ignored, and
 	 * the registry the site already had is what the request goes on to use.
 	 *
-	 * A callback that forgets to return, or returns early down one branch, hands back
-	 * NULL. That used to be cast to an array and read in, which emptied the registry:
-	 * every language on the site became unknown, every snippet rendered without
-	 * highlighting, and no asset was loaded for one. Nothing said so — the page came
-	 * back 200 with the code in it, only plain. Ignoring the return is the far cheaper
-	 * reading of a callback which plainly did not mean to replace anything.
+	 * A callback that forgets to return hands back NULL; cast to an array and read in,
+	 * that empties the registry and every snippet on the site renders plain, with no
+	 * error anywhere. Ignoring the return is the cheaper reading of the mistake.
 	 *
 	 * @test
 	 *
@@ -337,11 +312,8 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	/**
 	 * A language the filter added is never written into the cache.
 	 *
-	 * The filter deliberately runs after the cache, and this is what that buys: a
-	 * site which removes its callback gets the plugin's own registry back on the very
-	 * next request. Bake the filtered value in instead and the callback's languages
-	 * outlive it by up to a day, which is a site rendering snippets against a grammar
-	 * nothing is loading any more.
+	 * The filter runs after the cache, so a site which removes its callback gets the
+	 * plugin's own registry back on the next request rather than up to a day later.
 	 *
 	 * @test
 	 *
@@ -381,10 +353,8 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * The cache is what the registry is built through, and a second request in the
 	 * same state does not build it again.
 	 *
-	 * Parsing three hundred manifest entries and stat-ing a file for each is the
-	 * whole cost of this class, and it is paid once per plugin version rather than
-	 * once per request. A cache entry which stopped being read would be invisible —
-	 * the registry would be right, and every page would be slower.
+	 * A cache entry which stopped being read would be invisible: the registry would
+	 * be right, and every page would pay for the manifest parse.
 	 *
 	 * @test
 	 *
@@ -403,11 +373,7 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 		$this->assertIsArray( $stored, 'The build was written to the cache.' );
 		$this->assertArrayHasKey( 'php', $stored['data']['languages'] ?? [] );
 
-		/*
-		 * Put a registry of one language into that entry and ask again. Anything which
-		 * rebuilt from disk would answer with the bundled list; only a read of the cache
-		 * can answer with this.
-		 */
+		// Put a registry of one language into the entry and ask again: only a read of the cache can answer with this.
 		$stored['data'] = [
 			'languages' => [
 				self::_LANGUAGE => [
@@ -428,7 +394,6 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

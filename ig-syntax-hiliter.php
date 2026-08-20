@@ -12,10 +12,8 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       igsyntax-hiliter
  *
- * This file is parsed by whatever PHP version the site happens to be running,
- * long before anything is known about that version, so it holds no syntax that
- * an older PHP could not parse. The same goes for the Gatekeeper it loads.
- * Everything past the Gatekeeper may use full PHP 8.4 syntax.
+ * Parsed by whatever PHP the site runs, as is the Gatekeeper it loads, so
+ * neither holds syntax newer than the Gatekeeper's floor.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -36,29 +34,22 @@ define( 'IG_SYNTAX_HILITER_ROOT', __DIR__ );
  */
 define( 'IG_SYNTAX_HILITER_BASENAME', plugin_basename( __FILE__ ) );
 
-/*
- * Set the loader to execute on WP init.
- */
 add_action( 'init', 'ig_syntax_hiliter_loader' );
 
 /**
  * Hands control to the Gatekeeper, which loads the plugin only when the
  * environment satisfies the plugin's minimum PHP and WordPress versions.
  *
- * Calling this more than once is harmless — the Gatekeeper loads the plugin
- * through singletons, so a second call changes nothing.
+ * Calling this twice is harmless: the Gatekeeper loads through singletons.
  *
  * @return void
  */
 function ig_syntax_hiliter_loader() {
 
-	//load the Gatekeeper
 	require_once __DIR__ . '/classes/class-ig-syntax-hiliter-gatekeeper.php';
 
-	//activate the Gatekeeper
 	iG_Syntax_Hiliter_Gatekeeper::activate();
 
 }
 
-
-//EOF
+// EOF

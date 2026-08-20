@@ -151,15 +151,9 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * The line highlight plugin loads for a snippet which highlights lines, and for no
 	 * other kind of page.
 	 *
-	 * The negative half of this is already covered, and covered exactly: the control
-	 * above asserts the whole handle list for an ordinary snippet, and neither of the
-	 * two handles below is in it. So this asserts the whole list as well rather than
-	 * the presence of the two, which is what makes the pair of tests say "these two and
-	 * only these two arrived".
-	 *
-	 * The stylesheet is named beside the script for the same reason the settings page
-	 * test names it: the band over a highlighted line is painted by the CSS, and a page
-	 * with the script alone would highlight nothing a reader could see.
+	 * The whole list is asserted, as the control above does, so the pair says "these two
+	 * and only these two arrived". The band over a highlighted line is painted by the
+	 * CSS, so the stylesheet is named beside the script.
 	 *
 	 * @test
 	 *
@@ -202,10 +196,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * The line highlight script waits for the line numbers script.
 	 *
 	 * It measures the rendered numbers to place its band when a box carries them, so
-	 * the order is not a preference. Both callers load the line numbers plugin, which
-	 * is what makes the dependency a statement of the order rather than the thing
-	 * arranging it — and a dependency naming a handle nobody registered would be
-	 * dropped by WordPress without a word.
+	 * the order is not a preference. A dependency naming a handle nobody registered
+	 * would be dropped by WordPress without a word.
 	 *
 	 * @test
 	 *
@@ -259,11 +251,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			);
 
 		} finally {
-			/*
-			 * The options object reads the stored array once and holds it for the rest
-			 * of the request. The database is rolled back after this test, so the object
-			 * has to go with it or the next test reads a theme nobody saved.
-			 */
+			// The options object holds the stored array for the request; the database is rolled back after each test, so the object goes with it.
 			$this->_set_singleton( Option::class, null );
 
 		}
@@ -273,11 +261,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * Both settings off means no brace matching script, no stylesheet and no class.
 	 *
-	 * Nothing else can see any of this. The script is what creates the spans the
-	 * nesting colours are painted on, and the class on the body is what tells it to
-	 * create them — so all three have to go together, and a site owner who has
-	 * switched both settings off has to get a page which is exactly the page they got
-	 * before this feature existed.
+	 * The script creates the spans the colours are painted on and the body class tells
+	 * it to, so all three have to go together.
 	 *
 	 * @test
 	 *
@@ -357,12 +342,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * The colours wanted without the matching still load the script, and switch the
 	 * hover and the click off by name.
 	 *
-	 * **This is the case the two settings exist for and the one nothing else guards.**
-	 * The `brace-level-N` classes the colours are painted on are added inside the same
-	 * hook `match-braces` gates, so the colours alone would be a setting which does
-	 * nothing — the class has to go on. `no-brace-hover` and `no-brace-select` are then
-	 * the only thing standing between "I wanted the colours" and an interaction the
-	 * site owner switched off, because the plugin defaults both of them on.
+	 * The `brace-level-N` classes are added inside the hook `match-braces` gates, so the
+	 * class has to go on; the plugin defaults hover and select on, so both are named off.
 	 *
 	 * @test
 	 *
@@ -398,16 +379,9 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * Every file the plugin enqueues out of its own assets directory is on disk.
 	 *
-	 * `assets/build/` is generated and git-ignored, and `assets/lib/` is a vendored
-	 * upstream release which is copied in by hand — so a fresh checkout, an
-	 * interrupted build and a half finished vendoring all look the same from here: a
-	 * `<script>` tag pointing at a 404. Nothing else in three tiers would say so,
-	 * because enqueuing a handle whose file is missing is not an error anywhere in
-	 * WordPress.
-	 *
-	 * Read off what was actually enqueued rather than from a list written out here,
-	 * so a plugin vendored later is covered the day it is wired up and not the day
-	 * somebody remembers this case.
+	 * `assets/build/` is generated and `assets/lib/` is vendored by hand, and enqueuing
+	 * a handle whose file is missing is not an error anywhere in WordPress. The list is
+	 * read off what was enqueued, so a plugin vendored later is covered when wired up.
 	 *
 	 * @test
 	 *
@@ -433,7 +407,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			$source = (string) $dependency->src;
 
 			if ( ! str_starts_with( $source, Helper::get_asset_url() ) ) {
-				continue;    //a webfont stylesheet, which is not ours and is not on this disk
+				continue;    // A webfont stylesheet, which is not ours and is not on this disk.
 			}
 
 			$this->assertFileExists(
@@ -504,17 +478,9 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * Method to print the scripts and styles this plugin has enqueued, and only those.
 	 *
-	 * Core's own `wp_print_footer_scripts()` walks the whole queue, and the queue is
-	 * not this plugin's. The install these tests run against brings its own enqueues
-	 * — on this machine a mu-plugin queues a handle at `init` whose dependency is
-	 * never registered on the front end — and `WP_Dependencies::all_deps()` raises a
-	 * `_doing_it_wrong()` over each one as it walks past. The test library turns that
-	 * into a failure of whichever test happened to print first, so a test which
-	 * printed the whole queue would pass or fail on what else is installed.
-	 *
-	 * Printing this plugin's handles alone still exercises the real printer: the
-	 * dependencies walked are the plugin's own, and a handle which was not enqueued
-	 * by the time this runs prints nothing.
+	 * Core's `wp_print_footer_scripts()` walks the whole queue, and another plugin's
+	 * broken dependency would fail whichever test printed first. Printing this plugin's
+	 * handles alone still exercises the real printer.
 	 *
 	 * @return void
 	 */
@@ -535,13 +501,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 				continue;
 			}
 
-			/*
-			 * Printing marks a handle done on a registry which outlives the test, and a
-			 * handle already marked done is skipped. `_reset_asset_state()` takes this
-			 * plugin's handles back out of the registry between tests; this takes them
-			 * out of the record of what has already been printed, so that a second test
-			 * printing the same handles is not silently handed an empty footer.
-			 */
+			// A handle marked done on the registry, which outlives the test, would print nothing a second time.
 			$dependencies->done = array_values( array_diff( $dependencies->done, $handles ) );
 
 			$dependencies->do_items( $handles );
@@ -553,11 +513,11 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * Method to run the footer, with something rendering content part way through it.
 	 *
-	 * `_fire_footer()` restores every pass the manager sits at but prints nothing,
-	 * because for its callers the enqueue state is the whole answer. These tests need
-	 * the page as well: an enqueue which happens after the footer has been printed
-	 * reaches nobody, so something has to print at the moment core prints, and the
-	 * assertions have to be able to tell "enqueued" from "enqueued in time".
+	 * `_fire_footer()` restores every pass the manager sits at but prints nothing.
+	 * These tests need the page as well: an enqueue which happens after the footer
+	 * has been printed reaches nobody, so something has to print at the moment core
+	 * prints, and the assertions have to be able to tell "enqueued" from "enqueued in
+	 * time".
 	 *
 	 * @param callable $render Callback which renders content from the footer.
 	 *
@@ -582,11 +542,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * A snippet which only appears once the footer has started still gets its assets.
 	 *
-	 * Plenty of things render content from `wp_footer` — a modal, a late list of
-	 * related posts, a comment list built on demand. A code box which arrives that
-	 * way used to land on the page after the one and only decision had been taken,
-	 * with no stylesheet, no theme and no highlighter, and nothing left on the page
-	 * able to put that right.
+	 * Plenty of things render content from `wp_footer`; a code box arriving after a
+	 * single decision would reach the page with no stylesheet and no highlighter.
 	 *
 	 * @test
 	 *
@@ -692,15 +649,10 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * The plugin's own stylesheet says a code box does not wrap, on the `pre`.
 	 *
-	 * An odd thing to assert — it reads a build artefact for a string — and it earns
-	 * its place because this exact declaration was missing and nothing noticed. Prism's
-	 * line numbers plugin carries `white-space: inherit` on the `code` at the same
-	 * specificity as this plugin's rule and loads after it, so with line numbers on the
-	 * code takes its answer from the `pre`. With nothing said there, the last word
-	 * belonged to the theme at 0-1-1 and any site CSS touching `pre` took it away —
-	 * lines wrapped, and the line numbers stopped lining up with the code.
-	 *
-	 * No tier here can see a rendered box, so the rule itself is what is checked.
+	 * Prism's line numbers plugin puts `white-space: inherit` on the `code`, so with
+	 * line numbers on the answer comes from the `pre`; with nothing said there, any site
+	 * CSS touching `pre` wraps the lines, so the rule is asserted against the compiled
+	 * stylesheet.
 	 *
 	 * @test
 	 *
@@ -716,12 +668,7 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			'The pre carries no white-space of its own, so a wrapping site stylesheet wins.'
 		);
 
-		/*
-		 * The container is what the rule finds the box by, and a descendant combinator
-		 * is what reaches it: the toolbar plugin wraps each `pre` in a `.code-toolbar`
-		 * div at runtime, so a child combinator would stop matching the moment the
-		 * toolbar setting is on.
-		 */
+		// The toolbar plugin wraps each `pre` in a div at runtime, so only a descendant combinator reaches it.
 		$this->assertStringNotContainsString(
 			'.igsh-code-box>pre',
 			$css,
@@ -733,12 +680,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * The stylesheet reads every custom property the font setting sets.
 	 *
-	 * The two halves are in different files on purpose — the selectors here, the values
-	 * from PHP — which is what keeps adding a font a one file job and the cascade
-	 * legible. The cost of that split is that either half can stop referring to the
-	 * other without a word: a rule which stopped reading a variable would simply draw
-	 * the fallback for ever, and a site owner would report that picking a font does
-	 * nothing.
+	 * The selectors live here and the values come from PHP, so either half can stop
+	 * referring to the other without a word and picking a font would do nothing.
 	 *
 	 * @test
 	 *
@@ -763,10 +706,8 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	/**
 	 * The font's values are printed once, however many times the assets are decided.
 	 *
-	 * The manager decides at `wp_footer` 1 and again at 19, and it has to enqueue on
-	 * both passes — the second is what catches a snippet rendered from the footer
-	 * itself. Adding the inline values twice only prints them twice, which is what the
-	 * front end did until this was guarded.
+	 * The manager decides at `wp_footer` 1 and again at 19 and enqueues on both passes;
+	 * adding the inline values on each pass would print them twice.
 	 *
 	 * @test
 	 *
@@ -793,7 +734,6 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

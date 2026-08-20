@@ -16,16 +16,8 @@ use iG\Syntax_Hiliter\Traits\Singleton;
 /**
  * Validators for the plugin's stored option values.
  *
- * This is the one class which decides what a setting may hold. `Option` stores and
- * reads; it does not judge. Keeping the two apart is what stops a second opinion
- * about a value growing somewhere else, and it is why the defaults live here beside
- * the values they fall back from rather than in the class doing the writing.
- *
- * Nothing here sanitizes in the sense of rewriting an unrecognised value into a
- * tidier one. `sanitize_title()` was doing that until 6.0 and it was never a check:
- * `evil` is a perfectly good slug, so a tampered request put `evil` into the settings
- * unaltered while a legitimate value with a space in it was quietly reshaped. A value
- * is either one this setting accepts or it is replaced by the setting's default.
+ * The one class that decides what a setting may hold; `Option` stores and reads.
+ * A value is either one the setting accepts or it is replaced by that setting's default.
  */
 class Validate {
 
@@ -34,56 +26,51 @@ class Validate {
 	/**
 	 * What each setting accepts, and what it is when the site has never set it.
 	 *
-	 * A setting which is not named here cannot be checked and so cannot be saved,
-	 * which is what makes adding one and forgetting this map a visible failure rather
-	 * than a silent hole.
-	 *
-	 * `allowed` is NULL where the list is not fixed and has to be resolved when it is
-	 * asked for. A setting whose list is `yes`/`no` is read as a flag, so that a
-	 * caller holding a boolean gets the same answer as one holding the word.
+	 * A setting not named here cannot be checked and so cannot be saved. `allowed`
+	 * is NULL where the list is resolved at read time.
 	 *
 	 * @var array
 	 */
 	protected array $_option_values = [
 		'theme'             => [
-			'allowed' => null,    //the bundled themes readable on disk, plus `none`
+			'allowed' => null,
 			'default' => Themes::DEFAULT_THEME,
 		],
 		'font'              => [
-			'allowed' => null,    //the fonts the plugin offers, plus `none`
-			'default' => Fonts::FONT_NONE,    //load no webfont unless a site owner asks for one
+			'allowed' => null,
+			'default' => Fonts::FONT_NONE,
 		],
 		'toolbar'           => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //show toolbar above hilited code by default
+			'default' => 'yes',
 		],
 		'copy_code'         => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //show the copy to clipboard button by default
+			'default' => 'yes',
 		],
 		'show_line_numbers' => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //show line numbers in code by default
+			'default' => 'yes',
 		],
 		'match_braces'      => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //point out a bracket's partner on hover by default, since nothing shows until a reader hovers
+			'default' => 'yes',    // nothing shows until a reader hovers
 		],
 		'rainbow_braces'    => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'no',    //don't colour brackets by nesting depth by default, since that repaints every box on the site
+			'default' => 'no',    // repaints every box on the site
 		],
 		'hilite_comments'   => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //hilite code posted in comments by default
+			'default' => 'yes',
 		],
 		'gist_in_comments'  => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'no',    //don't embed Github Gist in comments by default
+			'default' => 'no',
 		],
 		'gist_limit_height' => [
 			'allowed' => [ 'yes', 'no' ],
-			'default' => 'yes',    //keep each file in an embedded Gist inside a scrollable box by default
+			'default' => 'yes',
 		],
 	];
 
@@ -115,13 +102,8 @@ class Validate {
 	/**
 	 * Method to read a value as a yes/no setting.
 	 *
-	 * `TRUE`, `1`, `'1'`, `'on'` and `'yes'` all mean the same thing to the person who
-	 * set them, and so do their opposites; anything which is neither is not a flag at
-	 * all and takes the fallback. Versions of this plugin up to 3.5 stored these
-	 * settings as real booleans and 4.0 onwards stored the words, so both spellings
-	 * turn up in the wild and both have to read the same way.
-	 *
-	 * The return is always `yes` or `no`, whatever came in.
+	 * `TRUE`, `1`, `'1'`, `'on'` and `'yes'` all mean the same; versions up to 3.5 stored
+	 * real booleans and 4.0 onwards the words, so both turn up. Always returns `yes` or `no`.
 	 *
 	 * @param mixed  $value    Value to read.
 	 * @param string $fallback Value to use when the one in hand cannot be read as a flag.
@@ -159,10 +141,7 @@ class Validate {
 			return $allowed;
 		}
 
-		//NULL means the list is not fixed and is resolved here instead. `theme` accepts
-		//whatever is readable on disk and `font` whatever the plugin offers, each plus
-		//the choice to load nothing at all. Both are read from the asset manager rather
-		//than copied, so the list a value is checked against is the list it is offered from
+		// NULL means the list is resolved here, from the same source the choices are offered from
 		if ( 'theme' === $name ) {
 			return array_merge( array_keys( Themes::get_themes() ), [ Themes::THEME_NONE ] );
 		}
@@ -171,7 +150,7 @@ class Validate {
 			return array_merge( array_keys( Fonts::get_fonts() ), [ Fonts::FONT_NONE ] );
 		}
 
-		return [];    //declared as unfixed with nothing here able to resolve it, so nothing is accepted
+		return [];    // declared as unfixed with nothing here able to resolve it, so nothing is accepted
 
 	}
 
@@ -200,20 +179,16 @@ class Validate {
 	/**
 	 * Method to read a value as a setting, whatever it arrives as.
 	 *
-	 * This always hands back something the setting accepts. A value which is not one
-	 * of them is replaced by that setting's default rather than refused, because the
-	 * callers which reach this — migration, WP-CLI, a third party — have nobody to
-	 * report a refusal to, and storing something unrecognised is the worse outcome.
-	 *
-	 * The settings screen never reaches that fallback: `Admin::validate_option_value()`
-	 * answers 400 for a value outside the setting's choices, so a caller who sent
-	 * something wrong is told so and the control on screen goes back to what it was.
-	 * The two are doing different jobs and both are wanted.
+	 * Always returns something the setting accepts; an unrecognised value becomes the
+	 * default rather than a refusal, because migration, WP-CLI and third parties have
+	 * nobody to report to. The settings screen answers 400 instead, via
+	 * `Admin::validate_option_value()`.
 	 *
 	 * @param string $name  Option name.
 	 * @param mixed  $value Value as it arrived.
 	 *
-	 * @return string A value this setting accepts, or an empty string when this plugin has no such setting.
+	 * @return string A value this setting accepts, or an empty string when this plugin has no
+	 *                such setting.
 	 */
 	public function get_sanitized_option_value( string $name, mixed $value ): string {
 
@@ -231,17 +206,14 @@ class Validate {
 		$value = ( is_scalar( $value ) ) ? strtolower( trim( (string) $value ) ) : '';
 
 		/*
-		 * The default is handed back without being looked up in the list, because a
-		 * setting's list can be shorter than its own default: a bundled theme whose
-		 * stylesheet is missing from disk is not offered, and checking the fallback
-		 * would leave the theme setting unsavable on that site rather than merely
-		 * unable to hold that one theme. What is stored not being on disk is a case
-		 * `Asset_Manager::_enqueue_theme()` already reads and falls back from.
+		 * The default is not looked up in the list: a bundled theme missing from disk is
+		 * not offered, and checking the fallback would make the theme setting unsavable on
+		 * that site.
 		 */
 		return ( in_array( $value, $allowed, true ) ) ? $value : $default;
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

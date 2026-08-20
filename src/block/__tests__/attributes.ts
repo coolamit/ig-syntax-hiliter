@@ -1,10 +1,9 @@
 /**
  * The one mapping from legacy shortcode attributes onto block attributes.
  *
- * What is being held in place here is that a snippet converted out of a
- * twenty year old post arrives holding the language id the highlighter uses and
- * the dropdown offers — never the tag the author typed, and never an empty
- * string where the author named something real.
+ * A converted snippet must arrive holding the language id the dropdown
+ * offers — never the tag the author typed, never an empty string for a real
+ * name.
  */
 
 import {
@@ -49,10 +48,8 @@ afterEach( () => {
 
 describe( 'getEditorData', () => {
 	/*
-	 * The memo is keyed on the identity of what PHP localised, and that is the whole
-	 * of what makes it safe. A "have we run yet" flag would hand this suite's first
-	 * case's data to every case after it, and would hand a real editor stale data
-	 * after any code that replaced the global.
+	 * The memo is keyed on the identity of what PHP localised, which is what
+	 * makes it safe.
 	 */
 	it( 'hands back the same object while the source object is the same', () => {
 		expect( getEditorData() ).toBe( getEditorData() );
@@ -105,9 +102,8 @@ describe( 'resolveLanguage', () => {
 	} );
 
 	/*
-	 * The one that matters most. A name nothing recognises is the author's own
-	 * word, and it is kept: the `ig_syntax_hiliter/languages` filter can make it good
-	 * tomorrow, where a name overwritten here could never recover.
+	 * An unrecognised name is the author's word and is kept; the filter can
+	 * make it good tomorrow.
 	 */
 	it( 'hands back a name it does not recognise, rather than replacing it', () => {
 		expect( resolveLanguage( 'rust' ) ).toBe( 'rust' );
@@ -181,18 +177,8 @@ describe( 'mapShortcodeAttributes', () => {
 	} );
 
 	/*
-	 * The mirror of `Shortcode_Handler::build_snippet()`. A snippet whose code quotes
-	 * this plugin's tags writes them with doubled brackets, and a block whose code
-	 * still carried them would show the reader an escape they never typed — and would
-	 * gain another level every time the revert tool ran.
-	 */
-	/*
-	 * The guard on the paste transform, asserted here because it needs none of that
-	 * fixture: this is the pure function, called directly. `convert.ts` reads the
-	 * author's bytes out of the stored post, where no markdown converter has ever
-	 * been near them, and calls this the same way — so the decoding has to live in
-	 * the transform and nowhere lower down. A snippet whose code contains `&amp;`
-	 * and `<br>` must come out of here byte for byte.
+	 * Decoding belongs in the paste transform, not here: `convert.ts` reads the
+	 * author's stored bytes, so `&amp;` and `<br>` must come out byte for byte.
 	 */
 	it( 'stores the code it is given without decoding it', () => {
 		const code = 'a &amp; b <br> c';

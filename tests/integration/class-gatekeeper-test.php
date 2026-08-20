@@ -2,16 +2,9 @@
 /**
  * The plugin refuses to load below either version floor.
  *
- * The Gatekeeper is the one thing that has to work on an environment the test
- * suite cannot create — an old PHP, an old WordPress, or both. It therefore takes
- * the two versions it judges as constructor arguments, so that one can be built
- * here for any environment at all and asked what it makes of it.
- *
- * Building one does nothing. `run()` is what loads the plugin or hooks the notice,
- * and nothing here calls it.
- *
- * The floors themselves are asserted in `Plugin_Bootstrap_Test`, against the
- * plugin header which declares them.
+ * The Gatekeeper takes the two versions it judges as constructor arguments, so one can
+ * be built for an environment the suite cannot create. Building one does nothing;
+ * `run()` loads the plugin or hooks the notice, and nothing here calls it.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -24,10 +17,7 @@ use iG_Syntax_Hiliter_Gatekeeper;
 use WP_UnitTestCase;
 
 /**
- * What is left here is the half which genuinely needs WordPress: the environment
- * the suite is really running on, and the notice, which is built with `esc_html()`
- * and `__()`. The version comparison itself needs none of it and is in the unit
- * tier, in `Gatekeeper_Versions_Test`.
+ * The half which needs WordPress: the running environment, and the notice built with `esc_html()` and `__()`.
  */
 class Gatekeeper_Test extends WP_UnitTestCase {
 
@@ -49,9 +39,8 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	/**
 	 * A Gatekeeper built with no arguments judges the environment it is running in.
 	 *
-	 * That is what the plugin's own boot does, so it is the case the site depends
-	 * on — and it passing here also says the rest of the suite is exercising a
-	 * plugin that really did load.
+	 * That is what the plugin's own boot does, and it passing says the rest of the
+	 * suite is exercising a plugin that really did load.
 	 *
 	 * @test
 	 *
@@ -66,11 +55,8 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	/**
 	 * The refusal notice names both floors and both versions actually in use.
 	 *
-	 * This is the sentence read by the one person who most needs it — somebody
-	 * whose site is too old to load the plugin at all — and until the Gatekeeper
-	 * could be built without loading the plugin there was no way to assert a word
-	 * of it. The output is captured rather than printed, because `phpunit.xml.dist`
-	 * fails a test which prints anything.
+	 * The output is captured rather than printed, because `phpunit.xml.dist` fails a
+	 * test which prints anything.
 	 *
 	 * @test
 	 *
@@ -93,17 +79,15 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'notice-error', $notice );
 		$this->assertStringContainsString( iG_Syntax_Hiliter_Gatekeeper::PLUGIN_NAME, $notice );
 
-		//what it needs
 		$this->assertStringContainsString( iG_Syntax_Hiliter_Gatekeeper::MIN_PHP_VERSION_REQUIRED, $notice );
 		$this->assertStringContainsString( iG_Syntax_Hiliter_Gatekeeper::MIN_WP_VERSION_REQUIRED, $notice );
 
-		//and what it found, which is the half a site owner cannot look up
+		// What it found, which is the half a site owner cannot look up.
 		$this->assertStringContainsString( '7.4.33', $notice );
 		$this->assertStringContainsString( '6.8', $notice );
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

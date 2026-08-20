@@ -2,12 +2,8 @@
 /**
  * PHPUnit bootstrap for the iG:Syntax Hiliter test suites.
  *
- * The plugin has two tiers of tests and they need very different environments,
- * so this file works out which tier is being run and hands off to that tier's
- * own bootstrap:
- *
- *  - unit        : plain PHP, no WordPress, no database.
- *  - integration : a real WordPress install plus the WordPress test library.
+ * Works out which tier is running and hands off to that tier's own bootstrap:
+ * unit is plain PHP with no WordPress; integration is a real WordPress install.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -38,9 +34,8 @@ require_once $ig_syntax_hiliter_autoloader;
 /**
  * Work out which test suite is running.
  *
- * PHPUnit does not expose the selected suite to the bootstrap, so the command
- * line is read directly. An explicit environment variable wins, which keeps
- * this usable from CI or an IDE runner that builds its own command line.
+ * PHPUnit does not expose the suite to the bootstrap, so the command line is
+ * read; an environment variable wins, for CI.
  *
  * @return string Suite name, or an empty string when it could not be determined.
  */
@@ -97,5 +92,4 @@ switch ( $ig_syntax_hiliter_suite ) {
 
 unset( $ig_syntax_hiliter_autoloader, $ig_syntax_hiliter_suite );
 
-
-//EOF
+// EOF

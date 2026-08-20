@@ -2,13 +2,7 @@
 /**
  * The few WordPress functions the domain core cannot avoid, shimmed.
  *
- * `_wp_specialchars()` and `esc_attr()` are what the renderer's tests are about,
- * `wp_strip_all_tags()` is the second layer under the first of those, and
- * `apply_filters()` is what the tag list and registry extension points run
- * through. Anything in the domain core needing more of WordPress than this
- * belongs in the integration tier.
- *
- * Required explicitly by the test cases which need it, so the tier's bootstrap
+ * Required explicitly by the cases which need them, so the tier's bootstrap
  * stays free of WordPress.
  *
  * @package iG_Syntax_Hiliter
@@ -51,9 +45,7 @@ if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 	/**
 	 * Takes every tag out of a string, script and style bodies included.
 	 *
-	 * Core's is one `preg_replace()` and a `strip_tags()`, so this is the whole of it
-	 * rather than an approximation of it. `$remove_breaks` is the parameter core has
-	 * and the renderer never passes.
+	 * Core's is one `preg_replace()` and a `strip_tags()`, so this is the whole of it.
 	 *
 	 * @param string $text          Text to strip.
 	 * @param bool   $remove_breaks Whether to collapse whitespace as well.
@@ -88,5 +80,4 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
-
-//EOF
+// EOF

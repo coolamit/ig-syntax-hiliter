@@ -73,8 +73,7 @@ class Legacy_Map_Test extends TestCase {
 	protected const array _SHIPPED_ALIASES = [ 'as', 'html', 'js' ];
 
 	/**
-	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing
-	 * else. A tag the plugin never shipped is another plugin's to claim.
+	 * Every shipped tag and alias is claimed, plus the generic tag, and nothing else.
 	 *
 	 * @test
 	 *
@@ -135,13 +134,7 @@ class Legacy_Map_Test extends TestCase {
 	 * @return void
 	 */
 	public function it_maps_a_plain_tag_to_no_language(): void {
-		/*
-		 * The value and not only the constant. The editor mirrors this literal in
-		 * `src/block/attributes.ts`, where PHP sends the constant over precisely so
-		 * that the two cannot drift — and every other use of `NO_LANGUAGE` in either
-		 * PHP tier names the constant on both sides, so without this line changing it
-		 * would break the editor's fallback and fail no PHP test.
-		 */
+		// The value and not only the constant: `src/block/attributes.ts` mirrors this literal.
 		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );
@@ -225,10 +218,8 @@ class Legacy_Map_Test extends TestCase {
 	}
 
 	/**
-	 * The escape exists so that a snippet can quote this plugin's own tags. Both a
-	 * closing tag, which is what used to cut such a snippet short, and an opening tag
-	 * are written with doubled brackets, and reading them back gives the author's
-	 * bytes again.
+	 * Opening and closing tags alike are written with doubled brackets, and reading
+	 * them back gives the author's bytes again.
 	 *
 	 * @test
 	 *
@@ -251,9 +242,8 @@ class Legacy_Map_Test extends TestCase {
 	}
 
 	/**
-	 * A tag which is already escaped gains a level rather than being left as it is,
-	 * and reading it back takes exactly that level off again. Anything else and an
-	 * author who wrote about the escape itself would lose a bracket per conversion.
+	 * An already escaped tag gains a level and reading it back takes exactly that
+	 * level off, so an author writing about the escape loses no bracket per conversion.
 	 *
 	 * @test
 	 *
@@ -317,7 +307,6 @@ class Legacy_Map_Test extends TestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

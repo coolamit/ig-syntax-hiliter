@@ -31,10 +31,7 @@ class Option {
 	/**
 	 * An array which contains default plugin options.
 	 *
-	 * Filled from `Validate`, which is where the settings are declared along with the
-	 * values each of them accepts. This class does not keep a second copy of that
-	 * list: two declarations of the same fact are two things to keep in step, and the
-	 * one which drifts is always the one nothing reads.
+	 * Filled from `Validate`, which declares the settings and their accepted values.
 	 *
 	 * @var array
 	 */
@@ -58,7 +55,6 @@ class Option {
 	 */
 	protected function _load_all_options(): void {
 
-		//fetch options array from wp_options & then do a safe merge with default options
 		$db_options = get_option( Base::PLUGIN_ID . '-options', false );
 
 		if ( empty( $db_options ) || ! is_array( $db_options ) ) {
@@ -72,14 +68,12 @@ class Option {
 	/**
 	 * Getter method to fetch a single option by name
 	 *
-	 * A key which exists but holds NULL — which only a hand edited option or a
-	 * third party can produce — reads as this setting's default. Every caller of
-	 * this expects a usable value, a `yes`/`no` or a theme name, and none of them
-	 * is written to receive NULL.
+	 * A key holding NULL reads as the setting's default.
 	 *
 	 * @param string $name Option name.
 	 *
-	 * @return mixed The stored value, this setting's default when there is none, or FALSE when the plugin has no such setting.
+	 * @return mixed The stored value, this setting's default when there is none, or FALSE when
+	 *               the plugin has no such setting.
 	 */
 	public function get( string $name ): mixed {
 
@@ -119,20 +113,9 @@ class Option {
 	 * Method to save an option. `Validate` decides what the value may be and this
 	 * saves an option only if the option name already exists.
 	 *
-	 * Whatever arrives is read as this setting through `Validate`, which hands back a
-	 * value the setting accepts or that setting's default. Nothing unrecognised is
-	 * ever written, so a request edited on its way here cannot put an arbitrary value
-	 * into the settings — which is what the old `sanitize_title()` call let through,
-	 * since a made up value is usually a perfectly good slug.
-	 *
-	 * The stored array is read again immediately before it is written, and the one
-	 * setting named here is applied to what was read. The snapshot this object took
-	 * when it was built is never what gets written: the settings screen saves one
-	 * setting per request, so two settings changed in quick succession are two
-	 * overlapping requests, and a request which wrote its own snapshot back would
-	 * put the other request's setting back the way it was before. Both requests
-	 * would report success and one of the two settings would not be in the
-	 * database.
+	 * `Validate` decides the value, so nothing unrecognised is ever written. The stored
+	 * array is re-read immediately before writing: the screen saves one setting per
+	 * request and writing a stale snapshot would revert a concurrent save.
 	 *
 	 * @param string $name  Option name.
 	 * @param mixed  $value Value to save.
@@ -141,20 +124,19 @@ class Option {
 	 */
 	public function save( string $name, mixed $value ): bool {
 
-		//the set of settings this plugin has is what decides whether a name may be saved,
-		//rather than the array in hand: a key which exists but holds NULL is still one of
-		//this plugin's settings, and must not be left unsavable
+		// checked against the declared settings, not the array in hand, so a key holding NULL
+		// is still savable
 		if ( empty( $name ) || ! array_key_exists( $name, $this->_default_options ) ) {
 			return false;
 		}
 
 		$value = Validate::get_instance()->get_sanitized_option_value( $name, $value );
 
-		$this->_load_all_options();    //whatever is stored now, not what was stored when this object was built
+		$this->_load_all_options();    // whatever is stored now, not what was stored when this object was built
 
 		$this->_options[ $name ] = $value;
 
-		return $this->commit();    //lets save in DB as well
+		return $this->commit();
 
 	}
 
@@ -175,6 +157,6 @@ class Option {
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

@@ -2,9 +2,8 @@
 /**
  * An unknown language degrades to a plain box and asks the browser for nothing.
  *
- * What a plain box looks like is `Renderer_Test`'s business. What is checked here is
- * the half of the criterion that markup cannot show: that nothing on the page ever
- * asks for a language file which is not there.
+ * What is checked here is the half markup cannot show: nothing on the page asks
+ * for a language file which is not there.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -81,10 +80,8 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 
 	/**
 	 * Nothing on the page asks for the bogus language, and the box is still given
-	 * the engine and a theme to be styled by.
-	 *
-	 * This is the criterion: no request for a language file that is not there, so no
-	 * 404. The check is against what was actually registered, not against markup.
+	 * the engine and a theme to be styled by. The check is against what was
+	 * registered, not against markup.
 	 *
 	 * @test
 	 *
@@ -113,10 +110,8 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A language the registry does know is not enqueued either.
-	 *
-	 * Language files are fetched at runtime by the engine's own loader, which only
-	 * asks for what the registry confirmed. Enqueuing components eagerly would put
+	 * A language the registry does know is not enqueued either: the engine's own
+	 * loader fetches language files at runtime, and enqueuing them eagerly would put
 	 * the 404 risk straight back.
 	 *
 	 * @test
@@ -162,7 +157,6 @@ class Unknown_Language_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

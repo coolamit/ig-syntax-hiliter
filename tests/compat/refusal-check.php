@@ -2,16 +2,8 @@
 /**
  * Proves, on a real interpreter, that the plugin refuses to load below its floors.
  *
- * This is the one claim no PHPUnit tier here can make. Both tiers run on a PHP and
- * a WordPress the plugin supports, so they only ever exercise a plugin that loaded.
- * What happens on PHP 7.4 — the case this file exists for — cannot be simulated: it
- * has to be run.
- *
- * So this is a plain script rather than a test case. It needs no WordPress, no
- * Composer and no PHPUnit, which is what lets it run on a PHP that `composer
- * install` refuses outright. The four WordPress functions the plugin's boot path
- * touches are stood in for below, and nothing else is needed, because the whole
- * point is that nothing else is reached.
+ * A plain script, not a test case: it needs no WordPress, no Composer and no
+ * PHPUnit, so it runs on a PHP that `composer install` refuses.
  *
  * Usage:
  *
@@ -19,22 +11,15 @@
  *     php tests/compat/refusal-check.php --wp=6.8
  *     IGSH_COMPAT_WP_VERSION=6.8 php tests/compat/refusal-check.php
  *
- * The WordPress version defaults to the plugin's own floor, so that on an old PHP
- * the PHP is the only reason for the refusal. Naming an older one forces the other
- * floor to be the reason, which is how the WordPress side is exercised without
- * installing an old WordPress.
+ * The WordPress version defaults to the plugin's floor; naming an older one
+ * forces the WordPress floor to be the reason for the refusal.
  *
- * **It holds no version numbers of its own.** Both floors are read from the
- * Gatekeeper, so moving a floor needs no edit here — see the comment above the
- * `compat` job in `.github/workflows/test.yml` for what a floor change does need.
+ * Holds no version numbers of its own; both floors are read from the Gatekeeper.
  *
- * Exits 0 when the refusal is correct, and non-zero with a reason otherwise. An
- * environment which satisfies both floors is a failure too: this file asserting
- * nothing while reporting success is the one outcome that would be worse than not
- * having it at all.
+ * Exits 0 on a correct refusal. An environment satisfying both floors is a failure.
  *
- * IMPORTANT: parsed by the old PHP it is testing, so it holds no syntax newer than
- * the two files it exercises.
+ * IMPORTANT: parsed by the old PHP it tests, so no syntax newer than the two
+ * files it exercises.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -51,7 +36,7 @@ define( 'IG_SYNTAX_HILITER_COMPAT_DIR', dirname( dirname( __DIR__ ) ) );
  */
 $GLOBALS['ig_syntax_hiliter_compat_hooks'] = [];
 
-// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- The four functions below stand in for WordPress's own and must carry WordPress's own names, which is the entire point of them. Everything this file declares of its own is prefixed.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- The four functions below stand in for WordPress's own and must carry WordPress's own names; everything else this file declares is prefixed.
 
 /**
  * Stands in for WordPress's `add_action()`, and records what was hooked.
@@ -83,8 +68,7 @@ function plugin_basename( $file ) {
 /**
  * Stands in for WordPress's `__()`.
  *
- * The string is handed straight back, which is what WordPress itself does with no
- * translation loaded — so the notice this produces is the one an English site sees.
+ * Hands the string back, as WordPress does with no translation loaded.
  *
  * @param string $text   Text to translate.
  * @param string $domain Text domain.
@@ -141,9 +125,8 @@ function ig_syntax_hiliter_compat_ok( $claim ) {
 /**
  * The WordPress version this run is to judge.
  *
- * Taken from `--wp=<version>` if it is there, then from `IGSH_COMPAT_WP_VERSION`,
- * and otherwise the plugin's own floor — so that on an old PHP the PHP is the only
- * thing wrong, and forcing an old WordPress is a deliberate act.
+ * Taken from `--wp=<version>`, then from `IGSH_COMPAT_WP_VERSION`, and otherwise
+ * the plugin's own floor, so that on an old PHP the PHP is the only thing wrong.
  *
  * @param string $fallback Version to use when the run names none.
  * @return string
@@ -190,8 +173,7 @@ function ig_syntax_hiliter_compat_is_loaded( $path ) {
 /**
  * Runs every callback on one of the recorded hooks.
  *
- * Called off the hook the plugin registered rather than by name, so that the
- * wiring is exercised and not just the callback.
+ * Fired off the hook rather than called by name, so the wiring is exercised too.
  *
  * @param string $hook_name Hook to fire.
  * @return void
@@ -210,11 +192,7 @@ function ig_syntax_hiliter_compat_fire( $hook_name ) {
  * @return void
  */
 function ig_syntax_hiliter_compat_run() {
-	/*
-	 * The Gatekeeper is a class definition and nothing else, so requiring it runs
-	 * no part of the plugin. It is loaded first because it is where the floors are
-	 * declared, and this script is not allowed to know them independently.
-	 */
+	// Requiring the Gatekeeper runs nothing; it is where the floors are declared.
 	require_once IG_SYNTAX_HILITER_COMPAT_DIR . '/classes/class-ig-syntax-hiliter-gatekeeper.php';
 
 	$min_php = iG_Syntax_Hiliter_Gatekeeper::MIN_PHP_VERSION_REQUIRED;
@@ -234,11 +212,8 @@ function ig_syntax_hiliter_compat_run() {
 	);
 
 	/*
-	 * Refuse to run at all on an environment the plugin supports. The loader would
-	 * load the plugin, which without WordPress would fatal on the first core
-	 * function it reached — but more to the point, a check which cannot fail is
-	 * worse than no check, because it reads as coverage. This is what a version
-	 * listed in the wrong matrix leg looks like.
+	 * Refuse to run on a supported environment: a check which cannot fail reads
+	 * as coverage.
 	 */
 	$probe = new iG_Syntax_Hiliter_Gatekeeper();
 
@@ -248,11 +223,7 @@ function ig_syntax_hiliter_compat_run() {
 
 	ig_syntax_hiliter_compat_ok( 'the environment is one the plugin must refuse' );
 
-	/*
-	 * From here the plugin's own boot path runs exactly as WordPress would run it:
-	 * the main file registers the loader on `init`, and the loader hands over to
-	 * the Gatekeeper.
-	 */
+	// From here the plugin's own boot path runs as WordPress would run it.
 	require_once IG_SYNTAX_HILITER_COMPAT_DIR . '/ig-syntax-hiliter.php';
 
 	if ( empty( $GLOBALS['ig_syntax_hiliter_compat_hooks']['init'] ) ) {
@@ -263,7 +234,7 @@ function ig_syntax_hiliter_compat_run() {
 
 	ig_syntax_hiliter_compat_fire( 'init' );
 
-	//1. the whole point: nothing of the plugin was loaded
+	// 1. the whole point: nothing of the plugin was loaded
 	if ( ig_syntax_hiliter_compat_is_loaded( IG_SYNTAX_HILITER_COMPAT_DIR . '/autoloader.php' ) ) {
 		ig_syntax_hiliter_compat_fail( 'the autoloader was loaded, so the plugin tried to run on an environment it does not support.' );
 	}
@@ -274,14 +245,14 @@ function ig_syntax_hiliter_compat_run() {
 
 	ig_syntax_hiliter_compat_ok( 'no part of the plugin was loaded' );
 
-	//2. the refusal was announced
+	// 2. the refusal was announced
 	if ( empty( $GLOBALS['ig_syntax_hiliter_compat_hooks']['admin_notices'] ) ) {
 		ig_syntax_hiliter_compat_fail( 'nothing was hooked to `admin_notices`, so the refusal would be silent and a site owner would be left guessing.' );
 	}
 
 	ig_syntax_hiliter_compat_ok( 'the refusal notice is registered on `admin_notices`' );
 
-	//3. and it says what is wrong, and what is needed
+	// 3. and it says what is wrong, and what is needed
 	ob_start();
 
 	ig_syntax_hiliter_compat_fire( 'admin_notices' );
@@ -313,4 +284,4 @@ ig_syntax_hiliter_compat_run();
 
 exit( 0 );
 
-//EOF
+// EOF

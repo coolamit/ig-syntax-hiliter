@@ -17,27 +17,12 @@ use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
 /**
- * `0` is code, and every path in the plugin has to keep treating it as code.
+ * `0` is code. Three places ask whether a snippet is empty with `'' === trim( $code )`
+ * rather than `empty()`, because `empty( '0' )` is TRUE. With `empty()` there:
  *
- * Three places ask whether a snippet is empty before deciding to render or rewrite
- * it, and all three ask with `'' === trim( $code )` rather than with `empty()`. That
- * is the one place in the plugin where the difference between those two is not a
- * style question: `empty( '0' )` is TRUE, so an `empty()` there reads a snippet whose
- * code is the digit zero as a snippet with no code in it.
- *
- * What each of the three would then do:
- *
- * - `Content_Protector::_render_entry()` — the shortcode renders as nothing.
- * - `Block::render()` — the block renders as nothing. Its own comment says the two
- *   paths must agree, and they would, on the wrong answer.
- * - `Block_Converter::block_to_shortcode()` — the revert tool **drops the block from
- *   the post**. That one is not a display bug. It is deleting somebody's snippet, on
- *   the way out of a plugin they have just decided to stop using.
- *
- * A file whose whole content is `0` is a real thing — a feature flag, a counter, a
- * fixture, the answer in a puzzle. Nothing else in 5,378 assertions covers it, which
- * is exactly how a sweep replacing every `'' ===` in the plugin could have gone in
- * green.
+ * - `Content_Protector::_render_entry()` renders the shortcode as nothing.
+ * - `Block::render()` renders the block as nothing.
+ * - `Block_Converter::block_to_shortcode()` drops the block from the post for good.
  */
 class Zero_Code_Test extends WP_UnitTestCase {
 
@@ -126,12 +111,8 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The revert tool keeps it, rather than dropping the block on the floor.
-	 *
-	 * This is the case worth having. The other two are a snippet which does not show
-	 * up; this one is a snippet which is gone from the post content for good, and the
-	 * tool that did it is the one a site owner reaches for precisely because they want
-	 * their code to survive the plugin being switched off.
+	 * The revert tool keeps it rather than dropping the block. The other two cases are
+	 * a snippet which does not show up; this one is a snippet gone from the post for good.
 	 *
 	 * @test
 	 *
@@ -173,17 +154,8 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A language named `0` is not code, and does get the default.
-	 *
-	 * The contrast, and it is here on purpose. Everywhere else the plugin hands an
-	 * unrecognised language name straight back — the author's word is theirs, and one
-	 * overwritten could never be recovered. `0` is the exception, and it is Amit's call:
-	 * `language="0"` is not somebody naming a language, it is invalid use, so the guards
-	 * on it read with `empty()` like every other guard in the plugin.
-	 *
-	 * Written down as a test rather than left to be inferred from a diff, because the
-	 * three cases above look like the same question and get the opposite answer. What
-	 * separates them is that `0` is a plausible *file*, and never a plausible *language*.
+	 * A language named `0` is not code and does get the default: `language="0"` is
+	 * invalid use, not somebody naming a language, so its guards read with `empty()`.
 	 *
 	 * @test
 	 *
@@ -208,11 +180,8 @@ class Zero_Code_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The control, so the three above are measuring something.
-	 *
-	 * A snippet which really is empty still renders as nothing, on both paths. Without
-	 * this, every assertion here would be satisfied by a plugin which had simply
-	 * stopped checking for an empty snippet at all.
+	 * The control: a snippet which really is empty still renders as nothing on both
+	 * paths, so the cases above are not satisfied by a plugin that stopped checking.
 	 *
 	 * @test
 	 *
@@ -226,18 +195,12 @@ class Zero_Code_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<pre ', $shortcode, 'An empty shortcode rendered a code box.' );
 		$this->assertStringNotContainsString( '<pre ', $block, 'An empty block rendered a code box.' );
 
-		/*
-		 * The container as well, and not as belt and braces. Since 6.0 the wrapper is
-		 * emitted for every box rather than only a labelled one, so a guard that let an
-		 * empty snippet through would put an empty container on the page and the two
-		 * assertions above would not see it.
-		 */
+		// The wrapper is emitted for every box, so an empty container would slip past the two assertions above.
 		$this->assertStringNotContainsString( 'igsh-code-box', $shortcode, 'An empty shortcode rendered a container.' );
 		$this->assertStringNotContainsString( 'igsh-code-box', $block, 'An empty block rendered a container.' );
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

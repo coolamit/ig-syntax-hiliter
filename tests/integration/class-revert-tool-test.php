@@ -22,11 +22,8 @@ use WP_REST_Request;
 use WP_UnitTestCase;
 
 /**
- * The revert tool is a site owner's way out of the block format, and it rewrites
- * their content to give it to them. So the two things it must never do are damage
- * a byte it was not asked to touch, and leave a post behind.
- *
- * Everything here is about one of those two.
+ * The revert tool rewrites a site owner's content, so the two things it must never
+ * do are damage a byte it was not asked to touch, and leave a post behind.
  */
 class Revert_Tool_Test extends WP_UnitTestCase {
 
@@ -74,12 +71,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 		Admin::get_instance();
 		Block_Converter::get_instance();
 
-		/*
-		 * Each class hooks itself from its constructor, which runs once per process,
-		 * and the test case puts the hook registry back the way it found it after
-		 * every test. So the action is put back by hand when it has been taken away —
-		 * asking for the instance again cannot do it, the object already exists.
-		 */
+		// The class hooks from its constructor, which runs once per process, and the test case restores the hook registry after every test, so the action is put back by hand.
 		if ( false === has_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] ) ) {
 			add_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] );
 		}
@@ -116,11 +108,9 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to lower the PCRE settings until an ordinary pattern gives up.
-	 *
-	 * The JIT goes as well as the limit. With it on, PCRE gives up only on a pattern it
-	 * has real work to do, so what "PCRE has given up" means would depend on the subject
-	 * each test happened to hand it.
+	 * Method to lower the PCRE settings until an ordinary pattern gives up. The JIT
+	 * goes as well as the limit, since with it on PCRE only gives up on a pattern
+	 * with real work to do.
 	 *
 	 * @return void
 	 */
@@ -378,17 +368,10 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The language used to be cleaned up by a pattern, and a pattern which gives up
-	 * hands back NULL. Cast to a string that is an empty one, so a PCRE failure wrote
-	 * `language=""` into every snippet the run rewrote and left the reader with
-	 * unhighlighted code and nothing to explain it.
-	 *
-	 * The language here is one PCRE has to do real work on, because that is the only
-	 * kind it ever gave up on: a language already made of nothing but safe characters
-	 * matches nowhere, and a pattern which matches nowhere is never asked to backtrack.
-	 * So a cleaned language coming back out of a run PCRE cannot complete is both halves
-	 * of it — the name was kept, and what would have broken the shortcode was still
-	 * taken off.
+	 * A PCRE failure while cleaning the language must not write `language=""` into
+	 * every snippet the run rewrites. The language here is one PCRE has real work to
+	 * do on, so a cleaned name coming back proves both that it was kept and that what
+	 * would break the shortcode was still taken off.
 	 *
 	 * @test
 	 *
@@ -445,11 +428,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A snippet whose code quotes this plugin's own tags is the one a post about this
-	 * plugin is made of, and it used to be the one snippet the tool refused: a
-	 * shortcode ends at its own closing tag, so the code would have been cut short
-	 * there. The tags are written with doubled brackets instead, which the matcher
-	 * steps over, so the block converts like any other.
+	 * A snippet whose code quotes this plugin's own tags converts like any other: the
+	 * tags are written with doubled brackets, which the matcher steps over.
 	 *
 	 * @test
 	 *
@@ -488,9 +468,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The other half of the above, and the half that matters to a reader: the escape
-	 * is invisible on the page. One code box, showing the tags the author typed, with
-	 * nothing of the outer shortcode left over after it.
+	 * The escape is invisible on the page: one code box, showing the tags the author
+	 * typed, with nothing of the outer shortcode left over after it.
 	 *
 	 * @test
 	 *
@@ -524,11 +503,9 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Writing a tag as text is a pattern, and PCRE reports having given up in a way
-	 * that is indistinguishable from having found nothing to escape. Read as "there
-	 * was nothing", the code would go into the shortcode unescaped and be cut short
-	 * at the first closing tag in it. So a block whose code could not be escaped is
-	 * left exactly as it was found, and reported.
+	 * A block whose code could not be escaped is left as it was found and reported:
+	 * PCRE giving up reads like nothing to escape, and unescaped code would be cut
+	 * short at the first closing tag in it.
 	 *
 	 * @test
 	 *
@@ -555,18 +532,10 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A big snippet is the one most worth rescuing and the one a pattern gives up on,
-	 * so the tool has to get through it. The fixture is built here rather than
-	 * committed, and is far past the size at which the tempered pattern this replaced
-	 * exhausted the PCRE JIT stack and quietly converted nothing.
-	 *
-	 * The code carries `[`, so the scan which finds where this plugin's shortcodes sit
-	 * crosses the whole of it as well, and that scan is a pattern. A pattern which gave
-	 * up here would take the conversion with it, because a rewrite that cannot tell a
-	 * block from a snippet does nothing at all.
-	 *
-	 * The whole route is exercised, post and all. A snippet this size has to reach the
-	 * database as a block, come back out, and go in again as a shortcode.
+	 * A big snippet is the one most worth rescuing and the one a pattern gives up on.
+	 * The code carries `[`, so the shortcode range scan crosses the whole of it too,
+	 * and the whole route is exercised: the snippet reaches the database as a block,
+	 * comes back out, and goes in again as a shortcode.
 	 *
 	 * @test
 	 *
@@ -616,12 +585,10 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Code which reads like a delimiter does not end one. `serialize_block_attributes()`
-	 * escapes `-`, `<` and `>` on the way in, which is what the end of the delimiter is
-	 * found by, so the whole snippet comes back — braces, comment markers and all.
-	 *
-	 * As above, the rewrite is exercised on its own: a shortcode holding a delimiter in
-	 * its code does not survive `Content_Protector` on the way to the database.
+	 * Code which reads like a delimiter does not end one: `serialize_block_attributes()`
+	 * escapes `--`, `<` and `>`, which is what the end of the delimiter is found by.
+	 * The rewrite is exercised on its own, since a shortcode holding a delimiter in its
+	 * code does not survive `Content_Protector` on the way to the database.
 	 *
 	 * @test
 	 *
@@ -653,12 +620,9 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The shortcode the tool writes carries the block's code verbatim, so a snippet
-	 * about blocks still holds a delimiter afterwards and the post still matches the
-	 * marker the tool searches on. The site owner is therefore offered the button
-	 * again, and the second run has to leave the snippet exactly where the first run
-	 * put it: rewriting a delimiter inside a shortcode nests one shortcode in another
-	 * one's code, and everything past the inner closing tag stops being the snippet.
+	 * A snippet about blocks still holds a delimiter after the first run, so the post
+	 * still matches the marker and is offered again. The second run has to leave it
+	 * alone: rewriting a delimiter inside a shortcode nests one shortcode in another.
 	 *
 	 * @test
 	 *
@@ -714,11 +678,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The scan which tells a snippet from a block is a pattern, and PCRE reports having
-	 * given up on the content in a way that is indistinguishable from having found
-	 * nothing. Read as "there are no shortcodes here", every delimiter inside one would
-	 * be rewritten — which is the very damage this scan exists to prevent, on the
-	 * content most likely to provoke it. So a scan that gave up rewrites nothing.
+	 * A scan that gave up rewrites nothing. PCRE giving up reads like "there are no
+	 * shortcodes here", and every delimiter inside one would then be rewritten.
 	 *
 	 * @test
 	 *
@@ -796,9 +757,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 	/**
 	 * A post whose rewrite cannot be written back is reported as a failure and keeps
-	 * every byte it had. The site owner is on their way out of the plugin when they
-	 * read this, so a post reported as done while its blocks are still blocks is the
-	 * one answer that costs them their code.
+	 * every byte it had; a post reported as done while its blocks are still blocks
+	 * costs the site owner their code.
 	 *
 	 * @test
 	 *
@@ -830,10 +790,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every post examined lands in exactly one bucket, so the three of them add up to
-	 * what was processed. A progress meter is driven off that, and a post which fell
-	 * through every branch or was counted twice would show up as a bar that never
-	 * arrives or one that overshoots.
+	 * Every post examined lands in exactly one bucket, so the three add up to what
+	 * was processed; the progress meter is driven off that.
 	 *
 	 * @test
 	 *
@@ -858,11 +816,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 			]
 		);
 
-		/*
-		 * A delimiter inside one of this plugin's shortcodes is a snippet about blocks
-		 * and not a block, so the post matches the marker the tool searches on and then
-		 * has nothing in it to rewrite. That is what a post left alone looks like.
-		 */
+		// A delimiter inside one of this plugin's shortcodes matches the marker and has nothing to rewrite: a skipped post.
 		self::factory()->post->create(
 			[
 				'post_content' => wp_slash(
@@ -899,8 +853,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 	/**
 	 * A delimiter the tool cannot read is reported as a failure, not as a post it
-	 * chose to leave alone. The two mean different things to a site owner: one is
-	 * theirs to look at, the other is the tool working as intended.
+	 * chose to leave alone: one is the site owner's to look at, the other is not.
 	 *
 	 * @test
 	 *
@@ -1248,11 +1201,7 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
 
-		/*
-		 * The shortcode carries no delimiter, so the post stops matching the marker
-		 * altogether: there is nothing left to count and nothing left for a second run
-		 * to be handed.
-		 */
+		// The shortcode carries no delimiter, so the post stops matching the marker and a second run is handed nothing.
 		$this->assertSame( 0, Block_Converter::count_remaining() );
 
 		$second = $this->_run_to_completion();
@@ -1387,10 +1336,8 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The Gist block's own name is what the tool looks for, so `Block` and
-	 * `Block_Converter` have to be naming the same block. They are two classes with
-	 * two reasons to be edited, and a rename in one that missed the other would
-	 * quietly stop the tool converting anything.
+	 * `Block` and `Block_Converter` name the same Gist block and the same shortcode
+	 * tag; a rename in one that missed the other would quietly stop the tool converting.
 	 *
 	 * @test
 	 *
@@ -1403,7 +1350,6 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

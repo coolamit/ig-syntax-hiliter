@@ -196,9 +196,7 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * An overlay replaces the language of the same name and adds its own.
 	 *
-	 * The plugin builds with no overlay of its own, so what this covers is the
-	 * `ig_syntax_hiliter/languages` filter — the one way a site can still change what
-	 * the registry holds.
+	 * The plugin builds with no overlay of its own; this covers the `ig_syntax_hiliter/languages` filter.
 	 *
 	 * @test
 	 *
@@ -239,7 +237,6 @@ class Language_Registry_Test extends TestCase {
 		$this->assertSame( 'Ruby', $merged['languages']['ruby']['title'], 'And a language the overlay says nothing about is left as it was.' );
 		$this->assertArrayHasKey( 'mylang', $merged['languages'] );
 
-		// An alias pointing at a language which is not there is dropped.
 		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
 
 	}
@@ -247,8 +244,7 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * Called with no overlay, the merge still drops a dangling alias and sorts.
 	 *
-	 * That is the shape `build()` uses it in, and it is what keeps the registry from
-	 * carrying an alias which resolves to a language the browser cannot load.
+	 * That is the shape `build()` uses it in.
 	 *
 	 * @test
 	 *
@@ -276,16 +272,14 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( [ 'php', 'ruby' ], array_keys( $merged['languages'] ) );
 
-		// `stale` points nowhere; `php` shadows a language id.
+		// stale points nowhere; php shadows a language id.
 		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
 
 	}
 
 	/**
 	 * Resolution is case insensitive, whitespace tolerant and alias aware, and
-	 * anything it cannot confirm resolves to nothing at all. An alias pointing
-	 * at a language which is not there is one of those, having been discarded when
-	 * the registry was built.
+	 * anything it cannot confirm resolves to nothing, a dangling alias included.
 	 *
 	 * @test
 	 *
@@ -344,10 +338,8 @@ class Language_Registry_Test extends TestCase {
 	/**
 	 * The manifest the plugin actually ships parses, and holds what it should.
 	 *
-	 * The languages the legacy tags point at are `Legacy_Map_Test`'s business; what
-	 * is checked here is that the shipped manifest is readable at all, that its own
-	 * aliases survive parsing, and that the two ids which are not languages are not
-	 * treated as though they were.
+	 * Checks that the shipped manifest is readable, that its aliases survive parsing,
+	 * and that the two ids which are not languages are not treated as though they were.
 	 *
 	 * @test
 	 *
@@ -367,15 +359,13 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( 'bash', $registry->resolve( 'shell' ) );
 
-		// The unknown language fallback depends on "none" being a convention of the
-		// highlighter, not a language it can load.
+		// "none" is a convention of the highlighter, not a language it can load; neither is "core".
 		$this->assertFalse( $registry->has( Language_Registry::NO_LANGUAGE ) );
 
-		// The core file is not a language either.
 		$this->assertFalse( $registry->has( 'core' ) );
 
 	}
 
-}    //end of class
+} // end of class
 
-//EOF
+// EOF

@@ -85,15 +85,10 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	/**
 	 * Method to build content the shortcode matcher gives up on part way through.
 	 *
-	 * The attribute part of core's shortcode pattern is a lazily quantified group
-	 * nested inside another one, so a `[php ` which never closes makes PCRE walk every
-	 * partition of what follows it before admitting there is no match. It stops and
-	 * reports a limit it hit long before it reaches the end.
-	 *
-	 * The snippet in front of that is ordinary and matches at once, which is the whole
-	 * point of the fixture: it puts the walk half way through the content before the
-	 * matcher gives up, which is the only state in which giving up has anything to
-	 * undo.
+	 * The attribute part of core's shortcode pattern is a lazily quantified group inside
+	 * another, so an unclosed `[php ` makes PCRE walk every partition before giving up.
+	 * The ordinary snippet in front of it puts the walk half way through, which is the
+	 * only state in which giving up has anything to undo.
 	 *
 	 * @return string
 	 */
@@ -202,9 +197,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Content outside a snippet is not this plugin's business, and KSES is left to
-	 * do its job on it. This is also what proves KSES is live for the tests above,
-	 * rather than them passing because nothing was filtering in the first place.
+	 * Content outside a snippet is left to KSES. This is also what proves KSES is live
+	 * for the tests above.
 	 *
 	 * @test
 	 *
@@ -229,15 +223,11 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Byte identical storage through the block path, which is where automatic
-	 * conversion of legacy content leaves an author's code.
+	 * Byte identical storage through the block path.
 	 *
-	 * KSES reaches block attributes: `wp_filter_post_kses()` → `pre_kses` →
-	 * `wp_pre_kses_block_attributes()` → `filter_block_content()` runs `wp_kses()`
-	 * over every string attribute of every block and re-serialises what comes back.
-	 * Unprotected, an author without `unfiltered_html` loses the script line outright
-	 * and gets `<`, `'` and `&` entity encoded into the database — on multisite that
-	 * is everyone below super admin, site administrators included.
+	 * KSES reaches block attributes through `wp_pre_kses_block_attributes()`, so an
+	 * unprotected author without `unfiltered_html` loses the script line and gets
+	 * `<`, `'` and `&` entity encoded into the database.
 	 *
 	 * @test
 	 *
@@ -285,13 +275,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 	/**
 	 * A manual excerpt is stored exactly as it was written, and stripped only on the
-	 * way out.
-	 *
-	 * `excerpt_save_pre` writes to the database. Stripping there deletes the author's
-	 * bytes outright, and the Gist pipeline hooked to the same filter stored rendered
-	 * markup in their place. `is_admin()` is no guard: it is false for REST, which is
-	 * how WP 6.9's block editor saves, and false for WP-CLI, cron and this plugin's
-	 * own revert tool.
+	 * way out. `excerpt_save_pre` writes to the database, and `is_admin()` is no
+	 * guard: it is false for REST, WP-CLI, cron and the revert tool.
 	 *
 	 * @test
 	 *
@@ -332,14 +317,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 	/**
 	 * A block whose code names this plugin's tags does not swallow the snippet which
-	 * follows it.
-	 *
-	 * The shortcode matcher declines a match which begins inside a block delimiter,
-	 * because a delimiter's JSON is the block's data and not content. Declining has to
-	 * mean "resume after the delimiter", not "consume this span and carry on" — the
-	 * span a declined match covers can reach past the delimiter, and everything in it
-	 * is then never offered to the matcher at all. The snippet after it reaches KSES
-	 * unprotected and the author loses the lines KSES does not allow.
+	 * follows it. Declining a match which begins inside a delimiter has to mean
+	 * "resume after the delimiter", since the declined span can reach past it.
 	 *
 	 * @test
 	 *
@@ -392,14 +371,9 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 	/**
 	 * A post far past the size at which PCRE gives up is stored exactly as it was
-	 * written.
-	 *
-	 * A tempered pattern over a block delimiter's attributes backtracks
-	 * catastrophically. Somewhere around 32 KB `preg_replace_callback()` stops and
-	 * returns NULL, and `(string) NULL` is the empty string — so on `content_save_pre`
-	 * the entire post is stored empty. Not truncated: gone. A snippet is exactly the
-	 * kind of content which runs to that size, and this is the only fixture in the
-	 * suite big enough to reach it.
+	 * written. A tempered pattern over a delimiter's attributes backtracks
+	 * catastrophically around 32 KB, and a NULL from `preg_replace_callback()` cast
+	 * to string stores the whole post as empty.
 	 *
 	 * @test
 	 *
@@ -428,19 +402,12 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A save pass the shortcode matcher gave up on protects nothing at all — not even
+	 * A save pass the shortcode matcher gave up on protects nothing at all, not even
 	 * the snippet it had already reached.
 	 *
-	 * `preg_match()` reports a limit it hit in a way a caller reading the return value
-	 * alone cannot tell from "there is nothing more here", and the walk over the
-	 * content is resumable, so a pass which gave up half way would hand back content
-	 * carrying placeholders for the snippets it got to and the raw bytes of the ones it
-	 * did not. That stash is only ever unwound by the restore pass at the far end of
-	 * the same chain, and this is content PCRE has just proved it cannot cope with — so
-	 * the pass which has to put those placeholders back is the one most likely to give
-	 * up in its turn, and what reaches the database is a post with `{igshx…}` where its
-	 * code used to be. Whatever else giving up means, it has to mean the content was
-	 * left as it was found.
+	 * A pass which gave up half way would hand on placeholders for the snippets it got
+	 * to, and the restore pass over content PCRE has just failed on is the one most
+	 * likely to give up in its turn, storing `{igshx…}` where the code was.
 	 *
 	 * @test
 	 *
@@ -478,20 +445,10 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	/**
 	 * A restore pass which gave up does not store the post as nothing at all.
 	 *
-	 * This is the shape the shipped bug took. `preg_replace_callback()` hands back NULL
-	 * when it hits a backtrack, recursion or JIT stack limit, `(string) NULL` is the
-	 * empty string, and the restore pass sits on `content_save_pre` — so a post whose
-	 * size defeated PCRE was written to the database as zero bytes. Not truncated:
-	 * gone, along with every revision of it that the same request re-saved.
-	 *
-	 * The code inside the snippet is lost here either way: once the pass which puts the
-	 * author's bytes back has given up, the placeholder standing in for them is all
-	 * there is, and the stash it names does not outlive the request. What the guard
-	 * buys is the rest of the post — the prose, the other blocks, everything the
-	 * snippet was surrounded by — which is the difference between an edit an author can
-	 * see and undo and an entry that has to be recovered from a backup.
-	 *
-	 * PCRE is crippled between the two passes rather than for the whole request,
+	 * `preg_replace_callback()` hands back NULL on a backtrack, recursion or JIT stack
+	 * limit, and `(string) NULL` on `content_save_pre` stores the post as zero bytes.
+	 * The snippet's code is lost either way; what the guard buys is the rest of the
+	 * post. PCRE is crippled between the two passes, not for the whole request,
 	 * because the protect pass has to succeed for there to be anything to restore.
 	 *
 	 * @test
@@ -554,11 +511,9 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A snippet whose code is a block delimiter is code, not a block.
-	 *
-	 * Restoration is one pass and never re-reads what it has just put back, so a
-	 * snippet stashed with a placeholder already inside it would come out of the
-	 * database with that placeholder still in it.
+	 * A snippet whose code is a block delimiter is code, not a block. Restoration is
+	 * one pass, so a snippet stashed with a placeholder inside it would be stored
+	 * with that placeholder still in it.
 	 *
 	 * @test
 	 *
@@ -578,12 +533,9 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A snippet an author wrote inside an HTML comment survives the round trip.
-	 *
-	 * A placeholder carrying `-->` closes the comment it lands inside. KSES then
-	 * strips the comment markers out of what it takes to be one comment, wraps the
-	 * remains in fresh ones and escapes the orphaned tail — and no placeholder is
-	 * left for the restore pass to find, so the code is gone for good.
+	 * A snippet an author wrote inside an HTML comment survives the round trip. A
+	 * placeholder carrying `-->` would close the comment, KSES would rewrite the
+	 * remains, and no placeholder would be left for the restore pass to find.
 	 *
 	 * @test
 	 *
@@ -600,10 +552,8 @@ class Save_Protection_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A placeholder shaped token an author typed is text, not a placeholder.
-	 *
-	 * Every key carries a per request salt, so nothing written by hand can ever name
-	 * a stashed entry.
+	 * A placeholder shaped token an author typed is text, not a placeholder: every
+	 * key carries a per request salt.
 	 *
 	 * @test
 	 *
@@ -640,7 +590,6 @@ class Save_Protection_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

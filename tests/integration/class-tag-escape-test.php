@@ -16,13 +16,9 @@ use iG\Syntax_Hiliter\Shortcode_Handler;
 use WP_UnitTestCase;
 
 /**
- * A shortcode ends at its own closing tag, so a post about this plugin used to be
- * the one post this plugin could not carry. Doubling the brackets of a tag inside
- * a snippet writes it as text, and the matcher steps over the doubled form.
- *
- * What is held in place here is the whole of that: the pattern is core's with one
- * addition and nothing else, a reader is shown the tags the author typed, and the
- * database keeps the bytes the author wrote however many times the post is saved.
+ * Doubling the brackets of a claimed tag inside a snippet writes it as text, and
+ * the matcher steps over the doubled form. The pattern is core's with one addition,
+ * the reader sees the tags the author typed, and the stored bytes stay as written.
  */
 class Tag_Escape_Test extends WP_UnitTestCase {
 
@@ -54,10 +50,8 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The pattern is WordPress's, with one alternative added and nothing else. A
-	 * pattern of this plugin's own would have to be kept in step with core's by hand
-	 * for as long as the plugin exists, and the one place it fell behind would be a
-	 * shortcode bounded differently here from the way `do_shortcode()` bounds it.
+	 * The pattern is WordPress's with one alternative added and nothing else, so a
+	 * shortcode is never bounded differently here from the way `do_shortcode()` bounds it.
 	 *
 	 * @test
 	 *
@@ -80,8 +74,8 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The reader's half. One code box, showing the tags the author typed, and
-	 * nothing of the outer shortcode left over after it.
+	 * One code box showing the tags the author typed, with nothing of the outer
+	 * shortcode left over after it.
 	 *
 	 * @test
 	 *
@@ -104,9 +98,8 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The database's half, and the one that costs bytes when it is wrong. Nothing
-	 * transformed is ever stored, so the escape has to survive being saved over and
-	 * over — an author who edits the post ten times must not lose a bracket a time.
+	 * The escape survives repeated saves: an author who edits the post ten times
+	 * must not lose a bracket a time.
 	 *
 	 * @test
 	 *
@@ -136,9 +129,8 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A snippet holding a bare closing tag still ends there, exactly as it always
-	 * has. The escape is an addition and not a change: content written before it
-	 * existed goes on being read the way it was read when it was written.
+	 * A snippet holding a bare closing tag still ends there: the escape is an
+	 * addition, and older content is read the way it was written.
 	 *
 	 * @test
 	 *
@@ -153,15 +145,6 @@ class Tag_Escape_Test extends WP_UnitTestCase {
 
 	}
 
-	/*
-	 * WordPress's own escape of a whole shortcode, `[[php]…[/php]]`, is a different
-	 * construct from the one this file is about and is untouched by any of it. It is
-	 * asserted in `Backward_Compatibility_Test`, which drives the same string through
-	 * a real save as well as through rendering, and so says everything a case here
-	 * could and more.
-	 */
+} // end of class
 
-}    //end of class
-
-
-//EOF
+// EOF

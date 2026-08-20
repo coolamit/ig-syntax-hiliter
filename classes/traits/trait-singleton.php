@@ -19,9 +19,8 @@ trait Singleton {
 	/**
 	 * Instance of the current class which has implemented this trait.
 	 *
-	 * Typed `?object` and not `static`, because `static` is not usable as a property
-	 * type. What narrows it to the class asking is the `is_a( …, static::class )`
-	 * check in `get_instance()`, which stays for that reason.
+	 * `static` is not a legal property type; `get_instance()`'s `is_a( …, static::class )`
+	 * narrows it.
 	 *
 	 * @var object|null
 	 */
@@ -42,21 +41,9 @@ trait Singleton {
 	/**
 	 * Method to retrieve the singleton instance of the class.
 	 *
-	 * The return type is `static` and not `object`, so a caller is handed the class
-	 * it asked for rather than something it has to narrow again. That is what let
-	 * three classes stop hand-rolling a copy of this method purely to keep their own
-	 * type.
-	 *
-	 * Arguments are passed to the constructor and are used **only on the first call**,
-	 * which is inherent to a singleton rather than a shortcoming of this: the second
-	 * caller is handed the object the first one built. A class whose constructor takes
-	 * arguments should therefore be able to build itself from none, or be built by
-	 * whoever reaches it first and by nobody else.
-	 *
-	 * `is_a()` rather than `isset()` alone: the property is declared in this trait, so
-	 * a parent and a child which both use the trait have one each — but a class which
-	 * declares its own would otherwise be able to hand back an instance of something
-	 * else entirely.
+	 * Returns `static`, so a caller gets the class it asked for. `is_a()` as well as
+	 * `isset()`: a child that inherits the trait from a parent rather than using it shares
+	 * the parent's slot, and would otherwise be handed the parent's instance.
 	 *
 	 * @param mixed ...$args Arguments for the constructor, used only when the instance is built.
 	 *
@@ -70,8 +57,8 @@ trait Singleton {
 
 		return static::$_instance;
 
-	}    //end get_instance()
+	}
 
-}    //end of trait
+} // end of trait
 
-//EOF
+// EOF

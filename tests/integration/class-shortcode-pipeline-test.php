@@ -1,11 +1,7 @@
 <?php
 /**
- * Tests for the protect-then-restore pipeline itself.
- *
- * What each legacy tag renders as belongs to `Backward_Compatibility_Test` and
- * `Legacy_Content_Test`; what is checked here is the mechanism which lets them do
- * it — where the hooks sit, and the fact that nothing between the two passes ever
- * gets a look at the code.
+ * Tests for the protect-then-restore pipeline itself: where the hooks sit, and
+ * that nothing between the two passes ever gets a look at the code.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -50,8 +46,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A hostile filter of the kind that broke this in production: it strips script
-	 * tags and turns bare URLs into links.
+	 * A hostile filter: it strips script tags and turns bare URLs into links.
 	 *
 	 * @param string $content Content being filtered.
 	 *
@@ -92,11 +87,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 		$handler = Shortcode_Handler::get_instance();
 
-		/*
-		 * Named rather than read from the constants, because everything below reads
-		 * from the constants — a filter dropped from one of these lists would
-		 * otherwise take its own coverage with it.
-		 */
+		// Named rather than read from the constants, so a filter dropped from a list does not take its own coverage with it.
 		$this->assertSame(
 			[ 'content_save_pre', 'content_filtered_save_pre' ],
 			Shortcode_Handler::SAVE_FILTERS
@@ -171,7 +162,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( '<pre ', $output );
 
-		// Nothing at all, container included - a wrapper around no box is still a box on the page.
+		// Container included: a wrapper around no box is still a box on the page.
 		$this->assertStringNotContainsString( 'igsh-code-box', $output );
 
 		$this->assertStringNotContainsString( '[php]', $output );
@@ -205,10 +196,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	 * A shortcode written inside another plugin's block attributes is that plugin's
 	 * text, not a snippet.
 	 *
-	 * `serialize_block_attributes()` escapes `<`, `>`, `&` and `--` in the JSON a
-	 * delimiter carries, but neither `[` nor `]`. A matcher which does not know where
-	 * delimiters are therefore rewrites inside one, and whatever it puts there is
-	 * sitting in an HTML comment which `do_blocks()` has yet to read.
+	 * `serialize_block_attributes()` escapes `<`, `>`, `&` and `--` but neither bracket,
+	 * so a matcher blind to delimiters would rewrite inside one.
 	 *
 	 * @test
 	 *
@@ -229,8 +218,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The production bug this pipeline exists for: a script tag inside a code box,
-	 * with a filter at priority 10 that strips scripts and autolinks URLs.
+	 * A script tag inside a code box survives a filter at priority 10 that strips
+	 * scripts and autolinks URLs.
 	 *
 	 * @test
 	 *
@@ -267,11 +256,7 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 		$output = $this->_filter( 'the_content', "Some text:\n[php]echo 1;[/php]\nMore text" );
 
-		/*
-		 * The container is the element at top level now, so it is the one `wpautop`
-		 * could wrap. Checking the `pre` alone would keep passing while the box sat
-		 * inside a paragraph, which is the failure this case exists to catch.
-		 */
+		// The container is the top level element, so it is the one `wpautop` could wrap; checking the `pre` alone would miss it.
 		$this->assertStringNotContainsString( '<p><div class="igsh-code-box"', $output );
 		$this->assertStringNotContainsString( '<br />' . "\n" . '<div class="igsh-code-box"', $output );
 
@@ -284,11 +269,8 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The seam the block's render callback needs.
-	 *
-	 * `do_blocks()` runs at `the_content` priority 9, so anything a render callback
-	 * emits is exposed to the filters at 10. A callback which asks whether a
-	 * protected run is in flight, and stashes its markup when it is, gets the same
+	 * The seam the block's render callback needs: `do_blocks()` runs at priority 9,
+	 * so a callback which stashes its markup during a protected run gets the same
 	 * immunity a shortcode gets.
 	 *
 	 * @test
@@ -326,7 +308,6 @@ class Shortcode_Pipeline_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

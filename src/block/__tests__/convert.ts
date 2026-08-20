@@ -1,13 +1,10 @@
 /**
  * Automatic conversion of legacy snippets, against the real block grammar.
  *
- * The block grammar runs over a post before any of this plugin's code does, so
- * a snippet whose code quotes a block delimiter is taken apart before there is
- * anything to convert. Two of the four ways that happens damage content which
- * has nothing to do with this plugin — an unclosed opener swallows the rest of
- * the post, a stray closer stops the parse dead — and none of it is visible to
- * either PHPUnit tier. So the fixtures below are run through `@wordpress/blocks`
- * itself rather than through a description of what it does.
+ * The block grammar runs before this plugin's code, so a snippet quoting a
+ * delimiter is taken apart first — an unclosed opener swallows the rest of
+ * the post, a stray closer stops the parse. Run through `@wordpress/blocks`
+ * itself rather than a description of it.
  */
 
 import {
@@ -185,11 +182,8 @@ describe( 'planConversion, on a post the grammar reads correctly', () => {
 	} );
 
 	/*
-	 * A snippet whose code quotes this plugin's own tags writes them with doubled
-	 * brackets, which is what the revert tool writes and what an author writing about
-	 * the plugin types. The matcher has to step over the escaped closing tag rather
-	 * than end the snippet on it, and the code has to arrive in the block holding the
-	 * tags the author typed.
+	 * A snippet whose code quotes this plugin's tags writes them with doubled
+	 * brackets; the matcher must step over the escaped closing tag.
 	 */
 	it( "reads a snippet whose code quotes this plugin's own tags", () => {
 		const blocks = blocksFor(

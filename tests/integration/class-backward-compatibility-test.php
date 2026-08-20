@@ -298,14 +298,7 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * author's example into a snippet.
 	 *
 	 * Rendering between the saves is the point: what the reader is shown is not what
-	 * goes back to the database, and the two have to stay apart however many rounds
-	 * they are put through.
-	 *
-	 * Round one is also the whole of what an escaped shortcode has to do on its own —
-	 * stored as the author wrote it, shown as the text it stands for, and never a code
-	 * box — which is why there is no separate case saying so. This is WordPress's own
-	 * escape of a whole shortcode and not the plugin's doubled brackets; core's
-	 * `do_shortcode_tag()` is what unwraps it.
+	 * goes back to the database.
 	 *
 	 * @test
 	 *
@@ -348,12 +341,9 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 	 * An escaped shortcode in a post with no excerpt of its own leaves the excerpt
 	 * WordPress builds for it carrying neither a code box nor the code.
 	 *
-	 * The body an automatic excerpt is built from is stripped at `the_content` priority
-	 * 0 and protected at priority 1, on the same string. An escape unwrapped by the
-	 * first of those is a real shortcode to the second, which would render a code box
-	 * into a summary for `wp_trim_words()` to take the markup back off and print the
-	 * author's source as prose. Stripping the escape along with the snippets is what
-	 * leaves the second pass nothing to find.
+	 * The excerpt body is stripped at `the_content` priority 0 and protected at 1; an
+	 * escape unwrapped by the first is a real shortcode to the second, so the strip
+	 * takes the escape off along with the snippets.
 	 *
 	 * @test
 	 *
@@ -378,7 +368,6 @@ class Backward_Compatibility_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

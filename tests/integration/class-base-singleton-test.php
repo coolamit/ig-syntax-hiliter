@@ -16,18 +16,9 @@ use ReflectionProperty;
 use WP_UnitTestCase;
 
 /**
- * Up to v5.1 Base used the Singleton trait itself, which holds exactly one
- * instance slot. A static property declared in a trait that a parent class uses is
- * shared by every child of that parent, so the first child instantiated was handed
- * back to every other one. v5 survived that only because the Gatekeeper
- * instantiated exactly one child.
- *
- * The answer for most of 6.0 was a map on Base keyed by class name, which worked
- * and was in the wrong place: the trait is per class by design, so a child which
- * uses it gets a slot of its own and there is nothing to work around. Base holds no
- * singleton at all now, and both fixtures below are arranged exactly as `Admin` is
- * — the plugin's one real child of Base — so that what is asserted here is what
- * production does.
+ * A static property declared in a trait that a parent uses is shared by every child
+ * of that parent. `Base` holds no singleton; both fixtures are arranged exactly as
+ * `Admin` is.
  */
 class Base_Singleton_Test extends WP_UnitTestCase {
 
@@ -54,29 +45,13 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A child using the trait still runs Base's constructor.
+	 * A child using the `Singleton` trait still runs `Base`'s constructor.
 	 *
-	 * This is the half that nothing asserted before, and it guards the only silent
-	 * failure in the arrangement. A constructor declared in the class beats one a
-	 * trait brings in, and a trait's beats one inherited from a parent — so a child
-	 * which uses `Singleton` and declares no constructor of its own takes the trait's
-	 * empty one. Nothing errors. `$_option` is simply never set, and `Migrate` never
-	 * runs, because `Base::__construct()` is the only thing which triggers a pending
-	 * migration.
-	 *
-	 * `$_option` is read through reflection because it is protected and is meant to
-	 * be: what is being asserted is that the constructor ran, and that property is
-	 * the evidence it leaves.
-	 *
-	 * `isInitialized()` comes first, and that ordering is the whole of what keeps this
-	 * failure readable. `Base::$_option` is a typed property with no default, so a
-	 * constructor which never ran leaves it *uninitialized* rather than null, and
-	 * `getValue()` on it throws an `Error` which says nothing about migrations. The
-	 * type belongs on the class — the property really cannot be null, since
-	 * `Base::__construct()` assigns `Option::get_instance()` and that always returns an
-	 * object — so the diagnostic belongs here instead. Declaring it `?Option` would not
-	 * have helped: nullable is not defaulted, and `?Option $_option;` throws exactly the
-	 * same `Error`.
+	 * A trait's constructor beats an inherited one, so a child declaring none takes the
+	 * trait's empty one: `$_option` is never set and `Migrate` never runs.
+	 * `isInitialized()` is checked first because `Base::$_option` is typed with no
+	 * default, so `getValue()` on an unrun constructor throws an `Error` that says
+	 * nothing about migrations.
 	 *
 	 * @test
 	 *
@@ -103,7 +78,6 @@ class Base_Singleton_Test extends WP_UnitTestCase {
 
 	}
 
-}    //end of class
+} // end of class
 
-
-//EOF
+// EOF

@@ -1,19 +1,12 @@
 /**
- * Editor styling for the code snippet block.
- *
- * The point of this file is legibility: a snippet is edited as plain text, so
- * it has to look like code rather than like prose.
+ * Editor styling for the code snippet block — a snippet is edited as plain
+ * text and has to look like code.
  */
 
 /*
- * What the textarea is set in when the font setting is on "None", which is the
- * default. It is the fallback of a custom property rather than a value of its
- * own, so that the rule the plugin adds for a chosen font can win without any
- * specificity of its own — inside the editor's iframe that rule is loaded
- * before this stylesheet is, so a plain `font-family` there would lose.
- *
- * The disable below is because these are font names, which the linter can only
- * tell from inside a `font-family` property and this is not one.
+ * Fallback of a custom property rather than a value of its own: inside the
+ * editor iframe the plugin's chosen-font rule loads before this stylesheet, so
+ * a plain `font-family` here would lose.
  */
 /* stylelint-disable-next-line value-keyword-case -- Font names. */
 $igsh-editor-font: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
@@ -32,15 +25,9 @@ $igsh-editor-font: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
 		font-family: var(--igsh-editor-font, #{$igsh-editor-font});
 
 		/*
-		 * Never ligatures here, whatever font is chosen. This is a textarea:
-		 * it is where an author counts characters and puts a caret between
-		 * them, and a caret cannot sit inside one glyph standing for two.
-		 * Typing `__construct` and reading back what looks like ` _construct`
-		 * is alarming enough to make somebody correct code which was never
-		 * wrong. `none` covers contextual alternates as well as common
-		 * ligatures, and `->` and `=>` are contextual.
-		 *
-		 * The rendered code box and the settings preview keep theirs.
+		 * Never ligatures in a textarea: a caret cannot sit inside one glyph
+		 * standing for two. `none` covers contextual alternates, and `->`/`=>`
+		 * are contextual.
 		 */
 		font-variant-ligatures: none;
 		font-size: 0.85rem;
