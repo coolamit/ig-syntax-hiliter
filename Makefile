@@ -61,7 +61,7 @@ FORCE: ;
 
 else
 
-.PHONY: shell install install-php install-js update versions lint lint-php lint-types lint-js lint-style fix fix-php fix-js test test-unit test-integration test-js build watch
+.PHONY: shell install install-php install-js update versions lint lint-php lint-types lint-js lint-style fix fix-php fix-js test test-php test-unit test-integration test-js build watch
 
 # Open an interactive shell inside the VM, in the plugin directory.
 shell:
@@ -114,8 +114,11 @@ fix-js:
 # Run every fixer: phpcbf, then prettier.
 fix: fix-php fix-js
 
-# Run the full test suite (both tiers).
-test:
+# Run every tier: PHP unit, PHP integration, JavaScript.
+test: test-php test-js
+
+# Run both PHPUnit tiers.
+test-php:
 	@$(call SSH_EXEC,composer run test)
 
 # Run the unit tier only: the domain core, no WordPress.
