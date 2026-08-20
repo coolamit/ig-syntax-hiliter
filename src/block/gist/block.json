@@ -23,5 +23,6 @@
 			"default": ""
 		}
 	},
-	"editorScript": "file:./index.ts"
+	"editorScript": "file:./index.ts",
+	"editorStyle": "file:./index.css"
 }

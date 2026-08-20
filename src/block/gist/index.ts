@@ -8,6 +8,8 @@
 import { registerBlockType } from '@wordpress/blocks';
 import type { BlockConfiguration } from '@wordpress/blocks';
 
+import './editor.scss';
+
 import metadata from './block.json';
 import Edit from './edit';
 import transforms from './transforms';

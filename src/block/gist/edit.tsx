@@ -36,6 +36,7 @@ export default function Edit( { attributes, setAttributes }: EditProps ) {
 				<TextControl
 					__nextHasNoMarginBottom
 					__next40pxDefaultSize
+					className="igsh-gist-block__url"
 					label={ __( 'Gist URL', 'igsyntax-hiliter' ) }
 					hideLabelFromVision
 					placeholder="https://gist.github.com/username/0123456789abcdef"
