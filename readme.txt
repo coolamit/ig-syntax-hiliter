@@ -2,7 +2,7 @@
 Contributors: amit
 Tags: syntax highlighter, code highlighter, code, source code, php, mysql, html, css, javascript
 Requires at least: 6.9
-Tested up to: 7.0.4
+Tested up to: 7.1.0
 Requires PHP: 8.4
 Stable tag: 6.0-beta-1
 License: GPLv2 or later
