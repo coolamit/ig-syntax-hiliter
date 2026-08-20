@@ -4,8 +4,8 @@
 #
 # Usage:
 #   make install
-#   make lint
-#   make fix
+#   make lint          (all checks; or one of lint-php lint-types lint-js lint-style)
+#   make fix           (all fixers; or one of fix-php fix-js)
 #   make test
 #   make build
 #   make ssh-cmd -- composer --version
@@ -61,7 +61,7 @@ FORCE: ;
 
 else
 
-.PHONY: shell install install-php install-js update versions lint fix test test-unit test-integration test-js build watch
+.PHONY: shell install install-php install-js update versions lint lint-php lint-types lint-js lint-style fix fix-php fix-js test test-unit test-integration test-js build watch
 
 # Open an interactive shell inside the VM, in the plugin directory.
 shell:
@@ -84,13 +84,35 @@ update:
 versions:
 	@$(call SSH_EXEC,php -v | head -1; composer --version; echo "node $$(node -v)"; echo "npm $$(npm -v)")
 
-# Check code style against WordPress coding standards, without changing files.
-lint:
+# Check PHP against WordPress coding standards.
+lint-php:
 	@$(call SSH_EXEC,composer run lint)
 
-# Fix code style automatically where phpcbf is able to.
-fix:
-	@$(call SSH_EXEC,composer run fix)
+# Type-check both TypeScript projects. Nothing is emitted.
+lint-types:
+	@$(call SSH_EXEC,npm run lint:types)
+
+# Lint the TypeScript sources with wp-scripts' eslint rules.
+lint-js:
+	@$(call SSH_EXEC,npm run lint:js)
+
+# Lint the SCSS sources with wp-scripts' stylelint rules.
+lint-style:
+	@$(call SSH_EXEC,npm run lint:style)
+
+# Run every check: PHP, types, JS, SCSS. Changes nothing.
+lint: lint-php lint-types lint-js lint-style
+
+# Fix PHP style where phpcbf is able to. phpcbf exits 1 after fixing, so 0 and 1 both mean success.
+fix-php:
+	@$(call SSH_EXEC,composer run fix || [ $$? -eq 1 ])
+
+# Format the TypeScript and SCSS sources with prettier.
+fix-js:
+	@$(call SSH_EXEC,npm run format)
+
+# Run every fixer: phpcbf, then prettier.
+fix: fix-php fix-js
 
 # Run the full test suite (both tiers).
 test:
