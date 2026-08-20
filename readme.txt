@@ -170,8 +170,11 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == Screenshots ==
 
-1. Settings page of the plugin where default options can be set for plugin
-2. Example display of syntax highlighted PHP code
+1. Settings page — theme, font and toolbar options, with the live preview.
+2. Settings page — comment highlighting and Gist embed options.
+3. Gutenberg block editor with "iG:Syntax Hiliter" block selected.
+4. Gutenberg block editor with "iG:Syntax Hiliter Gist" block selected.
+5. Classic editor with code snippets added with shortcodes.
 
 == ChangeLog ==
 
