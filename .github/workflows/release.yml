@@ -197,15 +197,14 @@ jobs:
           # `cp -a src/. dest/` copies the contents, dotfiles included, and preserves modes.
           cp -a "${source_dir}/." "${stage}/${PLUGIN_SLUG}/"
 
-          zip_path="${RUNNER_TEMP}/${PLUGIN_SLUG}-${VERSION}.zip"
+          # A fixed name, so `releases/latest/download/igsyntax-hiliter.zip` is a permanent link.
+          zip_path="${RUNNER_TEMP}/${PLUGIN_SLUG}.zip"
           rm -f "${zip_path}"
 
           # Zipping the directory by name, never `.`, puts the slug in the archive as the single root.
           ( cd "${stage}" && zip -qr "${zip_path}" "${PLUGIN_SLUG}" )
 
           echo "ZIP_PATH=${zip_path}" >> "${GITHUB_ENV}"
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
 
       # The slug assertion cannot pass vacuously: an empty listing, more than one root, or a root
       # not spelled as the slug all fail. `unzip -Z1` is parsed, one path per line; `unzip -l` is

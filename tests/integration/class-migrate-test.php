@@ -289,7 +289,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	 */
 	public function it_rewrites_a_non_canonical_stored_version_to_the_running_one(): void {
 
-		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
+		update_option( Base::PLUGIN_ID . '-version', '6.0' );
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
 
 		$this->_migrate();
@@ -306,9 +306,10 @@ class Migrate_Test extends WP_UnitTestCase {
 	 * The spelling rewrite clears the caches: it is the one upgrade which reaches no
 	 * other clean up.
 	 *
-	 * Every beta of 6.0 normalises to `6.0.0`, so `settings()` takes its early return
-	 * between them and `_clean_up()` is never reached down that path; the theme list
-	 * is cached for a week and the files on disk are what a plugin update changes.
+	 * Every spelling of this version normalises to `6.0.0`, so `settings()` takes its
+	 * early return between them and `_clean_up()` is never reached down that path; the
+	 * theme list is cached for a week and the files on disk are what a plugin update
+	 * changes.
 	 *
 	 * @test
 	 *
@@ -318,7 +319,7 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$cache_key = Cache::KEY_PREFIX . md5( Themes::CACHE_KEY );
 
-		update_option( Base::PLUGIN_ID . '-version', '6.0.0-beta1' );
+		update_option( Base::PLUGIN_ID . '-version', '6.0' );
 		update_option( Base::PLUGIN_ID . '-options', Default_Settings::V6 );
 		update_option(
 			$cache_key,
@@ -333,6 +334,35 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertSame( IG_SYNTAX_HILITER_VERSION, get_option( Base::PLUGIN_ID . '-version' ) );
 		$this->assertFalse( get_option( $cache_key, false ), 'The previous build\'s theme list must not survive the upgrade.' );
+
+	}
+
+	/**
+	 * A pre-release suffix is dropped before the three numeric parts are taken, so
+	 * `6.0.1-beta-1` is `6.0.1` and not the `6.0.0` that `floatval()` would make of it.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_normalises_a_version_to_its_numeric_parts(): void {
+
+		$normalize = new \ReflectionMethod( Migrate::class, '_normalize_version' );
+
+		// A float key would be truncated to an int, so these are pairs and not a map.
+		$cases = [
+			[ '6.0.1-beta-1', '6.0.1' ],
+			[ '6.10.0-rc1', '6.10.0' ],
+			[ '6.0.0-beta-1', '6.0.0' ],
+			[ '6.0', '6.0.0' ],
+			[ 5.1, '5.1.0' ],
+			[ 'junk', '' ],
+			[ '', '' ],
+		];
+
+		foreach ( $cases as [ $version, $normalised ] ) {
+			$this->assertSame( $normalised, $normalize->invoke( null, $version ), sprintf( 'Normalising "%s"', $version ) );
+		}
 
 	}
 

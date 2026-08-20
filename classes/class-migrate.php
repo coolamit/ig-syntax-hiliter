@@ -106,7 +106,7 @@ class Migrate {
 	 * Method to write the running version back when what is stored is the same
 	 * version spelled differently.
 	 *
-	 * A stored `6.0.0` or `6.0.0-beta1` normalises to the same value as `6.0`, so
+	 * A stored `6.0` or `6.0.0-beta-1` normalises to the same value as `6.0.0`, so
 	 * `settings()` returns early and never writes the running spelling back. That early
 	 * return is right about settings and wrong about caches, because the files on
 	 * disk really did change — so the caches are cleared here, on the one condition
@@ -139,8 +139,9 @@ class Migrate {
 	/**
 	 * Method to normalise a version to three numeric parts.
 	 *
-	 * Versions up to 5.1 were stored as floats and the plugin spells its own with
-	 * two parts; `version_compare()` reads `5.1` as older than `5.1.0`.
+	 * Versions up to 5.1 were stored as floats and spelled with two parts;
+	 * `version_compare()` reads `5.1` as older than `5.1.0`. A pre-release suffix
+	 * (`6.0.1-beta-1`) is not part of the version.
 	 *
 	 * @param mixed $version Version as it was stored, or as the plugin declares it.
 	 *
@@ -154,7 +155,9 @@ class Migrate {
 			return '';
 		}
 
-		if ( ! preg_match( '/^\d+(\.\d+)*$/', $version ) ) {
+		if ( preg_match( '/^\d+(\.\d+)*/', $version, $matches ) ) {
+			$version = $matches[0];
+		} else {
 			$version = (string) floatval( $version );
 		}
 

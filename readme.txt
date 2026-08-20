@@ -4,7 +4,7 @@ Tags: syntax highlighter, code highlighter, code, source code, php, mysql, html,
 Requires at least: 6.9
 Tested up to: 7.1.0
 Requires PHP: 8.4
-Stable tag: 6.0-beta-1
+Stable tag: 6.0.0-beta-1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,9 +28,9 @@ Pull requests are welcome on Github.
 
 Github: [https://github.com/coolamit/ig-syntax-hiliter/](https://github.com/coolamit/ig-syntax-hiliter/)
 
-== Important changes in 6.0-beta-1 ==
+== Important changes in 6.0.0-beta-1 ==
 
-Version 6.0-beta-1 replaces the GeSHi library, which no longer seems to be maintained, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
+Version 6.0.0-beta-1 replaces the GeSHi library, which no longer seems to be maintained, with Prism.js. Most of that you will not notice. A few things do change in ways that can affect posts you already have, so please read this before updating.
 
 = Posts you never open in the block editor are not touched =
 
@@ -62,7 +62,7 @@ plus the aliases `as`, `html` and `js`, plus `[sourcecode]` and `[github]`.
 
 A tag this plugin never shipped is left completely alone — not registered, not rendered, not converted. If your post contains `[email]`, it stays `[email]` and goes to whichever plugin owns it. That is deliberate: claiming a wider set of tags would mean taking shortcodes away from other plugins, which is a worse problem than the one it would solve.
 
-This also means that if you added custom language files for GeSHi and were using them with drop-in tags (eg., you added `email` language file and were using `[email]` tag), those are no longer recognized by the plugin and are left behind. You can go back and update those posts if you want and switch those tags to `[sourcecode]` variant or into this plugin's block for the block editor - and they will then be picked by the plugin and have the syntax highlighted on frontend. This is a breaking change in v6.0 as it is almost impossible to determine if a BB tag (for a language not originally shipped with this plugin) is for use with this plugin via drop-in language support or use with some other plugin. But this affects only `[<LANGUAGE_NAME>]` type of tags. So `[email]` will be left behind but `[sourcecode language="email"]` would still be supported and get converted to this plugin's block if you use the block editor and open that post in it for editing.
+This also means that if you added custom language files for GeSHi and were using them with drop-in tags (eg., you added `email` language file and were using `[email]` tag), those are no longer recognized by the plugin and are left behind. You can go back and update those posts if you want and switch those tags to `[sourcecode]` variant or into this plugin's block for the block editor - and they will then be picked by the plugin and have the syntax highlighted on frontend. This is a breaking change in v6.0.0-beta-1 as it is almost impossible to determine if a BB tag (for a language not originally shipped with this plugin) is for use with this plugin via drop-in language support or use with some other plugin. But this affects only `[<LANGUAGE_NAME>]` type of tags. So `[email]` will be left behind but `[sourcecode language="email"]` would still be supported and get converted to this plugin's block if you use the block editor and open that post in it for editing.
 
 = Some old tags now highlight as a different language =
 
@@ -80,11 +80,11 @@ Your code itself is untouched in every case; only the colouring differs.
 
 = Languages added by dropping in GeSHi files are no longer supported =
 
-Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0-beta-1 and both mechanisms are gone with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
+Since v3.0 you could add a language by putting a GeSHi language file in the plugin's own `geshi/` directory and since v4.1 in a `geshi/` directory in your theme instead, in both cases using its filename as a tag. GeSHi is gone in 6.0.0-beta-1 and both mechanisms are gone with it. The plugin no longer ships a `geshi/` directory and no longer looks for one anywhere, in the plugin or in a theme. There is no automatic replacement. A snippet using such a tag is no longer recognised, so it will appear as ordinary post text with the `[tag]` markers visible, formatted by WordPress like any other text.
 
 Approx 300 languages ship with the plugin, so there is a good chance one of them is the language you were adding — use it with `[sourcecode language="…"]`.
 
-The changelog entries below for v3.0 and v4.1 still describe those drop-in directories and are left as they are — they are the record of what those versions shipped, not of what 6.0-beta-1 does. Neither mechanism works in 6.0-beta-1.
+The changelog entries below for v3.0 and v4.1 still describe those drop-in directories and are left as they are — they are the record of what those versions shipped, not of what 6.0.0-beta-1 does. Neither mechanism works in 6.0.0-beta-1.
 
 = Highlighting is done by the browser now =
 
@@ -106,7 +106,7 @@ It never was. Snippets are supported in the block editor and in the classic edit
 
 Just click `update now` link below the plugin listing on the plugins page in your `wp-admin`. That's quite easy!!
 
-Do read the **Important changes in 6.0-beta-1** section above first. Your existing posts keep working, but there are a few things worth knowing before you open an old post in the block editor.
+Do read the **Important changes in 6.0.0-beta-1** section above first. Your existing posts keep working, but there are a few things worth knowing before you open an old post in the block editor.
 
 ###UPGRADING from v3.x###
 
@@ -138,7 +138,7 @@ If you are writing your post in the classic editor's Visual (WYSIWYG) tab then t
 
 = I opened an old post in the block editor and my code blocks turned into iG:Syntax Hiliter blocks. Why? =
 
-Because leaving them alone was worse. See the **Important changes in 6.0-beta-1** section above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it and it leaves the rest of your post byte-for-byte as it was.
+Because leaving them alone was worse. See the **Important changes in 6.0.0-beta-1** section above for the full explanation. Short version: the block editor loads a classic post into one big TinyMCE block, TinyMCE eats code and converting the snippets to blocks first is the only way to stop that. The conversion is only written to the post if you save it and it leaves the rest of your post byte-for-byte as it was.
 
 = What happens to my code if I deactivate the plugin? =
 
@@ -175,7 +175,7 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == ChangeLog ==
 
-= v6.0-beta-1 =
+= v6.0.0-beta-1 =
 
 * Minimum requirements are now PHP 8.4 and WordPress 6.9. Below either of those the plugin refuses to load — no fatal error, no half-loaded plugin, just an admin notice naming the versions it needs.
 * The GeSHi library has been dropped, along with its 37 bundled language files. Highlighting now happens in the browser with [Prism.js](https://prismjs.com/) 1.30.0, which is bundled with the plugin (MIT licensed). Prism's files load only on pages that contain a snippet and only the languages those snippets need.
@@ -313,8 +313,8 @@ Please feel free to suggest a new feature. Its inclusion might be speedier if yo
 
 == Upgrade Notice ==
 
-= 6.0-beta-1 =
-GeSHi is replaced by Prism.js and Gutenberg support added. Requires PHP 8.4 and WordPress 6.9. Old posts keep working, but opening one in the block editor converts its snippets to blocks — read "Important changes in 6.0-beta-1" before updating.
+= 6.0.0-beta-1 =
+GeSHi is replaced by Prism.js and Gutenberg support added. Requires PHP 8.4 and WordPress 6.9. Old posts keep working, but opening one in the block editor converts its snippets to blocks — read "Important changes in 6.0.0-beta-1" before updating.
 
 = 5.1 =
 Major refactor of plugin code for compatibility with PHP 7.4.0 and above.

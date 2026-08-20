@@ -156,7 +156,7 @@ class Helper {
 	 *
 	 * @param string $fallback Optional. What to answer where the constant is not defined.
 	 *
-	 * @return string Version string, eg. `6.0`.
+	 * @return string Version string, eg. `6.0.0`.
 	 */
 	public static function get_version( string $fallback = '' ): string {
 		return ( defined( 'IG_SYNTAX_HILITER_VERSION' ) ) ? (string) IG_SYNTAX_HILITER_VERSION : $fallback;
