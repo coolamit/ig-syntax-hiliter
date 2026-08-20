@@ -1,5 +1,5 @@
 # CI test workflow: PHP lint, PHPCS, the JS/TS build and both PHPUnit tiers on a
-# PHP 8.4/8.5 x WP 6.9.0/7.0.x matrix. A second job, `compat`, checks that the
+# PHP 8.4/8.5 x WP 6.9.x/latest matrix. A second job, `compat`, checks that the
 # plugin refuses to load below its floors. The release workflow is a separate
 # file.
 name: Tests
@@ -49,10 +49,10 @@ jobs:
           - '8.4'   # Minimum supported PHP version.
           - '8.5'
         wp:
-          # An exact version is an exact pin; `<branch>.x` resolves to the newest patch at run time.
-          # 6.9.0 is the declared minimum and stays pinned; 7.0.x tracks the newest patch on purpose.
-          - '6.9.0'
-          - '7.0.x'
+          # `<branch>.x` is that branch's newest patch and `latest` is whatever WordPress.org calls
+          # latest, both resolved at run time; an exact version is an exact pin. 6.9 is the floor.
+          - '6.9.x'
+          - 'latest'
 
     services:
       # The integration tier needs a real MySQL; the database name matches tests/integration/wp-tests-config.php.
@@ -123,7 +123,8 @@ jobs:
 
       - name: Install PHP dependencies
         working-directory: ${{ env.PLUGIN_PATH }}
-        # composer.lock is committed, so `install` (never `update`). Composer is dev-only here.
+        # composer.lock is committed, so `install` (never `update`) — except the WordPress test
+        # library, which a later step re-pins to the resolved core. Composer is dev-only here.
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Install JS dependencies
@@ -175,15 +176,23 @@ jobs:
       - name: Resolve WordPress version
         env:
           WP_SPEC: ${{ matrix.wp }}
-        # `<branch>.x` -> newest released patch of that branch, from the WordPress.org stable-check API.
-        # Anything else -> that exact version, except that WordPress names the first release of a
-        # branch "6.9" not "6.9.0", so a trailing ".0" is dropped when that is what is released.
+        # `latest` -> the one version the WordPress.org stable-check API marks "latest"; `<branch>.x`
+        # -> the newest released patch of that branch. Anything else -> that exact version, except
+        # that WordPress names the first release of a branch "6.9" not "6.9.0", so a trailing ".0"
+        # is dropped when that is what is released.
         run: |
           set -euo pipefail
 
           stable="$( curl -fsSL --retry 3 https://api.wordpress.org/core/stable-check/1.0/ )"
 
           case "${WP_SPEC}" in
+            latest )
+              version="$(
+                printf '%s' "${stable}" \
+                  | jq -r 'to_entries[] | select( .value == "latest" ) | .key' \
+                  | sort -V | tail -n 1
+              )"
+              ;;
             *.x )
               branch="${WP_SPEC%.x}"
               version="$(
@@ -233,6 +242,19 @@ jobs:
           # derives ABSPATH from the plugin's position inside the VVV sandbox;
           # there is no such install here, so it is set explicitly.
           echo "WP_TESTS_ABSPATH=${GITHUB_WORKSPACE}/${WP_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Match the WordPress test library to WordPress ${{ env.WP_VERSION }}
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # wp-phpunit/wp-phpunit tracks core release for release, and the committed lock names
+        # one version of it. The matrix resolves its WordPress at run time, so the library is
+        # re-pinned here to the resolved branch; nothing is written back to the repo.
+        run: |
+          set -euo pipefail
+
+          branch="$( printf '%s' "${WP_VERSION}" | cut -d. -f1,2 )"
+          composer update wp-phpunit/wp-phpunit --with "wp-phpunit/wp-phpunit:~${branch}.0" \
+            --with-dependencies --prefer-dist --no-progress --no-interaction
+          composer show wp-phpunit/wp-phpunit | head -n 3
 
       - name: PHPUnit — unit tier
         working-directory: ${{ env.PLUGIN_PATH }}
