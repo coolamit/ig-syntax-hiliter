@@ -1,5 +1,6 @@
-# Release workflow. Fires on a `v*` tag. `build` builds the assets, checks the tag, plugin header
-# and readme.txt agree on the version, produces and verifies the zip and publishes the GitHub
+# Release workflow. Fires on a `v*` tag, and a release is a tag on master and nothing else: a tag
+# anywhere else is refused first. `build` builds the assets, checks the tag, plugin header and
+# readme.txt agree on the version, produces and verifies the zip and publishes the GitHub
 # release; `deploy` pushes that artifact to WordPress.org SVN, in dry run mode. Tests are not re-run.
 # The repo is `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`: a zip whose root is anything but
 # the slug installs as a different plugin, so SLUG is set on both 10up actions and the root is asserted.
@@ -26,6 +27,9 @@ env:
   # The plugin's main file, named after the repo and not the slug.
   PLUGIN_FILE: ig-syntax-hiliter.php
 
+  # The only branch a release may be tagged on.
+  RELEASE_BRANCH: master
+
 jobs:
 
   build:
@@ -44,10 +48,27 @@ jobs:
 
       # Third-party actions are pinned to a full commit SHA; the trailing comment names the version.
       # The checkout is at the workspace root: the build-zip action rsyncs from `$GITHUB_WORKSPACE/`.
+      # Full depth, because the branch guard below needs master's history and not the tagged commit alone.
       - name: Check out the tagged commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      # ---- Branch guard: a release is a tag on master and nothing else -----
+      - name: Verify the tag points at a commit on ${{ env.RELEASE_BRANCH }}
+        run: |
+          set -euo pipefail
+
+          # HEAD, not GITHUB_SHA: for an annotated tag the checkout resolves to the commit.
+          commit="$( git rev-parse HEAD )"
+
+          if ! git merge-base --is-ancestor "${commit}" "origin/${RELEASE_BRANCH}"; then
+            echo "::error::Tag '${GITHUB_REF_NAME}' points at ${commit}, which is not on ${RELEASE_BRANCH}. Nothing has been published; release from ${RELEASE_BRANCH}, or delete the tag."
+            exit 1
+          fi
+
+          echo "Tag ${GITHUB_REF_NAME} is on ${RELEASE_BRANCH} (${commit})."
 
       # ---- Version guard, before anything is built or published -----------
       # First after checkout, so a mismatched release fails in seconds rather than after a build.
