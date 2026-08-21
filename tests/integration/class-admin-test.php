@@ -17,6 +17,7 @@ use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Migrate;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Legacy_Settings;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
@@ -95,26 +96,6 @@ class Admin_Test extends WP_UnitTestCase {
 	 * @var string
 	 */
 	protected const string _THEMES_ROUTE = '/' . Admin::REST_NAMESPACE . '/themes';
-
-	/**
-	 * The option array a v5.1 install holds.
-	 *
-	 * Every value is the opposite of its v6 default, so a setting which fails to
-	 * carry across cannot pass by coincidence.
-	 *
-	 * @var array
-	 */
-	protected const array _V5_OPTIONS = [
-		'fe-styles'         => 'no',
-		'strict_mode'       => 'always',
-		'non_strict_mode'   => [ 'php' ],
-		'toolbar'           => 'no',
-		'plain_text'        => 'no',
-		'show_line_numbers' => 'no',
-		'hilite_comments'   => 'no',
-		'link_to_manual'    => 'yes',
-		'gist_in_comments'  => 'yes',
-	];
 
 	/**
 	 * The options object as the plugin booted it.
@@ -1363,7 +1344,7 @@ class Admin_Test extends WP_UnitTestCase {
 		set_current_screen( 'dashboard' );
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', Legacy_Settings::V5_1 );
 
 		$this->_migrate();
 

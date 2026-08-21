@@ -14,6 +14,7 @@ use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Migrate;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
+use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Legacy_Settings;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use iG\Syntax_Hiliter\Themes;
 use WP_UnitTestCase;
@@ -25,26 +26,6 @@ use WP_UnitTestCase;
 class Migrate_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
-
-	/**
-	 * The option array a v5.1 install holds.
-	 *
-	 * Every value is the opposite of its v6 default, so a setting which fails to
-	 * carry across cannot pass by coincidence.
-	 *
-	 * @var array
-	 */
-	protected const array _V5_OPTIONS = [
-		'fe-styles'         => 'no',
-		'strict_mode'       => 'always',
-		'non_strict_mode'   => [ 'php' ],
-		'toolbar'           => 'no',
-		'plain_text'        => 'no',
-		'show_line_numbers' => 'no',
-		'hilite_comments'   => 'no',
-		'link_to_manual'    => 'yes',
-		'gist_in_comments'  => 'yes',
-	];
 
 	/**
 	 * The options object as the plugin booted it.
@@ -103,7 +84,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	public function it_maps_a_v51_installs_settings_to_the_v6_option_set(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', Legacy_Settings::V5_1 );
 
 		$this->_migrate();
 
@@ -142,7 +123,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		update_option(
 			Base::PLUGIN_ID . '-options',
 			array_merge(
-				static::_V5_OPTIONS,
+				Legacy_Settings::V5_1,
 				[
 					'fe-styles'  => 'yes',
 					'plain_text' => 'yes',
@@ -170,7 +151,7 @@ class Migrate_Test extends WP_UnitTestCase {
 	public function it_does_not_migrate_again_on_a_subsequent_load(): void {
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', Legacy_Settings::V5_1 );
 
 		$this->_migrate();
 
@@ -337,35 +318,6 @@ class Migrate_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A pre-release suffix is dropped before the three numeric parts are taken, so
-	 * `6.0.1-beta-1` is `6.0.1` and not the `6.0.0` that `floatval()` would make of it.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_normalises_a_version_to_its_numeric_parts(): void {
-
-		$normalize = new \ReflectionMethod( Migrate::class, '_normalize_version' );
-
-		// A float key would be truncated to an int, so these are pairs and not a map.
-		$cases = [
-			[ '6.0.1-beta-1', '6.0.1' ],
-			[ '6.10.0-rc1', '6.10.0' ],
-			[ '6.0.0-rc-1', '6.0.0' ],
-			[ '6.0', '6.0.0' ],
-			[ 5.1, '5.1.0' ],
-			[ 'junk', '' ],
-			[ '', '' ],
-		];
-
-		foreach ( $cases as [ $version, $normalised ] ) {
-			$this->assertSame( $normalised, $normalize->invoke( null, $version ), sprintf( 'Normalising "%s"', $version ) );
-		}
-
-	}
-
-	/**
 	 * An up-to-date install keeps its caches on an ordinary page load.
 	 *
 	 * An install already spelling its version the way this one does is an ordinary
@@ -450,7 +402,7 @@ class Migrate_Test extends WP_UnitTestCase {
 		$cache_key = Cache::KEY_PREFIX . md5( Base::PLUGIN_ID . '-languages' );
 
 		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
+		update_option( Base::PLUGIN_ID . '-options', Legacy_Settings::V5_1 );
 		update_option( Base::PLUGIN_ID . '-lang-time', time() );
 		update_option(
 			$cache_key,

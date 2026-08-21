@@ -409,6 +409,20 @@ class Snippet_Test extends TestCase {
 
 	}
 
+	/**
+	 * A language named `0` is invalid use, not somebody naming a language, so it reads
+	 * as empty and the default applies.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_does_not_keep_a_language_named_zero(): void {
+
+		$this->assertSame( 'code', Snippet::from_shortcode_atts( [ 'language' => '0' ], 'x' )->language );
+
+	}
+
 } // end of class
 
 // EOF

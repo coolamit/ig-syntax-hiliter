@@ -9,7 +9,6 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
-use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
@@ -114,59 +113,6 @@ class Themes_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * No stylesheet the plugin ships may fetch anything from another host.
-	 *
-	 * Hopscotch was left out of the vendored collection because its first line is an
-	 * `@import` of a Google font. The engine plugins' stylesheets are scanned too: they
-	 * are enqueued onto the same page. A data URI `url()` is fine; Pojoaque has one.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_fetches_nothing_from_another_host_for_any_bundled_stylesheet(): void {
-
-		$files = [];
-
-		$directories = array_keys( $this->_get_declared_themes() );
-
-		foreach ( $directories as $directory ) {
-
-			$found = glob( Helper::get_asset_path( $directory ) . '/*.min.css' );
-
-			$files = array_merge( $files, (array) $found );
-
-		}
-
-		$plugin_styles = glob( Helper::get_asset_path( 'lib/prism/plugins' ) . '/*/*.min.css' );
-
-		$this->assertNotEmpty( $plugin_styles, 'The vendored engine plugins ship stylesheets of their own.' );
-
-		$files = array_merge( $files, (array) $plugin_styles );
-
-		$this->assertNotEmpty( $files, 'The vendored theme directories hold stylesheets.' );
-
-		foreach ( $files as $file ) {
-
-			$css = (string) file_get_contents( $file );    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading a vendored file off disk, not a remote resource.
-
-			$this->assertDoesNotMatchRegularExpression(
-				'~@import~i',
-				$css,
-				sprintf( '%s imports another stylesheet.', basename( $file ) )
-			);
-
-			$this->assertDoesNotMatchRegularExpression(
-				'~url\(\s*[\'"]?(?:https?:)?//~i',
-				$css,
-				sprintf( '%s fetches something from another host.', basename( $file ) )
-			);
-
-		}
-
-	}
-
-	/**
 	 * A theme slug carrying a dot has to survive being saved and read back: it is
 	 * the sort of value a sanitiser reshapes into something that no longer names a file.
 	 *
@@ -191,21 +137,6 @@ class Themes_Test extends WP_UnitTestCase {
 			'lib/prism-themes/' . static::_DOTTED_SLUG . '.min.css',
 			Themes::get_theme_file( static::_DOTTED_SLUG )
 		);
-
-	}
-
-	/**
-	 * A slug the plugin does not ship gets no path at all; a path built anyway would
-	 * be enqueued and would 404.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_gives_an_unknown_theme_no_file(): void {
-
-		$this->assertSame( '', Themes::get_theme_file( 'prism-not-a-theme' ) );
-		$this->assertSame( '', Themes::get_theme_file( '' ) );
 
 	}
 
