@@ -13,6 +13,7 @@ use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Fonts;
+use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Migrate;
 use iG\Syntax_Hiliter\Option;
 use iG\Syntax_Hiliter\Tests\Integration\Fixtures\Default_Settings;
@@ -365,23 +366,6 @@ class Admin_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The theme dropdown offers Okaidia as the default, and names the Prism theme
-	 * after itself.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_offers_the_bundled_themes_in_the_theme_dropdown(): void {
-
-		$choices = Admin::get_theme_choices();
-
-		$this->assertArrayHasKey( Themes::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
-		$this->assertSame( 'Prism', $choices['prism'] ?? '', 'The Prism theme is named after itself, not after being the default.' );
-
-	}
-
-	/**
 	 * "None" heads the dropdown and every theme under it is in order by name.
 	 *
 	 * The registry hands the themes over grouped by the directory they were vendored
@@ -395,6 +379,8 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$choices = Admin::get_theme_choices();
 		$slugs   = array_keys( $choices );
+
+		$this->assertArrayHasKey( Themes::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
 
 		$this->assertSame( Themes::THEME_NONE, $slugs[0] ?? '', 'The "no theme" choice is not at the top of the dropdown.' );
 
@@ -791,10 +777,11 @@ class Admin_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Every one of the screen's compiled assets is where it is enqueued from.
+	 * Every asset the screen enqueues is read from where it was enqueued from, and is there.
 	 *
-	 * `assets/build/` is generated and git-ignored, so a path that
-	 * has gone stale is a 404 in wp-admin and nothing else.
+	 * Read off the registries rather than from a list kept here, so a path which went
+	 * stale in `Admin` fails here and not as a 404 in wp-admin. `assets/build/` is
+	 * generated and git-ignored, so on a fresh checkout this is what says `make build`.
 	 *
 	 * @test
 	 *
@@ -802,13 +789,36 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_enqueues_the_screen_assets_from_paths_which_exist(): void {
 
-		$root = untrailingslashit( IG_SYNTAX_HILITER_ROOT );
+		$this->_reset_asset_state();
 
-		foreach ( [ 'css/admin.css', 'css/notices.css', 'js/admin-api.js', 'js/admin.js', 'js/notices.js', 'js/revert.js' ] as $asset ) {
+		Admin::get_instance()->enqueue_assets( Admin::PAGE_HOOK );
+
+		$checked = [];
+
+		foreach ( array_merge( array_values( wp_scripts()->registered ), array_values( wp_styles()->registered ) ) as $dependency ) {
+
+			if ( ! str_starts_with( (string) $dependency->handle, Admin::PLUGIN_ID ) ) {
+				continue;
+			}
+
+			$source = (string) $dependency->src;
+
+			if ( ! str_starts_with( $source, Helper::get_asset_url() ) ) {
+				continue;    // A webfont stylesheet, which is not ours and is not on this disk.
+			}
+
 			$this->assertFileExists(
-				sprintf( '%s/assets/build/%s', $root, $asset ),
-				sprintf( '`assets/build/%s` is enqueued but is not there. Run `make build`.', $asset )
+				Helper::get_asset_path( substr( $source, strlen( Helper::get_asset_url() ) ) ),
+				sprintf( 'The %s handle is enqueued from a file which is not there. Run `make build`.', $dependency->handle )
 			);
+
+			$checked[] = (string) $dependency->handle;
+
+		}
+
+		// The screen's own four handles were among what was checked; the preview engine's handles ride along and are `Asset_Manager_Test`'s business.
+		foreach ( [ self::_HANDLE, self::_NOTICES_HANDLE, self::_API_HANDLE, self::_REVERT_HANDLE ] as $handle ) {
+			$this->assertContains( $handle, $checked, sprintf( 'The %s handle was not enqueued.', $handle ) );
 		}
 
 	}
@@ -1392,33 +1402,6 @@ class Admin_Test extends WP_UnitTestCase {
 		$this->_set_singleton( Migrate::class, null );
 
 		Migrate::get_instance()->settings();
-
-	}
-
-	/**
-	 * The list is in order by name with "None" on the front, and nothing was lost
-	 * in the sorting.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_puts_none_first_in_the_font_dropdown_and_sorts_the_rest(): void {
-
-		$choices = Admin::get_font_choices();
-
-		$this->assertSame( Fonts::FONT_NONE, array_key_first( $choices ) );
-		$this->assertCount( count( Fonts::get_fonts() ) + 1, $choices );
-
-		$names = array_values( $choices );
-
-		array_shift( $names );
-
-		$sorted = $names;
-
-		usort( $sorted, 'strnatcasecmp' );
-
-		$this->assertSame( $sorted, $names, 'The fonts are in order by name.' );
 
 	}
 

@@ -130,52 +130,6 @@ class Language_Registry_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A filter callback may ask the registry what it currently holds.
-	 *
-	 * That is the first move of a callback which adjusts the registry rather than
-	 * replacing it, and it recurses until the stack runs out unless the instance has
-	 * been handed out before the filter runs. The callback counts its own entries and
-	 * stops after the second, so a regression reports a number instead of taking the
-	 * process down.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_lets_a_filter_callback_ask_the_registry_what_it_holds(): void {
-
-		$entries = 0;
-		$seen    = null;
-
-		$callback = static function ( array $registry ) use ( &$entries, &$seen ): array {
-
-			++$entries;
-
-			if ( 2 > $entries ) {
-				$seen = Language_Registry::get_instance();
-			}
-
-			return $registry;
-
-		};
-
-		add_filter( Language_Registry::FILTER_LANGUAGES, $callback );
-
-		$this->_remember_cache_key();
-
-		$registry = Language_Registry::get_instance();
-
-		// The load, and with it the filter, runs on the first question asked of it.
-		$registry->has( 'php' );
-
-		remove_filter( Language_Registry::FILTER_LANGUAGES, $callback );
-
-		$this->assertSame( 1, $entries, 'A callback which reads the registry does not send the build round again.' );
-		$this->assertSame( $registry, $seen, 'What the callback was shown is the registry the request goes on to use.' );
-
-	}
-
-	/**
 	 * A filter callback may ask the registry a question, and not merely ask for it.
 	 *
 	 * The load is what runs the filter, so a callback which reads is the one which could

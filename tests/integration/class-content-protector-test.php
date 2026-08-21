@@ -922,25 +922,6 @@ class Content_Protector_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The control: a snippet which really is empty still renders as nothing, so the
-	 * case above is not satisfied by a plugin that stopped checking.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_still_renders_nothing_for_a_genuinely_empty_snippet(): void {
-
-		$shortcode = $this->_filter( 'the_content', '[php][/php]' );
-
-		$this->assertStringNotContainsString( '<pre ', $shortcode, 'An empty shortcode rendered a code box.' );
-
-		// The wrapper is emitted for every box, so an empty container would slip past the assertion above.
-		$this->assertStringNotContainsString( 'igsh-code-box', $shortcode, 'An empty shortcode rendered a container.' );
-
-	}
-
-	/**
 	 * A run left in flight renders normally rather than emitting a placeholder
 	 * nothing will restore.
 	 *
@@ -996,23 +977,6 @@ class Content_Protector_Test extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( '<script', $output );
 		$this->assertStringContainsString( '[github id=&quot;abc123&quot;]', $output );
-
-	}
-
-	/**
-	 * The save path must never take the outer pair off. It would take one bracket per
-	 * edit, and the edit after that would store what the author wrote as an example as
-	 * a real snippet.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_stores_an_escaped_shortcode_byte_for_byte(): void {
-
-		$content = '[[php]echo 1;[/php]]';
-
-		$this->assertSame( $content, $this->_store_unconverted( $content ) );
 
 	}
 

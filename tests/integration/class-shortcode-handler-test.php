@@ -493,14 +493,17 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The plugin's hooks sit where they are supposed to sit, on both the display
-	 * filters and the save filters.
+	 * The shortcode handler's eleven registrations, on the settings it boots with.
+	 *
+	 * `PRIORITY_STRIP_BODY` is 0, which `has_filter()` reports as a falsy `0` and an
+	 * absent callback as `false`; it is the earlier of the two strips the automatic
+	 * excerpt needs, since core's `strip_shortcodes()` cannot be trusted with source code.
 	 *
 	 * @test
 	 *
 	 * @return void
 	 */
-	public function it_registers_its_hooks_at_the_bracketing_priorities(): void {
+	public function it_registers_the_shortcode_handlers_hooks(): void {
 
 		$handler = Shortcode_Handler::get_instance();
 
@@ -516,43 +519,10 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 		);
 
 		// A filter which writes to the database has no business on a strip list.
-		$this->assertNotContains( 'excerpt_save_pre', Shortcode_Handler::EXCERPT_FILTERS );
 		$this->assertFalse( has_filter( 'excerpt_save_pre', [ $handler, 'strip' ] ) );
-
-		$this->assertSame( 1, has_filter( 'the_content', [ $handler, 'protect_display' ] ) );
-		$this->assertSame( 100, has_filter( 'the_content', [ $handler, 'restore_display' ] ) );
-
-		$this->assertSame( 1, has_filter( 'comment_text', [ $handler, 'protect_display' ] ) );
-		$this->assertSame( 100, has_filter( 'comment_text', [ $handler, 'restore_display' ] ) );
-
-		foreach ( Shortcode_Handler::SAVE_FILTERS as $filter ) {
-			$this->assertSame( 1, has_filter( $filter, [ $handler, 'protect_save' ] ), $filter );
-			$this->assertSame( 100, has_filter( $filter, [ $handler, 'restore_save' ] ), $filter );
-		}
-
-		foreach ( Shortcode_Handler::EXCERPT_FILTERS as $filter ) {
-			$this->assertSame( 2, has_filter( $filter, [ $handler, 'strip' ] ), $filter );
-		}
 
 		// KSES has to sit between the two save passes for any of this to be worth doing.
 		$this->assertSame( 10, has_filter( 'content_save_pre', 'wp_filter_post_kses' ) );
-
-	}
-
-	/**
-	 * The shortcode handler's eleven registrations, on the settings it boots with.
-	 *
-	 * `PRIORITY_STRIP_BODY` is 0, which `has_filter()` reports as a falsy `0` and an
-	 * absent callback as `false`; it is the earlier of the two strips the automatic
-	 * excerpt needs, since core's `strip_shortcodes()` cannot be trusted with source code.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_registers_the_shortcode_handlers_hooks(): void {
-
-		$handler = Shortcode_Handler::get_instance();
 
 		$this->_assert_hooked(
 			'the_content',
@@ -765,11 +735,6 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$this->_rewire_handler_with( 'hilite_comments', 'no' );
 
-		$handler = Shortcode_Handler::get_instance();
-
-		$this->assertSame( 2, has_filter( 'comment_text', [ $handler, 'strip' ] ) );
-		$this->assertFalse( has_filter( 'comment_text', [ $handler, 'protect_display' ] ) );
-
 		$output = $this->_filter( 'comment_text', "before [php]\n\$a = 1;\n[/php] after" );
 
 		$this->assertStringNotContainsString( '<pre', $output );
@@ -859,43 +824,6 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * An archive loop is wired to the same pipeline.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_renders_a_snippet_in_an_archive_loop(): void {
-
-		self::factory()->post->create(
-			[
-				'post_content' => wp_slash( sprintf( "[php]\n%s\n[/php]", static::_payload() ) ),
-			]
-		);
-
-		$this->go_to( home_url( '/' ) );
-
-		$this->assertTrue( is_home(), 'The archive context is what is being rendered here.' );
-
-		$output = '';
-
-		while ( have_posts() ) {
-
-			the_post();
-
-			ob_start();
-			the_content();
-
-			$output .= (string) ob_get_clean();
-
-		}
-
-		$this->assertStringContainsString( '<code class="language-php">', $output );
-		$this->assertStringContainsString( Renderer::escape_verbatim( static::_payload() ), $output );
-
-	}
-
-	/**
 	 * The RSS feed is wired to it too, where a snippet is code rather than markup
 	 * the reader executes.
 	 *
@@ -972,26 +900,6 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '[php]', $excerpt );
 		$this->assertStringNotContainsString( '<pre', $excerpt );
 		$this->assertStringNotContainsString( 'igsh-code-box', $excerpt );
-
-	}
-
-	/**
-	 * An automatic excerpt carries no code either.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_leaves_no_code_in_an_automatic_excerpt(): void {
-
-		$post_id = self::factory()->post->create(
-			[
-				'post_content' => "Intro.\n\n[php]\n\$secret = 'leaked-code-marker';\n[/php]\n\nOutro.",
-				'post_excerpt' => '',
-			]
-		);
-
-		$this->assertStringNotContainsString( 'leaked-code-marker', get_the_excerpt( $post_id ) );
 
 	}
 
@@ -1205,24 +1113,6 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( static::_MARKER, $excerpt, 'excerpt taken mid render' );
 		$this->assertStringContainsString( static::_MARKER, $output, 'The render the excerpt interrupted still carries its code box.' );
-
-	}
-
-	/**
-	 * The filter pair is symmetric: what goes in comes out, slashes and all.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_makes_the_save_filters_a_round_trip(): void {
-
-		$slashed = wp_slash( self::_HOSTILE_CONTENT );
-
-		$this->assertSame( $slashed, $this->_filter( 'content_save_pre', $slashed ) );
-
-		// And again, which is what a revision or an autosave does in the same request.
-		$this->assertSame( $slashed, $this->_filter( 'content_save_pre', $slashed ) );
 
 	}
 

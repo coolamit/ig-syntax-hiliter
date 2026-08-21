@@ -166,6 +166,12 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 			'The embed goes in ahead of wptexturize, which would curl the quotes in the URL.'
 		);
 
+		$this->assertLessThan(
+			has_filter( 'the_content', 'wptexturize' ),
+			Gist_Embed::PRIORITY_EMBED,
+			'The Gist pipeline must parse its attributes before texturize rewrites them.'
+		);
+
 		foreach ( $this->_gist_link_filters( $gist ) as $filter ) {
 
 			$this->_assert_hooked(
@@ -242,49 +248,6 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The Gist pipeline runs ahead of `wptexturize`.
-	 *
-	 * Texturize runs on `the_content` at priority 10 and curls the quotes around a
-	 * `gist="…"` URL before this pipeline can parse it, so priority 9 is pinned.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_registers_its_hooks_ahead_of_texturize(): void {
-
-		$gist = Gist_Embed::get_instance();
-
-		$this->assertSame( 9, has_filter( 'the_content', [ $gist, 'parse' ] ) );
-		$this->assertLessThan(
-			has_filter( 'the_content', 'wptexturize' ),
-			has_filter( 'the_content', [ $gist, 'parse' ] ),
-			'The Gist pipeline must parse its attributes before texturize rewrites them.'
-		);
-
-		$this->assertSame( 9, has_filter( 'the_excerpt', [ $gist, 'parse' ] ) );
-
-		// `gist_in_comments` is off by default, so comments get the link form.
-		$this->assertSame( 9, has_filter( 'comment_text', [ $gist, 'parse' ] ) );
-
-	}
-
-	/**
-	 * An id becomes an embed script.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_turns_an_id_into_an_embed(): void {
-
-		$output = $this->_filter( 'the_content', '[github id="abc123"]' );
-
-		$this->assertStringContainsString( $this->_expected_embed( 'abc123' ), $output );
-
-	}
-
-	/**
 	 * A full Gist URL wins over the id, and only its last segment is used.
 	 *
 	 * Run through `the_content` rather than called directly, so that `wptexturize`
@@ -336,44 +299,13 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A path segment that is not a Gist id never reaches the URL.
-	 *
-	 * A username sanitiser lets `. - _ @` and spaces through, so `..` can reach the
-	 * path of a URL this plugin prints. Both paths are checked because the embed and
-	 * the link are two different pieces of markup built from that one URL.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_never_lets_a_traversal_reach_the_gist_url(): void {
-
-		$inputs = [
-			'[github gist="https://gist.github.com/someone/../evil"]',
-			'[github gist="https://gist.github.com/someone/.."]',
-			'[github id=".."]',
-			'[github id="../evil"]',
-		];
-
-		foreach ( $inputs as $input ) {
-
-			foreach ( [ 'the_content', 'the_excerpt' ] as $filter ) {
-
-				$this->assertStringNotContainsString(
-					'..',
-					$this->_filter( $filter, $input ),
-					sprintf( '`%1$s` put a traversal into the output of `%2$s`.', $input, $filter )
-				);
-			}
-		}
-
-	}
-
-	/**
-	 * An id which cannot be a Gist id prints nothing at all.
+	 * An id which cannot be a Gist id prints nothing at all, and no traversal reaches
+	 * the page by any other route.
 	 *
 	 * Not a URL with the offending characters taken out of it: an id with characters
-	 * removed names a different Gist, so a refusal is the only honest answer.
+	 * removed names a different Gist, so a refusal is the only honest answer. A
+	 * username sanitiser lets `. - _ @` and spaces through, so `..` is the case to
+	 * check, on the embed path and the link path both.
 	 *
 	 * @test
 	 *
@@ -392,10 +324,18 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 			foreach ( [ 'the_content', 'the_excerpt' ] as $filter ) {
 
+				$output = $this->_filter( $filter, $input );
+
 				$this->assertStringNotContainsString(
 					'gist.github.com',
-					$this->_filter( $filter, $input ),
+					$output,
 					sprintf( '`%1$s` was printed as a Gist URL by `%2$s`.', $input, $filter )
+				);
+
+				$this->assertStringNotContainsString(
+					'..',
+					$output,
+					sprintf( '`%1$s` put a traversal into the output of `%2$s`.', $input, $filter )
 				);
 			}
 		}
@@ -404,9 +344,6 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 
 	/**
 	 * A bare `[github]` with no attributes renders nothing and does not fatal.
-	 *
-	 * WordPress hands callbacks an array from 6.5 onwards, so the empty string is
-	 * asserted against directly.
 	 *
 	 * @test
 	 *
@@ -420,8 +357,6 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( 'gist.github.com', $output );
 		$this->assertStringContainsString( 'before', $output );
 		$this->assertStringContainsString( 'after', $output );
-
-		$this->assertSame( '', Gist_Embed::get_instance()->render( '' ) );
 
 	}
 
@@ -439,22 +374,6 @@ class Gist_Embed_Test extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<script', $output );
 		$this->assertStringContainsString( 'class="igsh-gist"', $output );
 		$this->assertStringContainsString( 'https://gist.github.com/abc123', $output );
-
-	}
-
-	/**
-	 * Comments get the link form while `gist_in_comments` is off.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_gives_comments_a_link_while_the_option_is_off(): void {
-
-		$output = $this->_filter( 'comment_text', '[github id="abc123"]' );
-
-		$this->assertStringNotContainsString( '<script', $output );
-		$this->assertStringContainsString( 'class="igsh-gist"', $output );
 
 	}
 

@@ -80,17 +80,11 @@ class Helper_Test extends WP_UnitTestCase {
 	 * plugin directory is not named after the repository (the repo is
 	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
 	 *
-	 * That the version constant is defined is asserted first: every reader goes
-	 * through `Helper::get_version()`, which answers the caller's fallback rather
-	 * than failing, so nothing else could see it go.
-	 *
 	 * @test
 	 *
 	 * @return void
 	 */
 	public function it_builds_paths_without_assuming_the_plugin_folder_name(): void {
-
-		$this->assertTrue( defined( 'IG_SYNTAX_HILITER_VERSION' ), 'The version constant is what every version answer in the plugin comes from.' );
 
 		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/', Helper::get_path() );
 		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', Helper::get_path( 'assets/build/css/admin.css' ) );

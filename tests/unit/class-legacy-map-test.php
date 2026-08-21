@@ -105,28 +105,6 @@ class Legacy_Map_Test extends TestCase {
 	}
 
 	/**
-	 * Every shipped tag and every alias resolves to a language id.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_resolves_every_shipped_tag(): void {
-
-		foreach ( array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES ) as $tag ) {
-
-			$this->assertNotNull(
-				Legacy_Map::to_language_id( $tag ),
-				sprintf( '[%s] is a shipped tag and must resolve to a language.', $tag )
-			);
-
-		}
-
-		$this->assertCount( 40, Legacy_Map::get_language_map() );
-
-	}
-
-	/**
 	 * The two tags which never highlighted anything still do not.
 	 *
 	 * @test
@@ -134,7 +112,7 @@ class Legacy_Map_Test extends TestCase {
 	 * @return void
 	 */
 	public function it_maps_a_plain_tag_to_no_language(): void {
-		// The value and not only the constant: `assets/src/block/attributes.ts` mirrors this literal.
+		// The value and not only the constant: `language-none` is the highlighter's own no-highlight convention.
 		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );

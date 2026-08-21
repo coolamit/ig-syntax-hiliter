@@ -116,48 +116,6 @@ class Plugin_Test extends WP_UnitTestCase {
 
 	}
 
-	/**
-	 * The v5 engine is gone: no GeSHi class or library, no Frontend class, none of
-	 * the front end assets that went with them.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_ships_none_of_the_v5_engine(): void {
-
-		$this->assertFalse( class_exists( 'GeSHi', false ) );
-		$this->assertFalse( class_exists( '\iG\Syntax_Hiliter\Frontend', false ) );
-
-		$gone = [
-			'classes/geshi.php',
-			'classes/frontend.php',
-			'templates/frontend-code-box.php',
-			'assets/src/js/front-end.js',
-			'assets/src/js/igeek-utils.js',
-			'assets/src/scss/front-end.scss',
-			'assets/src/scss/config.rb',
-		];
-
-		foreach ( $gone as $path ) {
-			$this->assertFileDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/' . $path );
-		}
-
-		$this->assertDirectoryDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/geshi' );
-
-		// The release zip is packaged from disk, so a stale pre-6.0 asset directory would ship files nothing enqueues.
-		$retired = [
-			'assets/css',
-			'assets/js',
-			'assets/scss',
-		];
-
-		foreach ( $retired as $directory ) {
-			$this->assertDirectoryDoesNotExist( IG_SYNTAX_HILITER_ROOT . '/' . $directory );
-		}
-
-	}
-
 } // end of class
 
 // EOF

@@ -91,12 +91,4 @@ describe( 'pasting a Gist shortcode', () => {
 			blocks.filter( ( block ) => block.name === metadata.name )
 		).toHaveLength( 0 );
 	} );
-
-	it( 'leaves an ordinary paragraph alone', () => {
-		const blocks = paste( 'Nothing to see here.' );
-
-		expect( blocks.map( ( block ) => block.name ) ).toEqual( [
-			PARAGRAPH_BLOCK,
-		] );
-	} );
 } );

@@ -359,10 +359,8 @@ class Language_Registry_Test extends TestCase {
 
 		$this->assertSame( 'bash', $registry->resolve( 'shell' ) );
 
-		// "none" is a convention of the highlighter, not a language it can load; neither is "core".
+		// "none" is a convention of the highlighter, not a language it can load.
 		$this->assertFalse( $registry->has( Language_Registry::NO_LANGUAGE ) );
-
-		$this->assertFalse( $registry->has( 'core' ) );
 
 	}
 

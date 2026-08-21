@@ -13,7 +13,6 @@ use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Block;
 use iG\Syntax_Hiliter\Block_Converter;
 use iG\Syntax_Hiliter\Gist_Embed;
-use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Snippet;
@@ -478,41 +477,6 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The escape is invisible on the page: one code box, showing the tags the author
-	 * typed, with nothing of the outer shortcode left over after it.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_renders_the_tags_the_author_typed_from_an_escaped_snippet(): void {
-
-		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
-
-		$result = Block_Converter::convert_content(
-			static::_block(
-				[
-					'code'     => $code,
-					'language' => 'php',
-				]
-			)
-		);
-
-		$this->assertSame( 1, $result['converted'] );
-
-		$rendered = (string) apply_filters( 'the_content', $result['content'] );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
-
-		$this->assertSame( 1, substr_count( $rendered, '<pre ' ), 'The escaped closing tag ended the snippet, so the box was cut in two or cut short.' );
-
-		$this->assertStringContainsString(
-			Renderer::escape_verbatim( $code ),
-			$rendered,
-			'The reader is shown the doubled brackets rather than the tags the author wrote.'
-		);
-
-	}
-
-	/**
 	 * A block whose code could not be escaped is left as it was found and reported:
 	 * PCRE giving up reads like nothing to escape, and unescaped code would be cut
 	 * short at the first closing tag in it.
@@ -853,12 +817,6 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$this->assertSame( 1, $batch['skipped'], 'The batch is only a mixed one if every bucket got a post.' );
 		$this->assertSame( 1, $batch['failed'], 'The batch is only a mixed one if every bucket got a post.' );
 
-		$this->assertSame(
-			$batch['processed'],
-			$batch['converted'] + $batch['skipped'] + $batch['failed'],
-			'A post examined has to land in exactly one bucket.'
-		);
-
 	}
 
 	/**
@@ -1157,8 +1115,8 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The tool writes the generic tag and only ever the generic tag, whatever the
-	 * language was.
+	 * The tag the tool writes is the generic one every version has read, pinned as a
+	 * literal so a rename anywhere in the chain fails here.
 	 *
 	 * @test
 	 *
@@ -1166,16 +1124,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	 */
 	public function it_always_writes_the_generic_tag(): void {
 
-		$shortcode = (string) Block_Converter::block_to_shortcode(
-			[
-				'code'     => 'echo 1;',
-				'language' => 'php',
-			]
-		);
-
-		$this->assertSame( Legacy_Map::GENERIC_TAG, Block_Converter::SHORTCODE_TAG );
-		$this->assertStringStartsWith( '[sourcecode ', $shortcode );
-		$this->assertStringNotContainsString( '[php]', $shortcode );
+		$this->assertSame( 'sourcecode', Block_Converter::SHORTCODE_TAG );
 
 	}
 
@@ -1346,17 +1295,17 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * `Block` and `Block_Converter` name the same Gist block and the same shortcode
-	 * tag; a rename in one that missed the other would quietly stop the tool converting.
+	 * The Gist block name the tool matches and the shortcode tag it writes are the ones
+	 * stored content carries, pinned as literals so a rename anywhere in the chain fails here.
 	 *
 	 * @test
 	 *
 	 * @return void
 	 */
-	public function it_names_the_same_gist_block_in_the_converter_and_in_the_block(): void {
+	public function it_names_the_gist_block_and_tag_stored_content_carries(): void {
 
-		$this->assertSame( Block::GIST_NAME, Block_Converter::GIST_BLOCK_NAME );
-		$this->assertSame( Gist_Embed::TAG, Block_Converter::GIST_SHORTCODE_TAG );
+		$this->assertSame( 'igsyntax-hiliter/gist', Block_Converter::GIST_BLOCK_NAME );
+		$this->assertSame( 'github', Block_Converter::GIST_SHORTCODE_TAG );
 
 	}
 

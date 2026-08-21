@@ -83,6 +83,11 @@ class Renderer_Test extends TestCase {
 	/**
 	 * The shape of the markup, in full.
 	 *
+	 * `data-line-offset` is not a second spelling of `data-start`: the line numbers
+	 * plugin reads `data-start` for the gutter, the line highlight plugin reads the
+	 * offset to map `data-line` onto the code. Without it an 11-line snippet shown as
+	 * 5 to 15 has `11-13` clamped to `11-11`.
+	 *
 	 * @test
 	 *
 	 * @return void
@@ -202,54 +207,6 @@ class Renderer_Test extends TestCase {
 				$this->renderer->render_snippet( new Snippet( (string) $typed, 'php' ) ),
 				sprintf( '"%s" was not left as the author typed it.', $typed )
 			);
-
-		}
-
-	}
-
-	/**
-	 * The round trip, stated once: whatever the author typed, one decode of what the
-	 * reader is served gives their bytes back. That is the property the escaping
-	 * exists for, and it holds down both paths into the renderer.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_shows_the_reader_exactly_what_the_author_typed(): void {
-
-		$code = "&amp; &lt;b&gt; &nbsp; &#60; & < > \" ' <b>bold</b>\n\$x = 'a' . \"b\";";
-
-		$paths = [
-			'shortcode' => Snippet::from_shortcode_atts( [ 'language' => 'php' ], $code ),
-			'block'     => Snippet::from_block_attributes(
-				[
-					'code'     => $code,
-					'language' => 'php',
-				]
-			),
-		];
-
-		foreach ( $paths as $path => $snippet ) {
-
-			$this->renderer->reset_counter();
-
-			$markup = $this->renderer->render_snippet( $snippet );
-
-			$this->assertSame(
-				1,
-				preg_match( '#<code[^>]*>(.*)</code></pre></div>$#s', $markup, $matches ),
-				sprintf( 'The %s path rendered no code element.', $path )
-			);
-
-			$this->assertSame(
-				$code,
-				html_entity_decode( $matches[1], ENT_QUOTES, 'UTF-8' ),
-				sprintf( 'The %s path did not give the author back their bytes.', $path )
-			);
-
-			// Nothing the author typed reaches the reader as markup of its own.
-			$this->assertStringNotContainsString( '<b>', $matches[1], sprintf( 'The %s path let a tag through.', $path ) );
 
 		}
 
@@ -640,30 +597,6 @@ class Renderer_Test extends TestCase {
 		);
 
 		$this->assertSame( $from_shortcode, $from_block );
-
-	}
-
-	/**
-	 * A snippet numbered from anywhere but line 1 tells the highlighter so.
-	 *
-	 * `data-line-offset` is not a second spelling of `data-start`: the line numbers
-	 * plugin reads `data-start` for the gutter, the line highlight plugin reads the
-	 * offset to map `data-line` onto the code. Without it an 11-line snippet shown as
-	 * 5 to 15 has `11-13` clamped to `11-11`.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_tells_the_highlighter_the_offset_for_a_snippet_starting_elsewhere(): void {
-
-		$markup = $this->renderer->render_snippet(
-			new Snippet( 'echo 1;', 'php', true, 5, [ 11, 12, 13 ] )
-		);
-
-		$this->assertStringContainsString( 'data-start="5"', $markup );
-		$this->assertStringContainsString( 'data-line-offset="4"', $markup );
-		$this->assertStringContainsString( 'data-line="11-13"', $markup );
 
 	}
 

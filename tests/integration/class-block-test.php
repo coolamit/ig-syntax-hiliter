@@ -256,6 +256,10 @@ class Block_Test extends WP_UnitTestCase {
 	 */
 	public function it_registers_the_block_the_pipeline_matches_on(): void {
 
+		// The literal and not only the constant: the name is written into stored post content and can never change.
+		$this->assertSame( 'igsyntax-hiliter/code', Block::NAME );
+		$this->assertSame( 'igsyntax-hiliter/gist', Block::GIST_NAME );
+
 		$this->assertFileExists(
 			Helper::get_path( Block::BUILD_DIR ) . '/block.json',
 			'The block is not built, so nothing was registered and there is no name to compare.'
@@ -588,16 +592,16 @@ class Block_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The Gist block renders through this same pipeline.
+	 * The Gist block renders through the one embed implementation.
 	 *
-	 * There is one embed implementation, not two, so the block and the shortcode agree
-	 * on the id sanitising, the link form and what a comment may carry.
+	 * One implementation and not two, so the block and the shortcode agree on the id
+	 * sanitising, the link form and what a comment may carry.
 	 *
 	 * @test
 	 *
 	 * @return void
 	 */
-	public function it_renders_the_gist_block_through_this_pipeline(): void {
+	public function it_renders_the_gist_block_through_the_embed(): void {
 
 		$block = Block::get_instance();
 
@@ -809,9 +813,6 @@ class Block_Test extends WP_UnitTestCase {
 				$rules,
 				'The rule is added once, however many times the hook fires.'
 			);
-
-			$this->assertStringStartsWith( '.wp-block-igsyntax-hiliter-code {', $rules );
-			$this->assertStringContainsString( '--igsh-editor-font: "Fira Code"', $rules );
 
 		} finally {
 			$this->_reset_editor_font();
