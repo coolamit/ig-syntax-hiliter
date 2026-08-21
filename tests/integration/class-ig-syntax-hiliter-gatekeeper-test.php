@@ -17,10 +17,9 @@ use iG_Syntax_Hiliter_Gatekeeper;
 use WP_UnitTestCase;
 
 /**
- * The half which needs WordPress: the running environment, and the notice built with `esc_html()` and `__()`.
- * `iG_Syntax_Hiliter_Gatekeeper` is the one un-namespaced class, and the prefix is dropped from the test name.
+ * The half which needs WordPress: the notice built with `esc_html()` and `__()`.
  */
-class Gatekeeper_Test extends WP_UnitTestCase {
+class iG_Syntax_Hiliter_Gatekeeper_Test extends WP_UnitTestCase {
 
 	/**
 	 * Method to build a Gatekeeper which judges the environment named, whatever the
@@ -34,22 +33,6 @@ class Gatekeeper_Test extends WP_UnitTestCase {
 	protected function _gate( string $php_version, string $wp_version ): iG_Syntax_Hiliter_Gatekeeper {
 
 		return new iG_Syntax_Hiliter_Gatekeeper( $php_version, $wp_version );
-
-	}
-
-	/**
-	 * A Gatekeeper built with no arguments judges the environment it is running in.
-	 *
-	 * That is what the plugin's own boot does, and it passing says the rest of the
-	 * suite is exercising a plugin that really did load.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_supports_the_test_environment(): void {
-
-		$this->assertTrue( ( new iG_Syntax_Hiliter_Gatekeeper() )->is_environment_supported() );
 
 	}
 

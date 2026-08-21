@@ -134,9 +134,10 @@
 		<severity>0</severity>
 	</rule>
 
-	<!-- The `iG` branding starts lowercase. -->
+	<!-- The `iG` branding starts lowercase, and the test class is named after the class. -->
 	<rule ref="PEAR.NamingConventions.ValidClassName.StartWithCapital">
 		<exclude-pattern>*/classes/class-ig-syntax-hiliter-gatekeeper.php</exclude-pattern>
+		<exclude-pattern>*/tests/*/class-ig-syntax-hiliter-gatekeeper-test.php</exclude-pattern>
 	</rule>
 
 	<!-- Test bootstraps run before or without WordPress: no WP_Filesystem, and STDERR is their only output. -->

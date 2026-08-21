@@ -20,10 +20,9 @@ require_once IG_SYNTAX_HILITER_ROOT . '/classes/class-ig-syntax-hiliter-gatekeep
 
 /**
  * Checks the environment comparison, on both floors and on the version shapes PHP
- * and WordPress really ship. `iG_Syntax_Hiliter_Gatekeeper` is the one un-namespaced
- * class, and the prefix is dropped from the test name.
+ * and WordPress really ship.
  */
-class Gatekeeper_Test extends TestCase {
+class iG_Syntax_Hiliter_Gatekeeper_Test extends TestCase {
 
 	/**
 	 * Method to build a Gatekeeper which judges the environment named, whatever the
