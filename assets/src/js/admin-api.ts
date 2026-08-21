@@ -1,18 +1,14 @@
 /**
  * Shared transport and page lock for the settings page scripts.
  *
- * A classic script publishing `window.igshAdminApi` for `admin.js` and
- * `revert.js` to read; `assets/src/js/` is compiled with `module: none`, so
- * there is no `import` to share it by.
+ * Publishes `window.igshAdminApi`, which `admin.js` and `revert.js` read.
  */
 
 ( function () {
 	'use strict';
 
 	/**
-	 * A control standing for one setting.
-	 *
-	 * A yes/no setting is a `role="switch"` button, a choice is a `<select>`.
+	 * A control standing for one setting: a `role="switch"` button or a `<select>`.
 	 */
 	type OptionControl = HTMLButtonElement | HTMLSelectElement;
 
@@ -22,33 +18,25 @@
 		return;
 	}
 
-	/*
-	 * Read once here; `request()` is hoisted above the guard, so TS will not
-	 * carry the narrowing into it.
-	 */
+	// Read once after the guard; the narrowing does not reach hoisted functions.
 	const restUrl = config.restUrl;
 
-	/*
-	 * Read at call time, not closed over: core returns a fresh nonce on every
-	 * successful cookie-auth REST response and `request()` stores it. An expired
-	 * one is answered by the 403 branch.
-	 */
+	// Re-read at call time: core returns a fresh nonce on every response.
 	let nonce = config.nonce;
 
-	// Fallback keeps the page saving if PHP stopped sending strings.
 	const strings: IgshAdminStrings = config.i18n || ( {} as IgshAdminStrings );
 
 	let busyElements: OptionControl[] = [];
 	let pageBusy = false;
 
-	// Every request locks the page, so a timeout is required.
+	// Required: the page is locked for the whole request.
 	const REQUEST_TIMEOUT_MS = 15000;
 
 	/**
 	 * Fills a translated string's placeholders in.
 	 *
-	 * `%1$s` by position, bare `%s` in order, matching PHP `sprintf()`. A
-	 * placeholder with no value is left standing.
+	 * `%1$s` by position, bare `%s` in order, as `sprintf()`; a placeholder with
+	 * no value is left standing.
 	 *
 	 * @param template String the values go into.
 	 * @param values   Values to put in it, in order.
@@ -88,9 +76,7 @@
 	/**
 	 * Calls one of the plugin's REST routes.
 	 *
-	 * Timeout is required and has no default — the page is locked for the whole
-	 * request. The clock is stopped whichever way it ends. No AbortController
-	 * means no timeout.
+	 * The timeout is required: the page is locked for the whole request.
 	 *
 	 * @param method  Request method.
 	 * @param route   Route path, relative to the plugin's namespace.
@@ -136,7 +122,7 @@
 		}
 
 		/**
-		 * Stops the clock, however the request ended.
+		 * Stops the clock.
 		 */
 		function stopClock(): void {
 			if ( null !== timer ) {
@@ -146,10 +132,7 @@
 			}
 		}
 
-		/*
-		 * A fetch throwing synchronously would never reach the caller's `.catch()`
-		 * and the page would stay locked.
-		 */
+		// A fetch that throws synchronously would leave the page locked.
 		try {
 			pending = window.fetch( restUrl + route, options );
 		} catch ( error ) {
@@ -160,7 +143,6 @@
 
 		return pending
 			.then( function ( response ) {
-				// Only an accepted nonce yields a fresh one; read whatever the status.
 				const fresh = response.headers.get( 'X-WP-Nonce' );
 
 				if ( fresh ) {
@@ -207,10 +189,7 @@
 				function ( error: IgshRequestError ) {
 					stopClock();
 
-					/*
-					 * An abort we asked for is rethrown as a timeout so callers need not
-					 * match on `AbortError`.
-					 */
+					// Our abort is rethrown as a timeout; callers need not match `AbortError`.
 					if ( expired ) {
 						const timedOut: IgshRequestError = new Error(
 							'timeout'
@@ -229,9 +208,8 @@
 	/**
 	 * Locks or unlocks the whole page for the length of a request.
 	 *
-	 * All settings live in one stored array, so two overlapping saves silently
-	 * undo each other; locking every control is what makes a second request
-	 * impossible. Unlocking restores exactly the elements this disabled.
+	 * All settings are one stored array, so two overlapping saves silently undo
+	 * each other.
 	 *
 	 * @param isBusy Whether the page is working.
 	 */
@@ -282,8 +260,7 @@
 	/**
 	 * Runs one piece of work with the page locked, and unlocks it however it ends.
 	 *
-	 * One lock per interaction, not per request — the revert is one lock over a
-	 * GET and every POST batch.
+	 * One lock per interaction, not per request.
 	 *
 	 * @param work What to do while the page is locked.
 	 *
@@ -300,9 +277,8 @@
 	/**
 	 * Turns a failed request into something worth showing a reader.
 	 *
-	 * A 403 + `rest_cookie_invalid_nonce` means the page has outlived the nonce
-	 * and must be reloaded; core's English arrives untranslated so it is
-	 * replaced. A timeout's message is an internal marker and is never shown.
+	 * 403 + `rest_cookie_invalid_nonce` means the page outlived the nonce; core's
+	 * message arrives untranslated.
 	 *
 	 * @param error    The rejected request's error.
 	 * @param fallback What to say when neither rule applies.
@@ -330,8 +306,7 @@
 	/**
 	 * Fills a translated string's count into it.
 	 *
-	 * Every `%d`/`%1$d` is replaced; a string with neither gets the count
-	 * appended.
+	 * Every `%d`/`%1$d`; a string with neither gets the count appended.
 	 *
 	 * @param template String the count goes into.
 	 * @param count    Number to put in it.

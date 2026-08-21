@@ -1,35 +1,27 @@
 /**
  * Settings page behaviour for the iG:Syntax Hiliter plugin.
- *
- * No jQuery: fetch to the plugin's REST routes plus a live region.
  */
 
 ( function () {
 	'use strict';
 
 	/**
-	 * A control standing for one setting.
-	 *
-	 * A yes/no setting is a `role="switch"` button, a choice is a `<select>`.
+	 * A control standing for one setting: a `role="switch"` button or a `<select>`.
 	 */
 	type OptionControl = HTMLButtonElement | HTMLSelectElement;
 
 	/**
 	 * What a save answers with.
-	 *
-	 * The stored value, which the control is put back to.
 	 */
 	interface OptionResponse {
 		value?: string | undefined;
 
-		// Settings the route moved alongside the saved one, name → stored value.
+		// Settings moved alongside the saved one, name → stored value.
 		also?: Record< string, string > | undefined;
 	}
 
 	/**
 	 * What the theme refresh answers with.
-	 *
-	 * Both optional; an answer missing `choices` must leave the dropdown alone.
 	 */
 	interface ThemesResponse {
 		choices?: Record< string, string > | undefined;
@@ -48,16 +40,11 @@
 		return;
 	}
 
-	/*
-	 * Read once here; the functions below are hoisted above the guard, so TS
-	 * will not carry the narrowing into them.
-	 */
+	// Read once after the guard; the narrowing does not reach hoisted functions.
 	const api = publishedApi;
 
-	// Not copied by value — the refresh button replaces `themes`.
 	const adminConfig = config;
 
-	// Fallback keeps the page saving if PHP stopped sending strings.
 	const strings: IgshAdminStrings = config.i18n || ( {} as IgshAdminStrings );
 
 	// No-op fallback for a dequeued `notices.js`.
@@ -70,13 +57,10 @@
 		},
 	};
 
-	// The preview's own style tag; not enqueued by PHP.
 	const PREVIEW_FONT_STYLE_ID = 'igsh-preview-font';
 
 	/**
-	 * The name of a setting, as the screen already shows it.
-	 *
-	 * Read off the `<label for>`, so one translated string serves both.
+	 * The name of a setting, read off its `<label for>`.
 	 *
 	 * @param control Control standing for the setting.
 	 *
@@ -90,8 +74,6 @@
 
 	/**
 	 * The name of the value a choice control currently stands for.
-	 *
-	 * A toggle has no options, so it gets no name.
 	 *
 	 * @param control Control standing for the setting.
 	 *
@@ -110,8 +92,6 @@
 	/**
 	 * Whether a control stands for a yes/no setting.
 	 *
-	 * The `instanceof` is what narrows the type for TypeScript.
-	 *
 	 * @param control Control to test.
 	 *
 	 * @return True when the control is a toggle.
@@ -125,9 +105,6 @@
 
 	/**
 	 * Reads the value a control currently stands for.
-	 *
-	 * A switch's value is `aria-checked`, so what the screen reader is told and
-	 * what is saved are the same fact.
 	 *
 	 * @param control Control to read.
 	 *
@@ -165,9 +142,6 @@
 	/**
 	 * What to say about a setting that has just been saved.
 	 *
-	 * Names the setting and what it became; the notice takes the reader's eye
-	 * off the control.
-	 *
 	 * @param control Control that was saved.
 	 * @param label   Name of the setting.
 	 *
@@ -196,9 +170,8 @@
 	 * Puts the controls of any settings which moved with the saved one right, and
 	 * says what moved.
 	 *
-	 * A dependent setting is moved by the same request, so one save can change
-	 * two controls. `dataset.igshPrevious` moves with it, or the next failed save
-	 * would restore a value nobody holds.
+	 * `igshPrevious` moves with the control, or the next failed save restores a
+	 * value nobody holds.
 	 *
 	 * @param also Setting name to its stored value, or nothing.
 	 *
@@ -215,8 +188,6 @@
 			const stored = also[ name ];
 			const other = controlNamed( name );
 
-			// Not faults: a setting may be stored and not shown, and this is the
-			// JSON boundary.
 			if ( ! other || 'string' !== typeof stored ) {
 				return;
 			}
@@ -241,6 +212,8 @@
 	/**
 	 * Sends one setting, and puts the control back if it does not save.
 	 *
+	 * One notice per save.
+	 *
 	 * @param control Control which changed.
 	 */
 	function saveSetting( control: OptionControl ): void {
@@ -249,8 +222,6 @@
 		const previous = control.dataset.igshPrevious;
 		const label = controlLabel( control );
 
-		// One notice per save, so two saves leave two messages each naming its
-		// own setting.
 		const notice = notices.notify(
 			api.fill( strings.saving, label ),
 			'busy'
@@ -273,8 +244,6 @@
 
 				writeControl( control, control.dataset.igshPrevious );
 
-				// Read after the control is restored, so the message describes what
-				// is stored.
 				notice.settle(
 					savedMessage( control, label ) +
 						applyAlso( payload && payload.also ),
@@ -282,11 +251,7 @@
 				);
 			} )
 			.catch( function ( error: IgshRequestError ) {
-				/*
-				 * A timed-out save may still have been written, so the control is
-				 * reverted and the message says what is on screen may not be what is
-				 * stored.
-				 */
+				// A timed-out save may still have been written.
 				const message = error.isTimeout
 					? api.fill( strings.saveTimedOut, label )
 					: api.describeError(
@@ -294,8 +259,6 @@
 							api.fill( strings.saveFailed, label )
 					  );
 
-				// `init()` records the value first; where there is none the control
-				// keeps what the user chose.
 				if ( undefined !== previous ) {
 					writeControl( control, previous );
 				}
@@ -303,7 +266,6 @@
 				notice.settle( message, 'error' );
 			} )
 			.finally( function () {
-				// Preview follows the control whichever way the save went.
 				syncPreview();
 			} );
 	}
@@ -311,9 +273,8 @@
 	/**
 	 * Rereads the themes on disk and repaints the dropdown from the answer.
 	 *
-	 * The directory listing is cached for a week. The stored theme keeps its
-	 * option even when the answer no longer offers it — a `select` with no
-	 * matching option shows the first one instead.
+	 * The stored theme keeps its option when the rebuilt list no longer offers
+	 * it.
 	 *
 	 * @param button  The refresh button.
 	 * @param control The theme control.
@@ -343,8 +304,7 @@
 					return;
 				}
 
-				// Below the guard: replacing the URL map when the list was not sent
-				// would leave the two describing different lists.
+				// Replace the URL map only when the list came too.
 				if ( urls ) {
 					adminConfig.themes = urls;
 				}
@@ -352,8 +312,6 @@
 				const previous = control.value;
 				const values = Object.keys( choices );
 
-				// The option showing the stored theme, kept where the rebuilt list no
-				// longer offers it.
 				const kept = control.querySelector< HTMLOptionElement >(
 					'option[value="' + CSS.escape( previous ) + '"]'
 				);
@@ -377,7 +335,7 @@
 
 				control.value = previous;
 
-				// Excludes the `none` entry, which is not a theme.
+				// Excludes the `none` entry.
 				notice.settle(
 					api.withCount(
 						strings.themesRefreshed,
@@ -395,15 +353,13 @@
 			.finally( function () {
 				button.classList.remove( 'is-busy' );
 
-				// A disabled element loses focus to `<body>`; give it back only if the
-				// reader has not moved on.
+				// Focus is given back only if the reader has not moved on.
 				const owner = button.ownerDocument;
 
 				if ( ! button.disabled && owner.body === owner.activeElement ) {
 					button.focus();
 				}
 
-				// `config.themes` has just been replaced.
 				syncPreview();
 			} );
 	}
@@ -411,10 +367,8 @@
 	/**
 	 * Points a stylesheet link at a URL, building the link where there is none.
 	 *
-	 * The link is `Asset_Manager`'s, found by the id PHP sent; a site on "None"
-	 * has none, so the first pick builds it. An empty `href` loads nothing —
-	 * removing the attribute would make the browser fetch the settings page as
-	 * a stylesheet.
+	 * An empty `href` loads nothing; removing the attribute would fetch the page
+	 * as a stylesheet.
 	 *
 	 * @param id   Element id of the link tag.
 	 * @param href URL it should point at, or an empty string for "load nothing".
@@ -456,9 +410,8 @@
 	/**
 	 * Puts the font now chosen on the preview box.
 	 *
-	 * Two steps: fetching a family does not apply it. The rule itself is built
-	 * by `Asset_Manager` and sent over, so the preview applies a font exactly as
-	 * the front end does.
+	 * Fetching a family does not apply it; the rule comes from PHP so the
+	 * preview matches the front end.
 	 *
 	 * @param font Value the font control now holds.
 	 */
@@ -489,11 +442,8 @@
 	/**
 	 * Draws the preview box with or without line numbers.
 	 *
-	 * Line numbers are markup, not styling: Prism's plugin builds the rows when
-	 * it highlights. Switching off means removing the class and the rows, then
-	 * re-highlighting — the line-highlight plugin positions its band differently
-	 * with and without numbers. `highlightElement()` rather than the plugin
-	 * directly, because its `before-sanity-check` hook clears the old band.
+	 * The rows are markup Prism builds, so the box is re-highlighted, through
+	 * `highlightElement()` because its `before-sanity-check` hook clears the band.
 	 *
 	 * @param box  The `pre` element of the preview.
 	 * @param show Whether line numbers are wanted.
@@ -524,10 +474,7 @@
 	/**
 	 * Puts the preview in step with every control which changes how a box looks.
 	 *
-	 * Reads the controls rather than being told what changed, so there is one
-	 * description of a code box. The toolbar and copy button are hidden with a
-	 * class rather than unloaded, because this page must show both answers
-	 * without a reload.
+	 * Reads the controls, not the stored values.
 	 */
 	function syncPreview(): void {
 		const preview = document.getElementById( 'igsh-preview' );
@@ -558,11 +505,8 @@
 			'yes' !== controlValue( 'copy_code' )
 		);
 
-		/*
-		 * `match-braces` is set by PHP and read once at highlight time; these three
-		 * are read at paint time so they can switch live. Both interactions default
-		 * on — only the `no-brace-*` classes turn them off.
-		 */
+		// `match-braces` is set by PHP and read once at highlight time; these three
+		// are read at paint time.
 		const matching = 'yes' === controlValue( 'match_braces' );
 
 		preview.classList.toggle(
@@ -588,9 +532,6 @@
 	/**
 	 * Reads what one of the settings controls is showing.
 	 *
-	 * Reads the control, not the stored value: the preview is about what is on
-	 * screen.
-	 *
 	 * @param name Setting to read.
 	 *
 	 * @return Its value, or NULL when the screen has no such control.
@@ -606,8 +547,7 @@
 	 *
 	 * @param name Setting to find.
 	 *
-	 * @return Its control, or NULL: a setting may be stored and not shown, so
-	 *         NULL is a real answer.
+	 * @return Its control, or NULL when the screen has no such control.
 	 */
 	function controlNamed( name: string ): OptionControl | null {
 		return document.querySelector< OptionControl >(
@@ -625,10 +565,7 @@
 		controls.forEach( function ( control ) {
 			control.dataset.igshPrevious = readControl( control );
 
-			/*
-			 * A switch is a button, so it reports a click; a `<select>` flips itself.
-			 * Space and Enter arrive as clicks.
-			 */
+			// A switch is a button, so it reports a click; a `<select>` flips itself.
 			if ( isToggle( control ) ) {
 				control.addEventListener( 'click', function () {
 					writeControl(
@@ -636,8 +573,7 @@
 						'yes' === readControl( control ) ? 'no' : 'yes'
 					);
 
-					// Preview follows the control, not the save; a failed save reverts
-					// both.
+					// Preview follows the control, not the save.
 					syncPreview();
 
 					saveSetting( control );

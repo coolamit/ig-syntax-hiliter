@@ -1,8 +1,6 @@
 /**
  * The revert tool on the settings page: this plugin's blocks back to
  * shortcodes, one batch at a time.
- *
- * No jQuery: fetch to the plugin's REST routes through `window.igshAdminApi`.
  */
 
 ( function () {
@@ -17,9 +15,6 @@
 
 	/**
 	 * What one converted batch answers with.
-	 *
-	 * Counts are `unknown` because an answer may carry no number; see
-	 * `readCount()`.
 	 */
 	interface RevertBatch {
 		processed?: unknown;
@@ -45,8 +40,6 @@
 
 	/**
 	 * The totals a count can be added to.
-	 *
-	 * Excludes `partial`, which is a flag, so `addCount()` cannot reach it.
 	 */
 	type RevertCountName = Exclude< keyof RevertTotals, 'partial' >;
 
@@ -56,10 +49,7 @@
 		return;
 	}
 
-	/*
-	 * Read once here; the functions below are hoisted above the guard, so TS
-	 * will not carry the narrowing into them.
-	 */
+	// Read once after the guard; the narrowing does not reach hoisted functions.
 	const api = publishedApi;
 
 	const config = window.igSyntaxHiliterAdmin;
@@ -68,7 +58,6 @@
 		return;
 	}
 
-	// Fallback keeps the page saving if PHP stopped sending strings.
 	const strings: IgshAdminStrings = config.i18n || ( {} as IgshAdminStrings );
 
 	// Longer: a batch rewrites up to 200 posts.
@@ -163,9 +152,8 @@
 	/**
 	 * Adds one of a batch's counts to the running totals.
 	 *
-	 * A count the answer did not carry leaves the total where it was and marks the
-	 * totals short, so the report can say that it is missing something instead of
-	 * quietly leaving a clause out.
+	 * A count the answer did not carry marks the totals short, so the report can
+	 * say something is missing.
 	 *
 	 * @param totals Running totals to add to.
 	 * @param name   Total to add to.
@@ -190,8 +178,7 @@
 	/**
 	 * Runs the block to shortcode conversion, one batch at a time.
 	 *
-	 * Takes the same lock a save takes, but has no timeout: a run lasts as long
-	 * as the site has posts.
+	 * One lock over the GET and every POST.
 	 *
 	 * @param progress Wrapper holding the progress meter.
 	 * @param meter    The progress meter itself.
@@ -276,7 +263,7 @@
 
 					status.textContent = strings.revertRunning;
 
-					// An answer which does not say how much it did is the end of the run: there is nothing to carry on from.
+					// A batch answering no count ends the run.
 					if ( batch.done || ! processed ) {
 						reportRevert( status, totals );
 

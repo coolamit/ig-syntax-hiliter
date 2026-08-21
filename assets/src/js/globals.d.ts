@@ -1,22 +1,15 @@
 /**
- * Globals the classic scripts in this directory read and write.
- *
- * They are enqueued with `wp_enqueue_script()`, so what they see is what PHP
- * printed, what Prism put on `window`, and what a sibling published.
+ * Globals the classic scripts in this directory read and write: what PHP
+ * printed, what Prism put on `window`, and what a sibling script published.
  */
 
 /**
  * What a message says about the thing it reports.
- *
- * `busy` does not take itself off the screen.
  */
 type IgshNoticeTone = 'busy' | 'success' | 'error';
 
 /**
  * One message on screen, as its caller holds it.
- *
- * A caller keeps this while it has more to say about the same thing — `busy`
- * then settled into `success`/`error`.
  */
 interface IgshNotice {
 	settle: ( message: string, tone: IgshNoticeTone ) => void;
@@ -32,8 +25,6 @@ interface IgshNotices {
 
 /**
  * An error carrying what this code knows about a failed request.
- *
- * Every member is optional — a network failure gives a plain `Error`.
  */
 interface IgshRequestError extends Error {
 	status?: number | undefined;
@@ -43,9 +34,6 @@ interface IgshRequestError extends Error {
 
 /**
  * The transport and the page lock, published by `admin-api.js`.
- *
- * `request()` carries the nonce, `locked()` holds the page for the length of
- * one piece of work; the rest are the string helpers both consumers need.
  */
 interface IgshAdminApi {
 	request: < T >(
@@ -62,10 +50,7 @@ interface IgshAdminApi {
 }
 
 /**
- * Every string `Admin::_get_script_data()` sends over.
- *
- * Keep in step with that method; a key removed there reads as `undefined` on
- * screen.
+ * Every string `Admin::_get_script_data()` sends over; keep in step with it.
  */
 interface IgshAdminStrings {
 	saving: string;
@@ -99,32 +84,17 @@ interface IgshAdminConfig {
 	restUrl: string;
 	nonce: string;
 
-	/**
-	 * Every theme the dropdown offers, to the stylesheet it loads.
-	 *
-	 * `none` is in it with an empty string — the preview must look it up and
-	 * find nothing to load.
-	 */
+	// Theme slug to stylesheet URL; `none` maps to an empty string.
 	themes?: Record< string, string > | undefined;
 
-	/**
-	 * Id of the `link` tag carrying the theme stylesheet.
-	 *
-	 * Sent rather than spelled out: WordPress builds it from the handle.
-	 */
+	// Id of the `link` tag carrying the theme stylesheet.
 	themeStyleId?: string | undefined;
 
-	/**
-	 * Every font the dropdown offers, to its stylesheet and the rule that
-	 * applies it.
-	 *
-	 * `none` is in it with two empty strings, as in `themes`.
-	 */
+	// Font slug to its stylesheet URL and the rule applying it; `none` maps to
+	// empty strings.
 	fonts?: Record< string, { url: string; css: string } > | undefined;
 
-	/**
-	 * Id of the `link` tag carrying the webfont stylesheet.
-	 */
+	// Id of the `link` tag carrying the webfont stylesheet.
 	fontStyleId?: string | undefined;
 	i18n: IgshAdminStrings;
 }
@@ -144,11 +114,8 @@ interface IgshPrismAutoloader {
 }
 
 /**
- * Prism itself.
- *
- * Not `@types/prismjs`: Prism is loaded from `assets/lib/` and never imported,
- * so only what the setup script touches is declared. Every member is optional
- * because the setup script exists to cope with plugins that did not load.
+ * Prism, as far as these scripts use it; every member is optional because a
+ * plugin may not have loaded.
  */
 interface IgshPrism {
 	plugins?:
@@ -157,11 +124,6 @@ interface IgshPrism {
 		  }
 		| undefined;
 
-	/**
-	 * Highlights one element again.
-	 *
-	 * The settings preview re-highlights a box to add or remove line numbers.
-	 */
 	highlightElement?: ( ( element: Element ) => void ) | undefined;
 }
 
