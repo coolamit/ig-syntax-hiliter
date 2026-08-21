@@ -51,6 +51,20 @@ class Admin_Test extends WP_UnitTestCase {
 	protected const string _NOTICES_HANDLE = 'ig-syntax-hiliter-notices';
 
 	/**
+	 * Handle the shared transport and page lock script is registered under.
+	 *
+	 * @var string
+	 */
+	protected const string _API_HANDLE = 'ig-syntax-hiliter-admin-api';
+
+	/**
+	 * Handle the revert tool script is registered under.
+	 *
+	 * @var string
+	 */
+	protected const string _REVERT_HANDLE = 'ig-syntax-hiliter-revert';
+
+	/**
 	 * Scripts the preview code box needs.
 	 *
 	 * @var array
@@ -709,8 +723,9 @@ class Admin_Test extends WP_UnitTestCase {
 	 * The settings screen carries no jQuery dependency, and its assets load on
 	 * that screen and nowhere else.
 	 *
-	 * The one dependency it declares is this plugin's own notice stack, which itself
-	 * depends on nothing: two scripts of ours and no library.
+	 * The dependencies it declares are its own: the settings script asks for the
+	 * notice stack and the api script, the revert script for the api script, and
+	 * those two ask for nothing — four scripts of ours and no library.
 	 *
 	 * @test
 	 *
@@ -724,6 +739,8 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$this->assertFalse( wp_script_is( self::_HANDLE, 'enqueued' ), 'The settings assets loaded on somebody else\'s admin page.' );
 		$this->assertFalse( wp_script_is( self::_NOTICES_HANDLE, 'enqueued' ), 'The notice stack loaded on somebody else\'s admin page.' );
+		$this->assertFalse( wp_script_is( self::_API_HANDLE, 'enqueued' ), 'The api script loaded on somebody else\'s admin page.' );
+		$this->assertFalse( wp_script_is( self::_REVERT_HANDLE, 'enqueued' ), 'The revert script loaded on somebody else\'s admin page.' );
 
 		foreach ( self::_PREVIEW_SCRIPTS as $handle ) {
 			$this->assertFalse( wp_script_is( $handle, 'enqueued' ), sprintf( 'The preview\'s %s loaded on somebody else\'s admin page.', $handle ) );
@@ -735,11 +752,17 @@ class Admin_Test extends WP_UnitTestCase {
 		$this->assertTrue( wp_style_is( self::_HANDLE, 'enqueued' ) );
 		$this->assertTrue( wp_script_is( self::_NOTICES_HANDLE, 'enqueued' ) );
 		$this->assertTrue( wp_style_is( self::_NOTICES_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_script_is( self::_API_HANDLE, 'enqueued' ) );
+		$this->assertTrue( wp_script_is( self::_REVERT_HANDLE, 'enqueued' ) );
 
-		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_scripts()->registered[ self::_HANDLE ]->deps );
+		$this->assertSame( [ self::_NOTICES_HANDLE, self::_API_HANDLE ], wp_scripts()->registered[ self::_HANDLE ]->deps );
 		$this->assertSame( [ self::_NOTICES_HANDLE ], wp_styles()->registered[ self::_HANDLE ]->deps );
 
-		// The notice stack knows nothing about this screen, so it asks for nothing.
+		// The revert tool shares the transport and the page lock, and nothing else.
+		$this->assertSame( [ self::_API_HANDLE ], wp_scripts()->registered[ self::_REVERT_HANDLE ]->deps );
+
+		// The api script and the notice stack know nothing about this screen, so they ask for nothing.
+		$this->assertSame( [], wp_scripts()->registered[ self::_API_HANDLE ]->deps );
 		$this->assertSame( [], wp_scripts()->registered[ self::_NOTICES_HANDLE ]->deps );
 		$this->assertSame( [], wp_styles()->registered[ self::_NOTICES_HANDLE ]->deps );
 
@@ -768,7 +791,7 @@ class Admin_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Both of the screen's compiled assets are where they are enqueued from.
+	 * Every one of the screen's compiled assets is where it is enqueued from.
 	 *
 	 * `build/` and `assets/build/` are generated and git-ignored, so a path that
 	 * has gone stale is a 404 in wp-admin and nothing else.
@@ -781,7 +804,7 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$root = untrailingslashit( IG_SYNTAX_HILITER_ROOT );
 
-		foreach ( [ 'css/admin.css', 'css/notices.css', 'js/admin.js', 'js/notices.js' ] as $asset ) {
+		foreach ( [ 'css/admin.css', 'css/notices.css', 'js/admin-api.js', 'js/admin.js', 'js/notices.js', 'js/revert.js' ] as $asset ) {
 			$this->assertFileExists(
 				sprintf( '%s/assets/build/%s', $root, $asset ),
 				sprintf( '`assets/build/%s` is enqueued but is not there. Run `make build`.', $asset )

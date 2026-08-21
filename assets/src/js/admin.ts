@@ -15,17 +15,6 @@
 	type OptionControl = HTMLButtonElement | HTMLSelectElement;
 
 	/**
-	 * An error carrying what this code knows about a failed request.
-	 *
-	 * Every member is optional — a network failure gives a plain `Error`.
-	 */
-	interface RequestError extends Error {
-		status?: number | undefined;
-		code?: string | undefined;
-		isTimeout?: boolean | undefined;
-	}
-
-	/**
 	 * What a save answers with.
 	 *
 	 * The stored value, which the control is put back to.
@@ -47,66 +36,23 @@
 		urls?: Record< string, string > | undefined;
 	}
 
-	/**
-	 * What the revert route answers when asked how much there is to do.
-	 */
-	interface RevertState {
-		total?: number | undefined;
-	}
-
-	/**
-	 * What one converted batch answers with.
-	 *
-	 * Counts are `unknown` because an answer may carry no number; see
-	 * `readCount()`.
-	 */
-	interface RevertBatch {
-		processed?: unknown;
-		converted?: unknown;
-		skipped?: unknown;
-		failed?: unknown;
-		blocks_left_alone?: unknown;
-		done?: boolean | undefined;
-		cursor?: number | undefined;
-	}
-
-	/**
-	 * Running totals across every batch of a conversion run.
-	 */
-	interface RevertTotals {
-		processed: number;
-		converted: number;
-		skipped: number;
-		failed: number;
-		blocksLeftAlone: number;
-		partial: boolean;
-	}
-
-	/**
-	 * The totals a count can be added to.
-	 *
-	 * Excludes `partial`, which is a flag, so `addCount()` cannot reach it.
-	 */
-	type RevertCountName = Exclude< keyof RevertTotals, 'partial' >;
-
 	const config = window.igSyntaxHiliterAdmin;
 
 	if ( ! config || ! config.restUrl ) {
 		return;
 	}
 
-	/*
-	 * Read once here; `request()` is hoisted above the guard, so TS will not
-	 * carry the narrowing into it.
-	 */
-	const restUrl = config.restUrl;
+	const publishedApi = window.igshAdminApi;
+
+	if ( ! publishedApi ) {
+		return;
+	}
 
 	/*
-	 * Read at call time, not closed over: core returns a fresh nonce on every
-	 * successful cookie-auth REST response and `request()` stores it. An expired
-	 * one is answered by the 403 branch.
+	 * Read once here; the functions below are hoisted above the guard, so TS
+	 * will not carry the narrowing into them.
 	 */
-	let nonce = config.nonce;
+	const api = publishedApi;
 
 	// Not copied by value — the refresh button replaces `themes`.
 	const adminConfig = config;
@@ -123,15 +69,6 @@
 			};
 		},
 	};
-
-	let busyElements: OptionControl[] = [];
-	let pageBusy = false;
-
-	// Every request locks the page, so a timeout is required.
-	const REQUEST_TIMEOUT_MS = 15000;
-
-	// Longer: a batch rewrites up to 200 posts.
-	const REVERT_TIMEOUT_MS = 60000;
 
 	// The preview's own style tag; not enqueued by PHP.
 	const PREVIEW_FONT_STYLE_ID = 'igsh-preview-font';
@@ -168,186 +105,6 @@
 		const option = control.selectedOptions[ 0 ];
 
 		return ( option?.textContent ?? '' ).trim();
-	}
-
-	/**
-	 * Fills a translated string's placeholders in.
-	 *
-	 * `%1$s` by position, bare `%s` in order, matching PHP `sprintf()`. A
-	 * placeholder with no value is left standing.
-	 *
-	 * @param template String the values go into.
-	 * @param values   Values to put in it, in order.
-	 *
-	 * @return The string, with the values in it.
-	 */
-	function fill( template: string, ...values: string[] ): string {
-		const text = String( template || '' );
-		const given = values.filter( function ( value ) {
-			return '' !== value;
-		} );
-
-		if ( ! given.length ) {
-			return text;
-		}
-
-		let next = 0;
-
-		const filled = text.replace(
-			/%(?:(\d+)\$)?s/g,
-			function ( placeholder: string, position?: string ): string {
-				const at = position ? parseInt( position, 10 ) - 1 : next++;
-
-				return values[ at ] ?? placeholder;
-			}
-		);
-
-		if ( filled !== text ) {
-			return filled;
-		}
-
-		const named = given.join( ' — ' );
-
-		return '' === text ? named : named + ' — ' + text;
-	}
-
-	/**
-	 * Calls one of the plugin's REST routes.
-	 *
-	 * Timeout is required and has no default — the page is locked for the whole
-	 * request. The clock is stopped whichever way it ends. No AbortController
-	 * means no timeout.
-	 *
-	 * @param method  Request method.
-	 * @param route   Route path, relative to the plugin's namespace.
-	 * @param timeout Milliseconds to wait before giving up.
-	 * @param body    Optional request body.
-	 *
-	 * @return The decoded response body.
-	 */
-	function request< T >(
-		method: string,
-		route: string,
-		timeout: number,
-		body?: object
-	): Promise< T > {
-		const options: RequestInit = {
-			method,
-			credentials: 'same-origin',
-			headers: {
-				'X-WP-Nonce': nonce,
-				Accept: 'application/json',
-			},
-		};
-		let timer: number | null = null;
-		let expired = false;
-		let pending: Promise< Response >;
-
-		if ( body ) {
-			( options.headers as Record< string, string > )[ 'Content-Type' ] =
-				'application/json';
-			options.body = JSON.stringify( body );
-		}
-
-		if ( timeout && window.AbortController ) {
-			const controller = new window.AbortController();
-
-			options.signal = controller.signal;
-
-			timer = window.setTimeout( function () {
-				expired = true;
-
-				controller.abort();
-			}, timeout );
-		}
-
-		/**
-		 * Stops the clock, however the request ended.
-		 */
-		function stopClock(): void {
-			if ( null !== timer ) {
-				window.clearTimeout( timer );
-
-				timer = null;
-			}
-		}
-
-		/*
-		 * A fetch throwing synchronously would never reach the caller's `.catch()`
-		 * and the page would stay locked.
-		 */
-		try {
-			pending = window.fetch( restUrl + route, options );
-		} catch ( error ) {
-			stopClock();
-
-			return window.Promise.reject( error );
-		}
-
-		return pending
-			.then( function ( response ) {
-				// Only an accepted nonce yields a fresh one; read whatever the status.
-				const fresh = response.headers.get( 'X-WP-Nonce' );
-
-				if ( fresh ) {
-					nonce = fresh;
-				}
-
-				return response.json().then(
-					function (
-						payload:
-							| ( T & { message?: string; code?: string } )
-							| null
-					) {
-						if ( response.ok ) {
-							return payload as T;
-						}
-
-						const error: RequestError = new Error(
-							( payload && payload.message ) ||
-								response.statusText
-						);
-
-						error.status = response.status;
-						error.code = payload ? payload.code : undefined;
-
-						throw error;
-					},
-					function () {
-						const error: RequestError = new Error(
-							response.statusText
-						);
-
-						error.status = response.status;
-
-						throw error;
-					}
-				);
-			} )
-			.then(
-				function ( payload ) {
-					stopClock();
-
-					return payload;
-				},
-				function ( error: RequestError ) {
-					stopClock();
-
-					/*
-					 * An abort we asked for is rethrown as a timeout so callers need not
-					 * match on `AbortError`.
-					 */
-					if ( expired ) {
-						const timedOut: RequestError = new Error( 'timeout' );
-
-						timedOut.isTimeout = true;
-
-						throw timedOut;
-					}
-
-					throw error;
-				}
-			);
 	}
 
 	/**
@@ -418,7 +175,7 @@
 	 */
 	function savedMessage( control: OptionControl, label: string ): string {
 		if ( isToggle( control ) ) {
-			return fill(
+			return api.fill(
 				'yes' === readControl( control )
 					? strings.savedOn
 					: strings.savedOff,
@@ -429,10 +186,10 @@
 		const choice = choiceLabel( control );
 
 		if ( '' === choice ) {
-			return fill( strings.saved, label );
+			return api.fill( strings.saved, label );
 		}
 
-		return fill( strings.savedChoice, label, choice );
+		return api.fill( strings.savedChoice, label, choice );
 	}
 
 	/**
@@ -470,7 +227,7 @@
 
 			message +=
 				' ' +
-				fill(
+				api.fill(
 					'yes' === stored
 						? strings.savedAlsoOn
 						: strings.savedAlsoOff,
@@ -479,104 +236,6 @@
 		} );
 
 		return message;
-	}
-
-	/**
-	 * Locks or unlocks the whole page for the length of a request.
-	 *
-	 * All settings live in one stored array, so two overlapping saves silently
-	 * undo each other; locking every control is what makes a second request
-	 * impossible. Unlocking restores exactly the elements this disabled.
-	 *
-	 * @param isBusy Whether the page is working.
-	 */
-	function setBusy( isBusy: boolean ): void {
-		if ( ! isBusy ) {
-			busyElements.forEach( function ( element ) {
-				element.disabled = false;
-			} );
-
-			busyElements = [];
-			pageBusy = false;
-
-			return;
-		}
-
-		if ( pageBusy ) {
-			return;
-		}
-
-		pageBusy = true;
-
-		const elements: OptionControl[] = Array.from(
-			document.querySelectorAll< OptionControl >( '[data-igsh-option]' )
-		);
-		const buttons = [ 'igsh-revert-blocks', 'igsh-refresh-themes' ];
-
-		buttons.forEach( function ( id ) {
-			const button = document.getElementById(
-				id
-			) as HTMLButtonElement | null;
-
-			if ( button ) {
-				elements.push( button );
-			}
-		} );
-
-		elements.forEach( function ( element ) {
-			if ( element.disabled ) {
-				return;
-			}
-
-			element.disabled = true;
-
-			busyElements.push( element );
-		} );
-	}
-
-	/**
-	 * Runs one piece of work with the page locked, and unlocks it however it ends.
-	 *
-	 * One lock per interaction, not per request — the revert is one lock over a
-	 * GET and every POST batch.
-	 *
-	 * @param work What to do while the page is locked.
-	 *
-	 * @return Whatever the work resolved to.
-	 */
-	function locked< T >( work: () => Promise< T > ): Promise< T > {
-		setBusy( true );
-
-		return work().finally( function () {
-			setBusy( false );
-		} );
-	}
-
-	/**
-	 * Turns a failed request into something worth showing a reader.
-	 *
-	 * A 403 + `rest_cookie_invalid_nonce` means the page has outlived the nonce
-	 * and must be reloaded; core's English arrives untranslated so it is
-	 * replaced. A timeout's message is an internal marker and is never shown.
-	 *
-	 * @param error    The rejected request's error.
-	 * @param fallback What to say when neither rule applies.
-	 *
-	 * @return The message to show.
-	 */
-	function describeError( error: RequestError, fallback: string ): string {
-		if ( error.isTimeout ) {
-			return fallback;
-		}
-
-		if (
-			403 === error.status &&
-			'rest_cookie_invalid_nonce' === error.code
-		) {
-			return strings.reloadNeeded;
-		}
-
-		return fallback + ' ' + error.message;
 	}
 
 	/**
@@ -592,13 +251,16 @@
 
 		// One notice per save, so two saves leave two messages each naming its
 		// own setting.
-		const notice = notices.notify( fill( strings.saving, label ), 'busy' );
+		const notice = notices.notify(
+			api.fill( strings.saving, label ),
+			'busy'
+		);
 
-		locked( function () {
-			return request< OptionResponse >(
+		api.locked( function () {
+			return api.request< OptionResponse >(
 				'POST',
 				'option',
-				REQUEST_TIMEOUT_MS,
+				api.REQUEST_TIMEOUT_MS,
 				{
 					name,
 					value,
@@ -619,15 +281,18 @@
 					'success'
 				);
 			} )
-			.catch( function ( error: RequestError ) {
+			.catch( function ( error: IgshRequestError ) {
 				/*
 				 * A timed-out save may still have been written, so the control is
 				 * reverted and the message says what is on screen may not be what is
 				 * stored.
 				 */
 				const message = error.isTimeout
-					? fill( strings.saveTimedOut, label )
-					: describeError( error, fill( strings.saveFailed, label ) );
+					? api.fill( strings.saveTimedOut, label )
+					: api.describeError(
+							error,
+							api.fill( strings.saveFailed, label )
+					  );
 
 				// `init()` records the value first; where there is none the control
 				// keeps what the user chose.
@@ -661,11 +326,11 @@
 
 		button.classList.add( 'is-busy' );
 
-		locked( function () {
-			return request< ThemesResponse >(
+		api.locked( function () {
+			return api.request< ThemesResponse >(
 				'POST',
 				'themes',
-				REQUEST_TIMEOUT_MS
+				api.REQUEST_TIMEOUT_MS
 			);
 		} )
 			.then( function ( payload ) {
@@ -714,16 +379,16 @@
 
 				// Excludes the `none` entry, which is not a theme.
 				notice.settle(
-					withCount(
+					api.withCount(
 						strings.themesRefreshed,
 						Math.max( 0, values.length - 1 )
 					),
 					'success'
 				);
 			} )
-			.catch( function ( error: RequestError ) {
+			.catch( function ( error: IgshRequestError ) {
 				notice.settle(
-					describeError( error, strings.themesRefreshFail ),
+					api.describeError( error, strings.themesRefreshFail ),
 					'error'
 				);
 			} )
@@ -951,232 +616,6 @@
 	}
 
 	/**
-	 * Fills a translated string's count into it.
-	 *
-	 * Every `%d`/`%1$d` is replaced; a string with neither gets the count
-	 * appended.
-	 *
-	 * @param template String the count goes into.
-	 * @param count    Number to put in it.
-	 *
-	 * @return The string, with the count in it.
-	 */
-	function withCount( template: string, count: number ): string {
-		const text = String( template || '' );
-		const filled = text.replace( /%(?:\d+\$)?d/g, String( count ) );
-
-		if ( filled !== text ) {
-			return filled;
-		}
-
-		return '' === text ? String( count ) : text + ' ' + String( count );
-	}
-
-	/**
-	 * Adds one clause to the report.
-	 *
-	 * Built as a node so no translated string can carry markup.
-	 *
-	 * @param status    Element the report is written to.
-	 * @param text      Clause to add.
-	 * @param isWarning Whether the clause names code which will be lost.
-	 */
-	function appendClause(
-		status: HTMLElement,
-		text: string,
-		isWarning: boolean
-	): void {
-		const clause = document.createElement( 'span' );
-
-		if ( isWarning ) {
-			clause.className = 'igsh-revert__warning';
-		}
-
-		clause.textContent = ' ' + String( text || '' );
-
-		status.appendChild( clause );
-	}
-
-	/**
-	 * Writes the closing report of a conversion run.
-	 *
-	 * @param status Element the report is written to.
-	 * @param totals Running totals from every batch.
-	 */
-	function reportRevert( status: HTMLElement, totals: RevertTotals ): void {
-		status.textContent = withCount( strings.revertDone, totals.converted );
-
-		if ( totals.skipped ) {
-			appendClause(
-				status,
-				withCount( strings.revertDoneLeft, totals.skipped ),
-				false
-			);
-		}
-
-		if ( totals.blocksLeftAlone ) {
-			appendClause(
-				status,
-				withCount( strings.revertDoneBlocks, totals.blocksLeftAlone ),
-				true
-			);
-		}
-
-		if ( totals.failed ) {
-			appendClause(
-				status,
-				withCount( strings.revertDoneFailed, totals.failed ),
-				true
-			);
-		}
-
-		if ( totals.partial ) {
-			appendClause( status, strings.revertDonePartial, false );
-		}
-	}
-
-	/**
-	 * Reads one count out of a batch's answer.
-	 *
-	 * @param value Value the answer carried.
-	 *
-	 * @return The count, or NULL when the answer carried no number.
-	 */
-	function readCount( value: unknown ): number | null {
-		const count = Number( value );
-
-		if ( null === value || '' === value || ! isFinite( count ) ) {
-			return null;
-		}
-
-		return count;
-	}
-
-	/**
-	 * Adds one of a batch's counts to the running totals.
-	 *
-	 * A count the answer did not carry leaves the total where it was and marks the
-	 * totals short, so the report can say that it is missing something instead of
-	 * quietly leaving a clause out.
-	 *
-	 * @param totals Running totals to add to.
-	 * @param name   Total to add to.
-	 * @param value  Value the answer carried.
-	 */
-	function addCount(
-		totals: RevertTotals,
-		name: RevertCountName,
-		value: unknown
-	): void {
-		const count = readCount( value );
-
-		if ( null === count ) {
-			totals.partial = true;
-
-			return;
-		}
-
-		totals[ name ] += count;
-	}
-
-	/**
-	 * Runs the block to shortcode conversion, one batch at a time.
-	 *
-	 * Takes the same lock a save takes, but has no timeout: a run lasts as long
-	 * as the site has posts.
-	 *
-	 * @param progress Wrapper holding the progress meter.
-	 * @param meter    The progress meter itself.
-	 * @param status   Element the running total is written to.
-	 */
-	function runRevert(
-		progress: HTMLElement,
-		meter: HTMLProgressElement,
-		status: HTMLElement
-	): void {
-		// eslint-disable-next-line no-alert -- rewrites post_content site-wide and cannot be undone; a custom dialog would be one more thing to get wrong on a page that loads no libraries.
-		if ( ! window.confirm( strings.revertConfirm ) ) {
-			return;
-		}
-
-		const totals: RevertTotals = {
-			processed: 0,
-			converted: 0,
-			skipped: 0,
-			failed: 0,
-			blocksLeftAlone: 0,
-			partial: false,
-		};
-
-		status.textContent = strings.revertRunning;
-
-		locked( function () {
-			return request< RevertState >(
-				'GET',
-				'revert',
-				REQUEST_TIMEOUT_MS
-			).then( function ( state ) {
-				const total = state && state.total ? state.total : 0;
-
-				if ( ! total ) {
-					status.textContent = strings.revertNone;
-
-					return null;
-				}
-
-				meter.max = total;
-				meter.value = 0;
-				progress.hidden = false;
-
-				return nextBatch( 0 );
-			} );
-		} ).catch( function ( error: RequestError ) {
-			status.textContent = describeError( error, strings.revertFailed );
-		} );
-
-		/**
-		 * Fetches and applies one batch, then the next.
-		 *
-		 * @param cursor Id of the last post already handled.
-		 *
-		 * @return Resolved once there is nothing left to do.
-		 */
-		function nextBatch( cursor: number ): Promise< null > {
-			return request< RevertBatch >(
-				'POST',
-				'revert',
-				REVERT_TIMEOUT_MS,
-				{
-					cursor,
-				}
-			).then( function ( batch ) {
-				const processed = readCount( batch.processed );
-
-				addCount( totals, 'processed', batch.processed );
-				addCount( totals, 'converted', batch.converted );
-				addCount( totals, 'skipped', batch.skipped );
-				addCount( totals, 'failed', batch.failed );
-				addCount( totals, 'blocksLeftAlone', batch.blocks_left_alone );
-
-				meter.value = Math.min( totals.processed, meter.max );
-
-				status.textContent = strings.revertRunning;
-
-				// An answer which does not say how much it did is the end of the run: there is nothing to carry on from.
-				if ( batch.done || ! processed ) {
-					reportRevert( status, totals );
-
-					meter.value = meter.max;
-
-					return null;
-				}
-
-				return nextBatch( batch.cursor ?? 0 );
-			} );
-		}
-	}
-
-	/**
 	 * Wires the page up.
 	 */
 	function init(): void {
@@ -1226,19 +665,6 @@
 		if ( refresh && themeControl ) {
 			refresh.addEventListener( 'click', function () {
 				refreshThemes( refresh, themeControl );
-			} );
-		}
-
-		const button = document.getElementById( 'igsh-revert-blocks' );
-		const progress = document.getElementById( 'igsh-revert-progress' );
-		const meter = document.getElementById(
-			'igsh-revert-meter'
-		) as HTMLProgressElement | null;
-		const status = document.getElementById( 'igsh-revert-status' );
-
-		if ( button && progress && meter && status ) {
-			button.addEventListener( 'click', function () {
-				runRevert( progress, meter, status );
 			} );
 		}
 	}

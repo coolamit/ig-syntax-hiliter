@@ -728,17 +728,23 @@ PREVIEW;
 
 		$handle  = sprintf( '%s-admin', static::PLUGIN_ID );
 		$notices = sprintf( '%s-notices', static::PLUGIN_ID );
+		$api     = sprintf( '%s-admin-api', static::PLUGIN_ID );
+		$revert  = sprintf( '%s-revert', static::PLUGIN_ID );
 		$version = Helper::get_version();
 
-		// The notice stack is generic — handed a string and a tone; declared as dependencies
-		// so the order holds.
+		// The api script is the shared transport and page lock, and the other two depend on it;
+		// the notice stack is a dependency of the settings script only, so the order holds.
 		wp_enqueue_style( $notices, Helper::get_asset_url( 'build/css/notices.css' ), [], $version );
 
 		wp_enqueue_style( $handle, Helper::get_asset_url( 'build/css/admin.css' ), [ $notices ], $version );
 
+		wp_enqueue_script( $api, Helper::get_asset_url( 'build/js/admin-api.js' ), [], $version, true );
+
 		wp_enqueue_script( $notices, Helper::get_asset_url( 'build/js/notices.js' ), [], $version, true );
 
-		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [ $notices ], $version, true );
+		wp_enqueue_script( $handle, Helper::get_asset_url( 'build/js/admin.js' ), [ $notices, $api ], $version, true );
+
+		wp_enqueue_script( $revert, Helper::get_asset_url( 'build/js/revert.js' ), [ $api ], $version, true );
 
 		// The engine, its plugins and the theme stylesheet, for the preview box.
 		Asset_Manager::get_instance()->enqueue_for_preview(
@@ -746,8 +752,9 @@ PREVIEW;
 			(string) $this->_option->get( 'font' )
 		);
 
+		// On the api handle: it prints first and both consumers depend on it.
 		wp_add_inline_script(
-			$handle,
+			$api,
 			sprintf(
 				'window.igSyntaxHiliterAdmin = %s;',
 				// Angle brackets are escaped so that no translated string can close the script

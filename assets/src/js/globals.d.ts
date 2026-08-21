@@ -31,6 +31,37 @@ interface IgshNotices {
 }
 
 /**
+ * An error carrying what this code knows about a failed request.
+ *
+ * Every member is optional — a network failure gives a plain `Error`.
+ */
+interface IgshRequestError extends Error {
+	status?: number | undefined;
+	code?: string | undefined;
+	isTimeout?: boolean | undefined;
+}
+
+/**
+ * The transport and the page lock, published by `admin-api.js`.
+ *
+ * `request()` carries the nonce, `locked()` holds the page for the length of
+ * one piece of work; the rest are the string helpers both consumers need.
+ */
+interface IgshAdminApi {
+	request: < T >(
+		method: string,
+		route: string,
+		timeout: number,
+		body?: object
+	) => Promise< T >;
+	locked: < T >( work: () => Promise< T > ) => Promise< T >;
+	describeError: ( error: IgshRequestError, fallback: string ) => string;
+	fill: ( template: string, ...values: string[] ) => string;
+	withCount: ( template: string, count: number ) => string;
+	REQUEST_TIMEOUT_MS: number;
+}
+
+/**
  * Every string `Admin::_get_script_data()` sends over.
  *
  * Keep in step with that method; a key removed there reads as `undefined` on
@@ -138,5 +169,6 @@ interface Window {
 	igSyntaxHiliterAdmin?: IgshAdminConfig | undefined;
 	igSyntaxHiliter?: IgshFrontendSettings | undefined;
 	igshNotices?: IgshNotices | undefined;
+	igshAdminApi?: IgshAdminApi | undefined;
 	Prism?: IgshPrism | undefined;
 }
