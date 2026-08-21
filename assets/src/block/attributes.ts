@@ -7,7 +7,7 @@
 export const BLOCK_NAME = 'igsyntax-hiliter/code';
 
 /**
- * The block's attributes, mirroring `src/block/block.json`.
+ * The block's attributes, mirroring `assets/src/block/block.json`.
  *
  * `showLineNumbers` is optional: absent means the site-wide setting decides.
  */

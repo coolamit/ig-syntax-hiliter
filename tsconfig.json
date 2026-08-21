@@ -28,6 +28,6 @@
 		// @wordpress/scripts owns the build. tsc is only ever run for type checking.
 		"noEmit": true
 	},
-	"include": [ "src/**/*", "types/**/*" ],
-	"exclude": [ "node_modules", "build", "vendor", "assets/lib" ]
+	"include": [ "assets/src/block/**/*", "types/**/*" ],
+	"exclude": [ "node_modules", "assets/build", "vendor", "assets/lib" ]
 }

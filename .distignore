@@ -1,9 +1,9 @@
 # Files and directories that are NOT part of the released plugin.
-# What ships: runtime PHP, build/, assets/build/, assets/lib/, templates/, readmes, changelog, licences.
+# What ships: runtime PHP, assets/build/, assets/lib/, templates/, readmes, changelog, licences.
 #
 # Not a .gitignore. Both 10up actions feed this to `rsync --exclude-from`, so these are rsync
-# patterns over the working tree on disk: build/ ships because it is git-ignored but present.
-# Without this file both actions fall back to `git archive`, which cannot see build/.
+# patterns over the working tree on disk: assets/build/ ships because it is git-ignored but present.
+# Without this file both actions fall back to `git archive`, which cannot see assets/build/.
 # No negation. A pattern with no slash matches that basename at any depth; one with a slash
 # matches the path tail; a trailing slash restricts to directories.
 
@@ -34,10 +34,8 @@ Thumbs.db
 node_modules/
 vendor/
 
-# Sources compiled before release: src/ -> build/, assets/src/ -> assets/build/. Both output trees
-# ship; the release job runs `npm run build` before packaging. `src/` already matches assets/src/
-# by the basename rule; the second line is explicit so it does not depend on that.
-src/
+# Sources compiled before release: assets/src/ -> assets/build/. The output tree ships; the
+# release job runs `npm run build` before packaging.
 assets/src/
 
 # Build-tool and test-runner config.

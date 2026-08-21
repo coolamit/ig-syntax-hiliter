@@ -39,16 +39,16 @@ class Block {
 	 *
 	 * @var string
 	 */
-	public const string BUILD_DIR = 'build/block';
+	public const string BUILD_DIR = 'assets/build/block';
 
 	/**
 	 * Directory holding the built Gist block, relative to the plugin directory.
 	 *
-	 * The build mirrors the source tree, so this follows `src/block/gist/`.
+	 * The build mirrors the source tree, so this follows `assets/src/block/gist/`.
 	 *
 	 * @var string
 	 */
-	protected const string _GIST_BUILD_DIR = 'build/block/gist';
+	protected const string _GIST_BUILD_DIR = 'assets/build/block/gist';
 
 	/**
 	 * Name of the JavaScript object carrying the editor's data.
@@ -120,7 +120,7 @@ class Block {
 	/**
 	 * Method to register the block from its built metadata.
 	 *
-	 * An unbuilt checkout has no `build/`, so a missing `block.json` is passed over quietly.
+	 * An unbuilt checkout has no `assets/build/`, so a missing `block.json` is passed over quietly.
 	 *
 	 * @return void
 	 */

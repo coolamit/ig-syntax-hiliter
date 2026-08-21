@@ -158,16 +158,16 @@ jobs:
         run: npm ci
 
       - name: Build block editor and plugin assets
-        # build/ and assets/build/ are git-ignored and must be produced here; they ship because
-        # .distignore does not exclude them and the 10up action copies from disk, not from git.
+        # assets/build/ is git-ignored and must be produced here; it ships because
+        # .distignore does not exclude it and the 10up action copies from disk, not from git.
         run: npm run build
 
       - name: Assert the build produced something
         run: |
           set -euo pipefail
 
-          if [ ! -d build ] || [ -z "$( find build -type f -name '*.js' -print -quit )" ]; then
-            echo "::error::'npm run build' left no JavaScript in build/. The zip would ship without the block."
+          if [ ! -d assets/build/block ] || [ -z "$( find assets/build/block -type f -name '*.js' -print -quit )" ]; then
+            echo "::error::'npm run build' left no JavaScript in assets/build/block/. The zip would ship without the block."
             exit 1
           fi
 
@@ -178,9 +178,6 @@ jobs:
               exit 1
             fi
           done
-
-          echo "build/ contains:"
-          find build -type f | sort | sed 's/^/  /'
 
           echo "assets/build/ contains:"
           find assets/build -type f | sort | sed 's/^/  /'
@@ -284,7 +281,7 @@ jobs:
               status=1
             fi
           done <<PRESENT
-          ^${PLUGIN_SLUG}/build/.+\.js\$
+          ^${PLUGIN_SLUG}/assets/build/block/.+\.js\$
           ^${PLUGIN_SLUG}/classes/.+\.php\$
           ^${PLUGIN_SLUG}/assets/lib/prism/components/.+\.js\$
           ^${PLUGIN_SLUG}/assets/lib/prism-themes/.+\.min\.css\$
@@ -304,7 +301,6 @@ jobs:
           ^${PLUGIN_SLUG}/node_modules/
           ^${PLUGIN_SLUG}/vendor/
           ^${PLUGIN_SLUG}/tests/
-          ^${PLUGIN_SLUG}/src/
           ^${PLUGIN_SLUG}/assets/src/
           ^${PLUGIN_SLUG}/\.
           ^${PLUGIN_SLUG}/(composer|package|package-lock)\.json\$

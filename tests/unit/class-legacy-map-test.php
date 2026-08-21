@@ -134,7 +134,7 @@ class Legacy_Map_Test extends TestCase {
 	 * @return void
 	 */
 	public function it_maps_a_plain_tag_to_no_language(): void {
-		// The value and not only the constant: `src/block/attributes.ts` mirrors this literal.
+		// The value and not only the constant: `assets/src/block/attributes.ts` mirrors this literal.
 		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
 		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );

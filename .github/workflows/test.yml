@@ -136,7 +136,7 @@ jobs:
 
       - name: PHP lint
         working-directory: ${{ env.PLUGIN_PATH }}
-        # Parse-check every tracked PHP file on the matrix's PHP; vendor/, node_modules/ and build/ are untracked.
+        # Parse-check every tracked PHP file on the matrix's PHP; vendor/, node_modules/ and assets/build/ are untracked.
         run: |
           git ls-files -z '*.php' | xargs -0 -n1 -P4 php -l
 
@@ -147,13 +147,13 @@ jobs:
 
       - name: TypeScript type check
         working-directory: ${{ env.PLUGIN_PATH }}
-        # `tsc --noEmit` over both projects. wp-scripts transpiles src/ without type checking,
+        # `tsc --noEmit` over both projects. wp-scripts transpiles assets/src/block/ without type checking,
         # so nothing else here would catch a type error there.
         run: npm run lint:types
 
       - name: ESLint and stylelint
         working-directory: ${{ env.PLUGIN_PATH }}
-        # Both are scoped in package.json to src/ and assets/src/, which is all this plugin writes.
+        # Both are scoped in package.json to assets/src/, which is all this plugin writes.
         # Unscoped they would lint the vendored Prism tree and the build output.
         run: |
           npm run lint:js
@@ -167,8 +167,8 @@ jobs:
 
       - name: Build block editor and plugin assets
         working-directory: ${{ env.PLUGIN_PATH }}
-        # Produces build/ and assets/build/, both git-ignored. The integration tier loads the plugin,
-        # which reads build/, and asserts the compiled admin stylesheet exists under assets/build/.
+        # Produces assets/build/, git-ignored. The integration tier loads the plugin,
+        # which reads the built block from it, and asserts the compiled admin stylesheet exists there.
         run: npm run build
 
       # ---- WordPress + tests ---------------------------------------------

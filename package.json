@@ -1,7 +1,7 @@
 {
 	"name": "igsyntax-hiliter",
 	"version": "6.0.0-rc-1",
-	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in build/ and assets/build/, plus the vendored library in assets/lib/.",
+	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in assets/build/, plus the vendored library in assets/lib/.",
 	"license": "GPL-2.0-or-later",
 	"private": true,
 	"author": "Amit Gupta",
@@ -18,18 +18,18 @@
 	},
 	"scripts": {
 		"build": "npm run build:blocks && npm run build:css && npm run build:js",
-		"build:blocks": "wp-scripts build",
+		"build:blocks": "wp-scripts build --source-path=assets/src/block --output-path=assets/build/block",
 		"build:css": "sass --no-source-map --style=compressed assets/src/scss:assets/build/css",
 		"build:js": "npm run build:js:compile && npm run build:js:minify",
 		"build:js:compile": "tsc -p tsconfig.assets.json",
 		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",
-		"start": "wp-scripts start",
+		"start": "wp-scripts start --source-path=assets/src/block --output-path=assets/build/block",
 		"test:unit:js": "wp-scripts test-unit-js",
 		"watch:css": "npm run build:css -- --watch",
-		"lint:js": "wp-scripts lint-js src assets/src",
-		"lint:style": "wp-scripts lint-style 'src/**/*.scss' 'assets/src/scss/**/*.scss'",
+		"lint:js": "wp-scripts lint-js assets/src",
+		"lint:style": "wp-scripts lint-style 'assets/src/**/*.scss'",
 		"lint:types": "tsc --noEmit && tsc -p tsconfig.assets.json --noEmit",
-		"format": "wp-scripts format src assets/src"
+		"format": "wp-scripts format assets/src"
 	},
 	"devDependencies": {
 		"@types/jest": "^30.0.0",

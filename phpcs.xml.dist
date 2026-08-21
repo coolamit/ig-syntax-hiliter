@@ -36,7 +36,7 @@
 	-->
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
-	<!-- Generated output; unanchored, so it covers build/ and assets/build/. -->
+	<!-- Generated output, assets/build/. -->
 	<exclude-pattern>*/build/*</exclude-pattern>
 	<exclude-pattern>*/assets/lib/*</exclude-pattern><!-- Vendored Prism.js. -->
 	<exclude-pattern>*/.scratchpad/*</exclude-pattern>

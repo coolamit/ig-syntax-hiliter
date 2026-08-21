@@ -26,9 +26,7 @@ node_modules/
 .agents/
 CLAUDE.md
 
-# Compiled output: src/ -> build/, assets/src/ -> assets/build/. Nothing generated is committed.
-# `build/` already matches assets/build/; the second line stays so it survives `build/` ever being anchored.
-build/
+# Compiled output: assets/src/ -> assets/build/. Nothing generated is committed.
 assets/build/
 
 # Tooling caches

@@ -793,7 +793,7 @@ class Admin_Test extends WP_UnitTestCase {
 	/**
 	 * Every one of the screen's compiled assets is where it is enqueued from.
 	 *
-	 * `build/` and `assets/build/` are generated and git-ignored, so a path that
+	 * `assets/build/` is generated and git-ignored, so a path that
 	 * has gone stale is a 404 in wp-admin and nothing else.
 	 *
 	 * @test
