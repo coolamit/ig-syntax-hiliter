@@ -1,6 +1,6 @@
 <?php
 /**
- * A second throwaway child of Base, used by Base_Singleton_Test.
+ * A second throwaway child of Base, used by Base_Test.
  *
  * Named for the class, which is what `WordPress.Files.FileName` enforces; PHPUnit
  * does not collect it, since the suites match `-test.php`.

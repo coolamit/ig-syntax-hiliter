@@ -20,7 +20,7 @@ use WP_UnitTestCase;
  * of that parent. `Base` holds no singleton; both fixtures are arranged exactly as
  * `Admin` is.
  */
-class Base_Singleton_Test extends WP_UnitTestCase {
+class Base_Test extends WP_UnitTestCase {
 
 	/**
 	 * Two children of Base get two different objects, each of its own class, and

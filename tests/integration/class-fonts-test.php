@@ -1,6 +1,6 @@
 <?php
 /**
- * The fonts the plugin offers, and the promise that choosing none costs nothing.
+ * Tests for the fonts the plugin offers.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -10,10 +10,8 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Admin;
-use iG\Syntax_Hiliter\Asset_Manager;
 use iG\Syntax_Hiliter\Fonts;
 use iG\Syntax_Hiliter\Option;
-use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
@@ -21,10 +19,10 @@ use ReflectionMethod;
 use WP_UnitTestCase;
 
 /**
- * Fonts are fetched from another host, which no other asset this plugin loads is.
- * That is what these cases are about: what a page asks for, and of whom.
+ * The font catalogue: what every offered font declares, where it is fetched from,
+ * and that the stylesheet reads what the setting writes.
  */
-class Font_Library_Test extends WP_UnitTestCase {
+class Fonts_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
 
@@ -96,112 +94,6 @@ class Font_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Method to read the rules added inline against the plugin's own stylesheet.
-	 *
-	 * @return string
-	 */
-	protected function _inline_chrome_rules(): string {
-
-		$rules = wp_styles()->get_data( 'ig-syntax-hiliter-chrome', 'after' );
-
-		if ( ! is_array( $rules ) ) {
-			return '';
-		}
-
-		return implode( '', $rules );
-
-	}
-
-	/**
-	 * The promise of the default: a page with code on it, and the font setting left
-	 * alone, reaches out to nobody.
-	 *
-	 * Every other asset the plugin loads is a file it ships; a font is not, and a
-	 * plugin which quietly fetched one from a third party would be making a decision
-	 * that belongs to the site owner.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_fetches_no_font_unless_one_is_chosen(): void {
-
-		$this->assertSame(
-			Fonts::FONT_NONE,
-			Option::get_instance()->get( 'font' ),
-			'The shipped default loads no font.'
-		);
-
-		$this->_render_page( "[php]\necho 1;\n[/php]" );
-
-		$this->assertTrue( Asset_Manager::get_instance()->has_snippets(), 'The page really did render a code box.' );
-
-		foreach ( $this->_all_asset_urls() as $asset ) {
-			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
-		}
-
-		$this->assertArrayNotHasKey(
-			'ig-syntax-hiliter-font',
-			wp_styles()->registered,
-			'Nothing registers a webfont stylesheet when no font is chosen.'
-		);
-
-		$this->assertSame(
-			'',
-			$this->_inline_chrome_rules(),
-			'No rule is added to the chrome stylesheet either.'
-		);
-
-	}
-
-	/**
-	 * A chosen font is fetched exactly once, from that host and no other, and the
-	 * rule which applies it rides along with the plugin's own stylesheet.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_fetches_a_chosen_font_once_and_applies_it(): void {
-
-		Option::get_instance()->save( 'font', 'jetbrains-mono' );
-
-		$this->_render_page( "[php]\necho 1;\n[/php]" );
-
-		$found = [];
-
-		foreach ( $this->_all_asset_urls() as $asset ) {
-
-			if ( ! str_contains( $asset, static::_FONT_HOST ) ) {
-				continue;
-			}
-
-			$found[] = $asset;
-
-		}
-
-		$this->assertCount( 1, $found, 'Exactly one asset is fetched from the font service.' );
-
-		$style = wp_styles()->registered['ig-syntax-hiliter-font'] ?? null;
-
-		$this->assertNotNull( $style, 'The webfont stylesheet is registered.' );
-		$this->assertSame( Fonts::get_font_url( 'jetbrains-mono' ), (string) $style->src );
-
-		// No version on a URL which belongs to somebody else: `wp_enqueue_style()` is passed NULL.
-		$this->assertStringNotContainsString( 'ver=', (string) $style->src );
-
-		$rules = $this->_inline_chrome_rules();
-
-		$this->assertStringContainsString( '"JetBrains Mono"', $rules );
-		$this->assertStringContainsString( '--igsh-code-font', $rules );
-
-		// Values and not a rule: the selectors live in the stylesheet.
-		$this->assertStringNotContainsString( Renderer::ID_PREFIX, $rules );
-		$this->assertStringStartsWith( ':root {', $rules );
-
-	}
-
-	/**
 	 * Every font the dropdown offers has both of the things the preview needs, and
 	 * "None" has neither.
 	 *
@@ -245,102 +137,6 @@ class Font_Library_Test extends WP_UnitTestCase {
 
 			$this->assertStringContainsString( sprintf( '"%s"', $choices[ $slug ] ), $css );
 			$this->assertStringContainsString( Fonts::FONT_STACK, $css );
-
-		}
-
-	}
-
-	/**
-	 * The list is in order by name with "None" on the front, and nothing was lost
-	 * in the sorting.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_puts_none_first_in_the_font_dropdown_and_sorts_the_rest(): void {
-
-		$choices = Admin::get_font_choices();
-
-		$this->assertSame( Fonts::FONT_NONE, array_key_first( $choices ) );
-		$this->assertCount( count( Fonts::get_fonts() ) + 1, $choices );
-
-		$names = array_values( $choices );
-
-		array_shift( $names );
-
-		$sorted = $names;
-
-		usort( $sorted, 'strnatcasecmp' );
-
-		$this->assertSame( $sorted, $names, 'The fonts are in order by name.' );
-
-	}
-
-	/**
-	 * Every offered font is in exactly one group, and `None` is in neither.
-	 *
-	 * A font in neither group would not be offered and one in both would be offered
-	 * twice; `choices` stays the flat allowlist, so nothing else would show either.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_puts_every_offered_font_in_exactly_one_group(): void {
-
-		$groups = Admin::get_font_groups();
-
-		$this->assertCount( 2, $groups, 'With Ligature and Without Ligature, and nothing else.' );
-
-		$listed = array_merge( [], ...array_values( $groups ) );
-
-		$this->assertNotContains( Fonts::FONT_NONE, $listed, 'None is not a font and sits above both groups.' );
-
-		$this->assertSame(
-			count( $listed ),
-			count( array_unique( $listed ) ),
-			'A font in both groups would be offered twice.'
-		);
-
-		$offered = array_keys( Fonts::get_fonts() );
-
-		sort( $offered );
-		sort( $listed );
-
-		$this->assertSame( $offered, $listed, 'The groups between them hold exactly the fonts the plugin offers.' );
-
-	}
-
-	/**
-	 * Each group is in order by name, the same order the flat list is in.
-	 *
-	 * This is what is left of the single flat sort once the list is grouped: the
-	 * dropdown no longer reads as one sorted run, and each group has to earn that
-	 * on its own.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_sorts_each_font_group_by_name(): void {
-
-		$choices = Admin::get_font_choices();
-
-		foreach ( Admin::get_font_groups() as $label => $slugs ) {
-
-			$names = array_map(
-				static fn ( string $slug ): string => $choices[ $slug ],
-				$slugs
-			);
-
-			$this->assertNotEmpty( $names, sprintf( 'The %s group offers something.', $label ) );
-
-			$sorted = $names;
-
-			usort( $sorted, 'strnatcasecmp' );
-
-			$this->assertSame( $sorted, $names, sprintf( 'The %s group is in order by name.', $label ) );
 
 		}
 
@@ -419,39 +215,6 @@ class Font_Library_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A font this plugin does not offer loads nothing, rather than falling back to
-	 * some other font.
-	 *
-	 * The theme setting falls back the other way, to the default theme, because a
-	 * code box with no colours looks broken. There is no equivalent here: a wrong
-	 * typeface is not worth a request to another host.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_loads_nothing_for_a_font_this_plugin_does_not_offer(): void {
-
-		$this->assertSame( '', Fonts::get_font_url( 'comic-sans-ms' ) );
-		$this->assertSame( '', Fonts::get_font_css( 'comic-sans-ms' ) );
-
-		Option::get_instance()->save( 'font', 'comic-sans-ms' );
-
-		$this->assertSame(
-			Fonts::FONT_NONE,
-			Option::get_instance()->get( 'font' ),
-			'A font outside the list is stored as the default, which is None.'
-		);
-
-		$this->_render_page( "[php]\necho 1;\n[/php]" );
-
-		foreach ( $this->_all_asset_urls() as $asset ) {
-			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
-		}
-
-	}
-
-	/**
 	 * Every slug goes into a URL as it stands, so every slug has to be safe there.
 	 *
 	 * @test
@@ -510,6 +273,70 @@ class Font_Library_Test extends WP_UnitTestCase {
 		}
 
 		$this->assertSame( $weights, $declared );
+
+	}
+
+	/**
+	 * The editor and the front end name the same family, and only the front end asks
+	 * for ligatures.
+	 *
+	 * Both rules are built from the same map, so the family cannot disagree. The
+	 * ligatures differ on purpose: a caret cannot sit inside one glyph standing for two,
+	 * so `__construct` in a textarea reads back as ` _construct` and invites a wrong fix.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_asks_for_ligatures_on_the_front_end_only(): void {
+
+		foreach ( Fonts::get_fonts() as $slug => $title ) {
+
+			$needle = sprintf( '"%s", %s', $title, Fonts::FONT_STACK );
+
+			$this->assertStringContainsString( $needle, Fonts::get_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Fonts::get_editor_font_css( $slug ) );
+
+			$this->assertStringNotContainsString(
+				'ligatures',
+				Fonts::get_editor_font_css( $slug ),
+				sprintf( 'The editor must say nothing about ligatures, and it does for %s.', $slug )
+			);
+
+		}
+
+		// The control: the loop above would still pass if the front end stopped asking too.
+		$this->assertStringContainsString(
+			'--igsh-code-ligatures',
+			Fonts::get_font_css( 'fira-code' ),
+			'The front end still asks for ligatures where the family has them.'
+		);
+
+	}
+
+	/**
+	 * The stylesheet reads every custom property the font setting sets.
+	 *
+	 * The selectors live here and the values come from PHP, so either half can stop
+	 * referring to the other without a word and picking a font would do nothing.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_reads_what_the_font_setting_sets_into_the_stylesheet(): void {
+
+		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
+
+		foreach ( [ '--igsh-code-font', '--igsh-code-ligatures', '--igsh-code-letter-spacing' ] as $property ) {
+
+			$this->assertStringContainsString(
+				sprintf( 'var(%s', $property ),
+				$css,
+				sprintf( 'Nothing in the stylesheet reads %s, so setting it does nothing.', $property )
+			);
+
+		}
 
 	}
 

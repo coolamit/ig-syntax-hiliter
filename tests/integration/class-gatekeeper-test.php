@@ -18,6 +18,7 @@ use WP_UnitTestCase;
 
 /**
  * The half which needs WordPress: the running environment, and the notice built with `esc_html()` and `__()`.
+ * `iG_Syntax_Hiliter_Gatekeeper` is the one un-namespaced class, and the prefix is dropped from the test name.
  */
 class Gatekeeper_Test extends WP_UnitTestCase {
 

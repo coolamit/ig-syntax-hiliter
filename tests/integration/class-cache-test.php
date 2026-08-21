@@ -11,22 +11,16 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Cache;
-use iG\Syntax_Hiliter\Language_Registry;
-use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use Error;
-use ReflectionMethod;
 use RuntimeException;
 use WP_UnitTestCase;
 
 /**
  * The cache sits underneath the language registry, which sits underneath the
  * renderer, which runs on `the_content`. A failure that escapes it, or one it
- * writes down and then serves, is a front end failure — so both are pinned here
- * rather than left to whichever caller happens to notice.
+ * writes down and then serves, is a front end failure, so both are pinned here.
  */
-class Cache_Failure_Test extends WP_UnitTestCase {
-
-	use Pipeline_Test_Helpers;
+class Cache_Test extends WP_UnitTestCase {
 
 	/**
 	 * Cache key these tests store under.
@@ -36,13 +30,6 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	protected const string _KEY = 'ig-syntax-hiliter-cache-failure-test';
 
 	/**
-	 * Registry cache key a test poisoned, cleared away afterwards.
-	 *
-	 * @var string
-	 */
-	protected string $_registry_cache_key = '';
-
-	/**
 	 * Takes away everything a test stored.
 	 *
 	 * @return void
@@ -50,16 +37,6 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 	public function tear_down(): void {
 
 		Cache::create( self::_KEY )->delete();
-
-		if ( ! empty( $this->_registry_cache_key ) ) {
-
-			Cache::create( $this->_registry_cache_key )->delete();
-
-			$this->_registry_cache_key = '';
-
-		}
-
-		$this->_set_singleton( Language_Registry::class, null );
 
 		parent::tear_down();
 
@@ -181,38 +158,6 @@ class Cache_Failure_Test extends WP_UnitTestCase {
 						->get();
 
 		$this->assertSame( $good, $result, 'What was there before is served, stale, rather than being replaced with nothing.' );
-
-	}
-
-	/**
-	 * A registry cache entry holding something which is not a registry is rebuilt.
-	 *
-	 * An empty dataset under the registry's key with a year still to run would otherwise
-	 * read back as an empty registry, and no language on the site would resolve.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_rebuilds_a_registry_cache_entry_which_is_not_a_registry(): void {
-
-		$this->_set_singleton( Language_Registry::class, null );
-
-		$this->_registry_cache_key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
-
-		update_option(
-			$this->_option_name( $this->_registry_cache_key ),
-			[
-				'expiry' => ( time() + YEAR_IN_SECONDS ),
-				'data'   => '',
-			],
-			false
-		);
-
-		$registry = Language_Registry::get_instance();
-
-		$this->assertTrue( $registry->has( 'php' ), 'The registry is built from the bundled library rather than read back empty.' );
-		$this->assertGreaterThan( 250, count( $registry->get_languages() ) );
 
 	}
 

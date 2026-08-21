@@ -17,6 +17,7 @@ use iG\Syntax_Hiliter\Legacy_Map;
 use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Snippet;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
 use WP_REST_Request;
 use WP_UnitTestCase;
@@ -25,9 +26,11 @@ use WP_UnitTestCase;
  * The revert tool rewrites a site owner's content, so the two things it must never
  * do are damage a byte it was not asked to touch, and leave a post behind.
  */
-class Revert_Tool_Test extends WP_UnitTestCase {
+class Block_Converter_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
+
+	use Hook_Test_Helpers;
 
 	/**
 	 * Route the batches are fetched from.
@@ -43,6 +46,13 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 	 * @var string
 	 */
 	protected const string _CODE = "function f( \$a ) {\n\techo '<b>' . \$a . '</b>';\n}";
+
+	/**
+	 * The code the zero case is about.
+	 *
+	 * @var string
+	 */
+	protected const string _ZERO = '0';
 
 	/**
 	 * Batch size used while the batching tests run.
@@ -1347,6 +1357,72 @@ class Revert_Tool_Test extends WP_UnitTestCase {
 
 		$this->assertSame( Block::GIST_NAME, Block_Converter::GIST_BLOCK_NAME );
 		$this->assertSame( Gist_Embed::TAG, Block_Converter::GIST_SHORTCODE_TAG );
+
+	}
+
+	/**
+	 * The revert tool's one registration.
+	 *
+	 * The settings screen drives the tool entirely over REST, so without this the
+	 * Uninstall section's buttons answer 404.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_registers_the_block_converters_hooks(): void {
+
+		$converter = Block_Converter::get_instance();
+
+		$this->_assert_hooked(
+			'rest_api_init',
+			[ $converter, 'register_rest_routes' ],
+			null,
+			'The revert routes exist, which is the only way the tool can be reached.'
+		);
+
+	}
+
+	/**
+	 * The revert tool keeps it rather than dropping the block. The other two cases are
+	 * a snippet which does not show up; this one is a snippet gone from the post for good.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_keeps_a_block_whose_code_is_zero_in_the_revert_tool(): void {
+
+		$block = static::_block(
+			[
+				'code'     => static::_ZERO,
+				'language' => 'php',
+			]
+		);
+
+		$result = Block_Converter::convert_content( $block );
+
+		$this->assertSame( 1, $result['converted'], 'The block was not converted.' );
+
+		$this->assertStringContainsString(
+			static::_ZERO,
+			$result['content'],
+			'The revert tool dropped the block, so the code is no longer in the post at all.'
+		);
+
+		$this->assertStringNotContainsString(
+			'<!-- wp:',
+			$result['content'],
+			'A block delimiter survived the rewrite.'
+		);
+
+		$rendered = $this->_filter( 'the_content', $result['content'] );
+
+		$this->assertStringContainsString(
+			'>' . static::_ZERO . '<',
+			$rendered,
+			'The shortcode the tool wrote does not render the code it was given.'
+		);
 
 	}
 

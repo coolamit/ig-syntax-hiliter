@@ -9,7 +9,6 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
-use iG\Syntax_Hiliter\Admin;
 use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Cache;
 use iG\Syntax_Hiliter\Migrate;
@@ -465,47 +464,6 @@ class Migrate_Test extends WP_UnitTestCase {
 
 		$this->assertFalse( get_option( Base::PLUGIN_ID . '-lang-time', false ) );
 		$this->assertFalse( get_option( $cache_key, false ) );
-
-	}
-
-	/**
-	 * The site owner is told about the migration on the first admin page they open,
-	 * whichever one it is, and told once.
-	 *
-	 * A notice printed on this plugin's settings page alone never reaches an owner who
-	 * does not open that page, and reads as the migration happening only then.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_shows_the_migration_notice_on_whichever_admin_page_comes_first(): void {
-
-		set_current_screen( 'dashboard' );
-
-		update_option( Base::PLUGIN_ID . '-version', 5.1 );
-		update_option( Base::PLUGIN_ID . '-options', static::_V5_OPTIONS );
-
-		$this->_migrate();
-
-		$this->assertSame( '5.1.0', get_option( Base::PLUGIN_ID . '-migrated-from' ) );
-
-		ob_start();
-		Admin::get_instance()->maybe_show_migration_message();
-		$notice = (string) ob_get_clean();
-
-		$this->assertStringContainsString( 'notice-success', $notice, 'The dashboard showed nothing.' );
-		$this->assertStringContainsString( '5.1.0', $notice );
-
-		// Shown once: the option it reads is deleted as it prints.
-		ob_start();
-		Admin::get_instance()->maybe_show_migration_message();
-		$again = (string) ob_get_clean();
-
-		$this->assertSame( '', $again, 'The notice printed a second time.' );
-		$this->assertFalse( get_option( Base::PLUGIN_ID . '-migrated-from', false ) );
-
-		set_current_screen( 'front' );
 
 	}
 

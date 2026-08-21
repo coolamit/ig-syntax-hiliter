@@ -9,12 +9,13 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration\Traits;
 
+use iG\Syntax_Hiliter\Base;
 use iG\Syntax_Hiliter\Block;
 use ReflectionProperty;
 
 /**
- * The three things nearly every case in this tier does: run content through a
- * WordPress filter, build a block delimiter, and put a singleton back.
+ * The things nearly every case in this tier does: run content through a WordPress
+ * filter, build a block delimiter, put a singleton back, and write one setting.
  */
 trait Pipeline_Test_Helpers {
 
@@ -79,6 +80,23 @@ trait Pipeline_Test_Helpers {
 	 */
 	protected function _set_singleton( string $class_name, ?object $instance ): void {
 		( new ReflectionProperty( $class_name, '_instance' ) )->setValue( null, $instance );
+	}
+
+	/**
+	 * Method to write one plugin setting straight into the stored option array.
+	 *
+	 * @param string $name  Option name.
+	 * @param string $value Option value.
+	 *
+	 * @return void
+	 */
+	protected function _store_option( string $name, string $value ): void {
+
+		$options          = (array) get_option( Base::PLUGIN_ID . '-options', [] );
+		$options[ $name ] = $value;
+
+		update_option( Base::PLUGIN_ID . '-options', $options );
+
 	}
 
 } // end of trait

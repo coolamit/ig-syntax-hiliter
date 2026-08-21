@@ -22,7 +22,7 @@ use WP_UnitTestCase;
  * The registry's load end to end: the extension filter running over an instance
  * which has already been handed out, and the cache it is built through.
  */
-class Language_Registry_Filter_Test extends WP_UnitTestCase {
+class Language_Registry_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
 
@@ -39,6 +39,13 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 	 * @var array
 	 */
 	protected array $_cache_keys = [];
+
+	/**
+	 * Registry cache key a test poisoned, cleared away afterwards.
+	 *
+	 * @var string
+	 */
+	protected string $_registry_cache_key = '';
 
 	/**
 	 * Starts every test from the state a request which has not yet built a registry
@@ -68,10 +75,29 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$this->_cache_keys = [];
 
+		if ( ! empty( $this->_registry_cache_key ) ) {
+
+			Cache::create( $this->_registry_cache_key )->delete();
+
+			$this->_registry_cache_key = '';
+
+		}
+
 		$this->_reset_registry();
 
 		parent::tear_down();
 
+	}
+
+	/**
+	 * Method to get the option name a cache key is stored under.
+	 *
+	 * @param string $key Cache key.
+	 *
+	 * @return string
+	 */
+	protected function _option_name( string $key ): string {
+		return Cache::KEY_PREFIX . md5( $key );
 	}
 
 	/**
@@ -391,6 +417,38 @@ class Language_Registry_Filter_Test extends WP_UnitTestCase {
 
 		$this->assertTrue( $registry->has( self::_LANGUAGE ), 'The registry was rebuilt rather than read from the cache.' );
 		$this->assertFalse( $registry->has( 'php' ), 'The registry was rebuilt rather than read from the cache.' );
+
+	}
+
+	/**
+	 * A registry cache entry holding something which is not a registry is rebuilt.
+	 *
+	 * An empty dataset under the registry's key with a year still to run would otherwise
+	 * read back as an empty registry, and no language on the site would resolve.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_rebuilds_a_registry_cache_entry_which_is_not_a_registry(): void {
+
+		$this->_set_singleton( Language_Registry::class, null );
+
+		$this->_registry_cache_key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
+
+		update_option(
+			$this->_option_name( $this->_registry_cache_key ),
+			[
+				'expiry' => ( time() + YEAR_IN_SECONDS ),
+				'data'   => '',
+			],
+			false
+		);
+
+		$registry = Language_Registry::get_instance();
+
+		$this->assertTrue( $registry->has( 'php' ), 'The registry is built from the bundled library rather than read back empty.' );
+		$this->assertGreaterThan( 250, count( $registry->get_languages() ) );
 
 	}
 

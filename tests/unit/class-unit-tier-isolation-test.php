@@ -14,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * The domain core is designed to have no WordPress dependency. This tier is what
  * holds that in place, and is worth nothing if WordPress is quietly loaded into it.
+ * It tests the tier and not a class: it asserts WordPress is not loaded.
  */
 class Unit_Tier_Isolation_Test extends TestCase {
 

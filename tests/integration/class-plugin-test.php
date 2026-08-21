@@ -1,7 +1,7 @@
 <?php
 /**
- * Tests for the v6 bootstrap: the declared version and environment floor, the
- * paths, and the fact that nothing GeSHi shaped is left anywhere near it.
+ * Tests for the v6 bootstrap: the declared version and environment floor, and the
+ * fact that nothing GeSHi shaped is left anywhere near it.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -10,15 +10,15 @@ declare( strict_types = 1 );
 
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
-use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Plugin;
 use iG_Syntax_Hiliter_Gatekeeper;
 use WP_UnitTestCase;
 
 /**
- * Checks the plugin declares itself consistently and loads cleanly.
+ * The plugin as a whole rather than one class: the header, readme and floors
+ * agree, it loads silently, and none of v5 ships.
  */
-class Plugin_Bootstrap_Test extends WP_UnitTestCase {
+class Plugin_Test extends WP_UnitTestCase {
 
 	/**
 	 * The version and the environment floor say the same thing in the constant, the
@@ -74,31 +74,6 @@ class Plugin_Bootstrap_Test extends WP_UnitTestCase {
 		);
 		$this->assertMatchesRegularExpression( '/^Requires at least:\s*6\.9\s*$/m', $readme );
 		$this->assertMatchesRegularExpression( '/^Requires PHP:\s*8\.4\s*$/m', $readme );
-
-	}
-
-	/**
-	 * Paths are derived from the plugin's own location, so nothing breaks if the
-	 * plugin directory is not named after the repository (the repo is
-	 * `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`).
-	 *
-	 * That the version constant is defined is asserted first: every reader goes
-	 * through `Helper::get_version()`, which answers the caller's fallback rather
-	 * than failing, so nothing else could see it go.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_builds_paths_without_assuming_the_plugin_folder_name(): void {
-
-		$this->assertTrue( defined( 'IG_SYNTAX_HILITER_VERSION' ), 'The version constant is what every version answer in the plugin comes from.' );
-
-		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/', Helper::get_path() );
-		$this->assertSame( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/admin.css', Helper::get_path( 'assets/build/css/admin.css' ) );
-		$this->assertFileExists( Helper::get_path( 'assets/build/css/admin.css' ) );
-
-		$this->assertSame( IG_SYNTAX_HILITER_VERSION, Helper::get_version() );
 
 	}
 

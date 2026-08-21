@@ -1,6 +1,6 @@
 <?php
 /**
- * A page without snippets loads none of this plugin's assets.
+ * Tests for what the asset manager registers and enqueues, and when.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -10,25 +10,47 @@ declare( strict_types = 1 );
 namespace iG\Syntax_Hiliter\Tests\Integration;
 
 use iG\Syntax_Hiliter\Asset_Manager;
+use iG\Syntax_Hiliter\Block;
+use iG\Syntax_Hiliter\Fonts;
 use iG\Syntax_Hiliter\Helper;
 use iG\Syntax_Hiliter\Option;
+use iG\Syntax_Hiliter\Renderer;
 use iG\Syntax_Hiliter\Shortcode_Handler;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Asset_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
 use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
+use WP_Block_Type_Registry;
 use WP_UnitTestCase;
 
 /**
- * Asserts against the enqueue state left behind after the footer pass, for pages
- * which have no code on them.
+ * The hooks the asset manager registers, and the enqueue state it leaves behind
+ * after the footer pass: nothing for a page without code, and exactly what a page
+ * with code needs, fonts included.
  */
-class Conditional_Assets_Test extends WP_UnitTestCase {
+class Asset_Manager_Test extends WP_UnitTestCase {
 
 	use Pipeline_Test_Helpers;
 
 	use Asset_Test_Helpers;
 
+	use Hook_Test_Helpers;
+
 	/**
-	 * Registers the pipeline once WordPress is up.
+	 * Host every webfont is fetched from, and the only host this plugin may reach.
+	 *
+	 * @var string
+	 */
+	protected const string _FONT_HOST = 'fonts.bunny.net';
+
+	/**
+	 * Code carrying URLs of the kinds an autolinker looks for.
+	 *
+	 * @var string
+	 */
+	protected const string _CODE_WITH_URLS = "\$api = 'https://example.com/v1/thing?a=1&b=2';\n// see http://example.org/docs\nwww.example.net/plain\nsomeone@example.com";
+
+	/**
+	 * Registers the pipeline, and the block, once WordPress is up.
 	 *
 	 * @return void
 	 */
@@ -38,12 +60,17 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 		Shortcode_Handler::get_instance();
 
+		// Under test is the render callback, not whether the plugin's `init` callback has run yet.
+		if ( ! WP_Block_Type_Registry::get_instance()->is_registered( Block::NAME ) ) {
+			Block::get_instance()->register_block();
+		}
+
 		$this->_reset_asset_state();
 
 	}
 
 	/**
-	 * Puts the asset state back for whatever runs next.
+	 * Puts the asset state and the options object back for whatever runs next.
 	 *
 	 * @return void
 	 */
@@ -51,7 +78,54 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 		$this->_reset_asset_state();
 
+		// The options object holds the stored array for the request; the database is rolled back after each test, so the object goes with it.
+		$this->_set_singleton( Option::class, null );
+
 		parent::tear_down();
+
+	}
+
+	/**
+	 * The asset manager decides twice, and one `has_action()` cannot see the second.
+	 *
+	 * A snippet rendered from `wp_footer` itself reaches the page with no Prism if the
+	 * registration at `PRIORITY_DECIDE_AGAIN` goes missing; core prints the footer
+	 * scripts at 20, so 19 is the last moment which still reaches the page.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_registers_the_asset_managers_hooks(): void {
+
+		$assets = Asset_Manager::get_instance();
+
+		$this->_assert_hooked(
+			'wp_footer',
+			[ $assets, 'enqueue' ],
+			Asset_Manager::PRIORITY_DECIDE,
+			'Assets are decided once the page has rendered, so the snippet signal is trustworthy.'
+		);
+
+		$this->_assert_hooked(
+			'wp_footer',
+			[ $assets, 'enqueue' ],
+			Asset_Manager::PRIORITY_DECIDE_AGAIN,
+			'And again just before core prints the footer, for a snippet rendered from wp_footer itself.'
+		);
+
+		$this->assertSame(
+			[ Asset_Manager::PRIORITY_DECIDE, Asset_Manager::PRIORITY_DECIDE_AGAIN ],
+			$this->_hooked_priorities( 'wp_footer', [ $assets, 'enqueue' ] ),
+			'Two passes and no more — a third would be a decision nothing asked for.'
+		);
+
+		$this->_assert_hooked(
+			'body_class',
+			[ $assets, 'get_body_classes' ],
+			10,
+			'The brace matching classes go on the body, which is the ancestor the engine walks up to.'
+		);
 
 	}
 
@@ -654,6 +728,9 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 	 * CSS touching `pre` wraps the lines, so the rule is asserted against the compiled
 	 * stylesheet.
 	 *
+	 * It lives here because the stylesheet is the one this class enqueues, held against
+	 * the markup `Renderer` emits.
+	 *
 	 * @test
 	 *
 	 * @return void
@@ -674,32 +751,6 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 			$css,
 			'A child combinator would miss every box once the toolbar wraps the pre.'
 		);
-
-	}
-
-	/**
-	 * The stylesheet reads every custom property the font setting sets.
-	 *
-	 * The selectors live here and the values come from PHP, so either half can stop
-	 * referring to the other without a word and picking a font would do nothing.
-	 *
-	 * @test
-	 *
-	 * @return void
-	 */
-	public function it_reads_what_the_font_setting_sets_into_the_stylesheet(): void {
-
-		$css = (string) file_get_contents( IG_SYNTAX_HILITER_ROOT . '/assets/build/css/frontend-chrome.css' );
-
-		foreach ( [ '--igsh-code-font', '--igsh-code-ligatures', '--igsh-code-letter-spacing' ] as $property ) {
-
-			$this->assertStringContainsString(
-				sprintf( 'var(%s', $property ),
-				$css,
-				sprintf( 'Nothing in the stylesheet reads %s, so setting it does nothing.', $property )
-			);
-
-		}
 
 	}
 
@@ -730,6 +781,256 @@ class Conditional_Assets_Test extends WP_UnitTestCase {
 
 		} finally {
 			$this->_set_singleton( Option::class, null );
+		}
+
+	}
+
+	/**
+	 * A page whose only snippet is a block still loads the highlighter.
+	 *
+	 * The signal is raised by the renderer, so a callback which built its own markup
+	 * would leave a block-only page with unhighlighted, unstyled code.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_enqueues_the_assets_for_a_page_whose_only_snippet_is_a_block(): void {
+
+		$this->_filter(
+			'the_content',
+			static::_block(
+				[
+					'code'     => 'echo 1;',
+					'language' => 'php',
+				]
+			)
+		);
+
+		$manager = Asset_Manager::get_instance();
+
+		$this->assertTrue( $manager->has_snippets() );
+		$this->assertSame( [ 'php' ], $manager->get_languages() );
+
+		$this->_fire_footer();
+
+		$this->assertTrue( wp_script_is( 'ig-syntax-hiliter-engine', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-theme', 'enqueued' ) );
+
+	}
+
+	/**
+	 * Nothing on the page asks for the bogus language, and the box is still given
+	 * the engine and a theme to be styled by. The check is against what was
+	 * registered, not against markup.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_enqueues_no_component_for_an_unknown_language(): void {
+
+		$this->_filter( 'the_content', '[sourcecode language="madeuplang"]xyz[/sourcecode]' );
+
+		$manager = Asset_Manager::get_instance();
+
+		$this->assertTrue( $manager->has_snippets(), 'A plain box is still a box, so the engine loads.' );
+		$this->assertSame( [], $manager->get_languages(), 'An unresolvable language is not a language.' );
+
+		$this->_fire_footer();
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+			$this->assertStringNotContainsString( 'madeuplang', $asset );
+			$this->assertStringNotContainsString( 'prism-none', $asset );
+		}
+
+		$this->assertTrue( wp_script_is( 'ig-syntax-hiliter-engine', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-theme', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'ig-syntax-hiliter-chrome', 'enqueued' ) );
+
+	}
+
+	/**
+	 * A language the registry does know is not enqueued either: the engine's own
+	 * loader fetches language files at runtime, and enqueuing them eagerly would put
+	 * the 404 risk straight back.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_leaves_a_known_language_to_the_runtime_loader(): void {
+
+		$this->_filter( 'the_content', '[php]echo 1;[/php]' );
+
+		$this->assertSame( [ 'php' ], Asset_Manager::get_instance()->get_languages() );
+
+		$this->_fire_footer();
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+			$this->assertStringNotContainsString( 'prism-php', $asset );
+		}
+
+		$this->assertTrue( wp_script_is( 'ig-syntax-hiliter-autoloader', 'enqueued' ) );
+
+	}
+
+	/**
+	 * The Autolinker component is not bundled and is never loaded.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_neither_bundles_nor_enqueues_the_autolinker_component(): void {
+
+		$this->assertDirectoryDoesNotExist( dirname( __DIR__, 2 ) . '/assets/lib/prism/plugins/autolinker' );
+
+		$this->_filter( 'the_content', sprintf( "[php]\n%s\n[/php]", self::_CODE_WITH_URLS ) );
+
+		$this->_fire_footer();
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+			$this->assertStringNotContainsString( 'autolinker', $asset );
+		}
+
+	}
+
+	/**
+	 * Method to read the rules added inline against the plugin's own stylesheet.
+	 *
+	 * @return string
+	 */
+	protected function _inline_chrome_rules(): string {
+
+		$rules = wp_styles()->get_data( 'ig-syntax-hiliter-chrome', 'after' );
+
+		if ( ! is_array( $rules ) ) {
+			return '';
+		}
+
+		return implode( '', $rules );
+
+	}
+
+	/**
+	 * The promise of the default: a page with code on it, and the font setting left
+	 * alone, reaches out to nobody.
+	 *
+	 * Every other asset the plugin loads is a file it ships; a font is not, and a
+	 * plugin which quietly fetched one from a third party would be making a decision
+	 * that belongs to the site owner.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_fetches_no_font_unless_one_is_chosen(): void {
+
+		$this->assertSame(
+			Fonts::FONT_NONE,
+			Option::get_instance()->get( 'font' ),
+			'The shipped default loads no font.'
+		);
+
+		$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+		$this->assertTrue( Asset_Manager::get_instance()->has_snippets(), 'The page really did render a code box.' );
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
+		}
+
+		$this->assertArrayNotHasKey(
+			'ig-syntax-hiliter-font',
+			wp_styles()->registered,
+			'Nothing registers a webfont stylesheet when no font is chosen.'
+		);
+
+		$this->assertSame(
+			'',
+			$this->_inline_chrome_rules(),
+			'No rule is added to the chrome stylesheet either.'
+		);
+
+	}
+
+	/**
+	 * A chosen font is fetched exactly once, from that host and no other, and the
+	 * rule which applies it rides along with the plugin's own stylesheet.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_fetches_a_chosen_font_once_and_applies_it(): void {
+
+		Option::get_instance()->save( 'font', 'jetbrains-mono' );
+
+		$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+		$found = [];
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+
+			if ( ! str_contains( $asset, static::_FONT_HOST ) ) {
+				continue;
+			}
+
+			$found[] = $asset;
+
+		}
+
+		$this->assertCount( 1, $found, 'Exactly one asset is fetched from the font service.' );
+
+		$style = wp_styles()->registered['ig-syntax-hiliter-font'] ?? null;
+
+		$this->assertNotNull( $style, 'The webfont stylesheet is registered.' );
+		$this->assertSame( Fonts::get_font_url( 'jetbrains-mono' ), (string) $style->src );
+
+		// No version on a URL which belongs to somebody else: `wp_enqueue_style()` is passed NULL.
+		$this->assertStringNotContainsString( 'ver=', (string) $style->src );
+
+		$rules = $this->_inline_chrome_rules();
+
+		$this->assertStringContainsString( '"JetBrains Mono"', $rules );
+		$this->assertStringContainsString( '--igsh-code-font', $rules );
+
+		// Values and not a rule: the selectors live in the stylesheet.
+		$this->assertStringNotContainsString( Renderer::ID_PREFIX, $rules );
+		$this->assertStringStartsWith( ':root {', $rules );
+
+	}
+
+	/**
+	 * A font this plugin does not offer loads nothing, rather than falling back to
+	 * some other font.
+	 *
+	 * The theme setting falls back the other way, to the default theme, because a
+	 * code box with no colours looks broken. There is no equivalent here: a wrong
+	 * typeface is not worth a request to another host.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_loads_nothing_for_a_font_this_plugin_does_not_offer(): void {
+
+		$this->assertSame( '', Fonts::get_font_url( 'comic-sans-ms' ) );
+		$this->assertSame( '', Fonts::get_font_css( 'comic-sans-ms' ) );
+
+		Option::get_instance()->save( 'font', 'comic-sans-ms' );
+
+		$this->assertSame(
+			Fonts::FONT_NONE,
+			Option::get_instance()->get( 'font' ),
+			'A font outside the list is stored as the default, which is None.'
+		);
+
+		$this->_render_page( "[php]\necho 1;\n[/php]" );
+
+		foreach ( $this->_all_asset_urls() as $asset ) {
+			$this->assertStringNotContainsString( static::_FONT_HOST, $asset );
 		}
 
 	}

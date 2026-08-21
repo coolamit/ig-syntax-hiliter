@@ -22,7 +22,7 @@ use WP_UnitTestCase;
  * collection, and the dropdown, the REST allowlist and the enqueued stylesheet are
  * all built from one map. These are the things that map has to keep true.
  */
-class Theme_Library_Test extends WP_UnitTestCase {
+class Themes_Test extends WP_UnitTestCase {
 
 	use Asset_Test_Helpers;
 

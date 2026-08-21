@@ -16,7 +16,8 @@ use WP_UnitTestCase;
 
 /**
  * Runs the uninstall routine the way WordPress runs it, with the plugin's own
- * classes deliberately not involved.
+ * classes deliberately not involved. It tests `uninstall.php`, which runs with the
+ * plugin not loaded, so there is no class to name.
  */
 class Uninstall_Test extends WP_UnitTestCase {
 

@@ -4,7 +4,7 @@
  *
  * In the unit tier because none of it needs WordPress: every case passes both
  * versions and calls only `is_environment_supported()`. The class is non-namespaced,
- * so it is required by name. The floors themselves are asserted in `Plugin_Bootstrap_Test`.
+ * so it is required by name. The floors themselves are asserted in `Plugin_Test`.
  *
  * @package iG_Syntax_Hiliter
  */
@@ -20,9 +20,10 @@ require_once IG_SYNTAX_HILITER_ROOT . '/classes/class-ig-syntax-hiliter-gatekeep
 
 /**
  * Checks the environment comparison, on both floors and on the version shapes PHP
- * and WordPress really ship.
+ * and WordPress really ship. `iG_Syntax_Hiliter_Gatekeeper` is the one un-namespaced
+ * class, and the prefix is dropped from the test name.
  */
-class Gatekeeper_Versions_Test extends TestCase {
+class Gatekeeper_Test extends TestCase {
 
 	/**
 	 * Method to build a Gatekeeper which judges the environment named, whatever the
