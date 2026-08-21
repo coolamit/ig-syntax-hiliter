@@ -106,7 +106,7 @@ class Migrate {
 	 * Method to write the running version back when what is stored is the same
 	 * version spelled differently.
 	 *
-	 * A stored `6.0` or `6.0.0-beta-1` normalises to the same value as `6.0.0`, so
+	 * A stored `6.0` or `6.0.0-rc-1` normalises to the same value as `6.0.0`, so
 	 * `settings()` returns early and never writes the running spelling back. That early
 	 * return is right about settings and wrong about caches, because the files on
 	 * disk really did change — so the caches are cleared here, on the one condition
