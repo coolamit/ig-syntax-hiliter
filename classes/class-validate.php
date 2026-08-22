@@ -173,7 +173,7 @@ class Validate {
 	 * @return array
 	 */
 	public function get_option_defaults(): array {
-		return array_map( static fn ( array $setting ): string => $setting['default'], $this->_option_values );
+		return array_map( fn ( array $setting ): string => $setting['default'], $this->_option_values );
 	}
 
 	/**

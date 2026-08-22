@@ -134,7 +134,7 @@ class Legacy_Map {
 
 		$tags = array_filter(
 			array_map(
-				static function ( $tag ) {
+				function ( $tag ) {
 					return strtolower( trim( (string) $tag ) );
 				},
 				$tags
@@ -265,7 +265,7 @@ class Legacy_Map {
 		$this->_alternation = ( empty( $tags ) ) ? '' : implode(
 			'|',
 			array_map(
-				static function ( $tag ) {
+				function ( $tag ) {
 					return preg_quote( $tag, '/' );
 				},
 				$tags

@@ -243,9 +243,7 @@ class Snippet {
 
 		$lines = array_filter(
 			array_map( 'intval', $lines ),
-			static function ( int $line ): bool {
-				return ( 0 < $line );
-			}
+			fn ( int $line ): bool => ( 0 < $line )
 		);
 
 		$lines = array_values( array_unique( $lines ) );

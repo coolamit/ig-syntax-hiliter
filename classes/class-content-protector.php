@@ -159,7 +159,7 @@ class Content_Protector {
 
 		return $this->_replace_shortcodes(
 			$content,
-			static function (): string {
+			function (): string {
 				return '';
 			}
 		);
@@ -389,7 +389,7 @@ class Content_Protector {
 
 			$protected .= substr( $content, $copied, $start - $copied ) . (string) $callback(
 				array_map(
-					static function ( array $capture ): string {
+					function ( array $capture ): string {
 						return (string) $capture[0];
 					},
 					$matches

@@ -168,7 +168,7 @@ class Fonts {
 	public function get_fonts(): array {
 
 		return array_map(
-			static fn ( array $font ): string => $font['title'],
+			fn ( array $font ): string => $font['title'],
 			$this->_get_font_titles()
 		);
 
