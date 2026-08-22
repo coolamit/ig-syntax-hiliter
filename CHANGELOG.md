@@ -1,9 +1,9 @@
-## **iG:Syntax Hiliter v6.0.0-rc-1**
+## **iG:Syntax Hiliter v6.0.0**
 ---------------------------------
 
 ### **Changelog**
 
-##### **v6.0.0-rc-1**
+##### **v6.0.0**
 
 * Minimum requirements are now PHP 8.4 and WordPress 6.9. Below either of those the plugin refuses to load — no fatal error, no half-loaded plugin, just an admin notice in `wp-admin` naming the versions it needs.
 * The GeSHi library has been dropped, along with all 37 of its bundled language files. Syntax highlighting now happens in the browser using [Prism.js](https://prismjs.com/) 1.30.0, which is bundled with the plugin (MIT licensed — see `assets/lib/prism/LICENSE`). Prism's assets load only on pages that actually contain a snippet, and only the language files those snippets need. Nothing is highlighted on the server any more.
