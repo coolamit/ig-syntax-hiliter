@@ -1,0 +1,320 @@
+# CI test workflow: PHP lint, PHPCS, the JS/TS build and both PHPUnit tiers on a
+# PHP 8.4/8.5 x WP 6.9.x/latest matrix. A second job, `compat`, checks that the
+# plugin refuses to load below its floors. The release workflow is a separate
+# file.
+name: Tests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  push:
+    branches:
+      - master
+
+# Nothing here writes to the repository or needs a secret.
+permissions:
+  contents: read
+
+# Superseded PR runs are cancelled; pushes to master never are, so its check history stays complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The repo is `ig-syntax-hiliter`, the plugin slug is `igsyntax-hiliter`; they are not the same
+  # string. The repo is checked out into a WordPress install under a directory named after the
+  # slug, so anything deriving a slug or URL from `__FILE__` sees the truth. A guard step asserts it.
+  PLUGIN_SLUG: igsyntax-hiliter
+  WP_PATH: wordpress
+  PLUGIN_PATH: wordpress/wp-content/plugins/igsyntax-hiliter
+
+  # Kept inside the workspace so the cache path is unambiguous across runners.
+  COMPOSER_CACHE_DIR: ${{ github.workspace }}/.composer-cache
+
+jobs:
+
+  test:
+    # Reads as e.g. "Tests / PHP 8.4, WP 6.9.0" in the checks list.
+    name: PHP ${{ matrix.php }}, WP ${{ matrix.wp }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One broken combination must not cancel the other three.
+      fail-fast: false
+      matrix:
+        php:
+          - '8.4'   # Minimum supported PHP version.
+          - '8.5'
+        wp:
+          # `<branch>.x` is that branch's newest patch and `latest` is whatever WordPress.org calls
+          # latest, both resolved at run time; an exact version is an exact pin. 6.9 is the floor.
+          - '6.9.x'
+          - 'latest'
+
+    services:
+      # The integration tier needs a real MySQL; the database name matches tests/integration/wp-tests-config.php.
+      # Every table in it is dropped and rebuilt on each run, which is safe: the container dies with the job.
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_unit_tests
+          MYSQL_USER: wp
+          MYSQL_PASSWORD: wp
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root --password=root --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+          --health-start-period=30s
+
+    steps:
+
+      # Third-party actions are pinned to a full commit SHA, because a tag can be repointed and
+      # this workflow runs on pull requests. The trailing comment names the version; bump both together.
+      - name: Check out plugin into a WordPress plugins directory
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: ${{ env.PLUGIN_PATH }}
+          persist-credentials: false
+
+      - name: Assert the plugin directory is named after the slug
+        working-directory: ${{ env.PLUGIN_PATH }}
+        run: |
+          actual="$( basename "$PWD" )"
+          if [ "$actual" != "$PLUGIN_SLUG" ]; then
+            echo "::error::Plugin checked out as '${actual}' but the WordPress.org slug is '${PLUGIN_SLUG}'."
+            echo "The repo name (ig-syntax-hiliter) is NOT the plugin slug. Restore the 'path:' input on actions/checkout."
+            exit 1
+          fi
+          echo "Plugin directory: ${PWD}"
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 (2.37.2)
+        with:
+          php-version: ${{ matrix.php }}
+          # mysqli for the test database; the rest are used by the WordPress test library.
+          extensions: mysqli, mbstring, gd, zip, xml
+          coverage: none
+          tools: composer:v2
+          ini-values: memory_limit=512M
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          # .nvmrc is the single source of truth for the Node version.
+          node-version-file: ${{ env.PLUGIN_PATH }}/.nvmrc
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_PATH }}/package-lock.json
+
+      - name: Cache Composer packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.COMPOSER_CACHE_DIR }}
+          # The PHP version is in the key because Composer caches per platform.
+          key: composer-${{ runner.os }}-php${{ matrix.php }}-${{ hashFiles(format('{0}/composer.lock', env.PLUGIN_PATH)) }}
+          restore-keys: |
+            composer-${{ runner.os }}-php${{ matrix.php }}-
+
+      - name: Install PHP dependencies
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # composer.lock is committed, so `install` (never `update`) — except the WordPress test
+        # library, which a later step re-pins to the resolved core. Composer is dev-only here.
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Install JS dependencies
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # package-lock.json is committed, so `npm ci` (never `npm install`).
+        run: npm ci
+
+      # ---- Static checks -------------------------------------------------
+
+      - name: PHP lint
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Parse-check every tracked PHP file on the matrix's PHP; vendor/, node_modules/ and assets/build/ are untracked.
+        run: |
+          git ls-files -z '*.php' | xargs -0 -n1 -P4 php -l
+
+      - name: PHPCS (WordPress Coding Standards)
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # phpcs, configured by phpcs.xml.dist, which names the paths.
+        run: composer run lint
+
+      - name: TypeScript type check
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # `tsc --noEmit` over both projects. wp-scripts transpiles assets/src/block/ without type checking,
+        # so nothing else here would catch a type error there.
+        run: npm run lint:types
+
+      - name: ESLint and stylelint
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Both are scoped in package.json to assets/src/, which is all this plugin writes.
+        # Unscoped they would lint the vendored Prism tree and the build output.
+        run: |
+          npm run lint:js
+          npm run lint:style
+
+      - name: JavaScript unit tests
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # The block editor's code is client side end to end, so neither PHPUnit tier sees it.
+        # Runs before the build because it tests the source, not the bundle.
+        run: npm run test:unit:js
+
+      - name: Build block editor and plugin assets
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Produces assets/build/, git-ignored. The integration tier loads the plugin,
+        # which reads the built block from it, and asserts the compiled admin stylesheet exists there.
+        run: npm run build
+
+      # ---- WordPress + tests ---------------------------------------------
+
+      - name: Resolve WordPress version
+        env:
+          WP_SPEC: ${{ matrix.wp }}
+        # `latest` -> the one version the WordPress.org stable-check API marks "latest"; `<branch>.x`
+        # -> the newest released patch of that branch. Anything else -> that exact version, except
+        # that WordPress names the first release of a branch "6.9" not "6.9.0", so a trailing ".0"
+        # is dropped when that is what is released.
+        run: |
+          set -euo pipefail
+
+          stable="$( curl -fsSL --retry 3 https://api.wordpress.org/core/stable-check/1.0/ )"
+
+          case "${WP_SPEC}" in
+            latest )
+              version="$(
+                printf '%s' "${stable}" \
+                  | jq -r 'to_entries[] | select( .value == "latest" ) | .key' \
+                  | sort -V | tail -n 1
+              )"
+              ;;
+            *.x )
+              branch="${WP_SPEC%.x}"
+              version="$(
+                printf '%s' "${stable}" \
+                  | jq -r --arg b "${branch}" 'keys[] | select( . == $b or startswith( $b + "." ) )' \
+                  | sort -V | tail -n 1
+              )"
+              ;;
+            * )
+              version="${WP_SPEC}"
+              if ! printf '%s' "${stable}" | jq -e --arg v "${version}" 'has( $v )' > /dev/null; then
+                short="${version%.0}"
+                if printf '%s' "${stable}" | jq -e --arg v "${short}" 'has( $v )' > /dev/null; then
+                  echo "Note: WordPress publishes ${version} as '${short}'."
+                  version="${short}"
+                fi
+              fi
+              ;;
+          esac
+
+          if [ -z "${version}" ] || ! printf '%s' "${stable}" | jq -e --arg v "${version}" 'has( $v )' > /dev/null; then
+            echo "::error::Could not resolve a released WordPress version for spec '${WP_SPEC}'."
+            exit 1
+          fi
+
+          echo "Matrix spec '${WP_SPEC}' resolved to WordPress ${version}."
+          echo "WP_VERSION=${version}" >> "${GITHUB_ENV}"
+
+      - name: Install WordPress ${{ env.WP_VERSION }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${GITHUB_WORKSPACE}/${WP_PATH}"
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/wordpress.tar.gz" \
+            "https://wordpress.org/wordpress-${WP_VERSION}.tar.gz"
+
+          # --strip-components=1 drops the archive's own "wordpress/" root, and
+          # tar merges into the existing tree rather than replacing it, so the
+          # plugin already checked out at wp-content/plugins/<slug> survives.
+          tar -xzf "${RUNNER_TEMP}/wordpress.tar.gz" --strip-components=1 \
+            -C "${GITHUB_WORKSPACE}/${WP_PATH}"
+
+          test -r "${GITHUB_WORKSPACE}/${WP_PATH}/wp-settings.php"
+          test -r "${GITHUB_WORKSPACE}/${WP_PATH}/wp-content/plugins/${PLUGIN_SLUG}/ig-syntax-hiliter.php"
+
+          # Consumed by tests/integration/wp-tests-config.php. Locally that file
+          # derives ABSPATH from the plugin's position inside the VVV sandbox;
+          # there is no such install here, so it is set explicitly.
+          echo "WP_TESTS_ABSPATH=${GITHUB_WORKSPACE}/${WP_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Match the WordPress test library to WordPress ${{ env.WP_VERSION }}
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # wp-phpunit/wp-phpunit tracks core release for release, and the committed lock names
+        # one version of it. The matrix resolves its WordPress at run time, so the library is
+        # re-pinned here to the resolved branch; nothing is written back to the repo.
+        run: |
+          set -euo pipefail
+
+          branch="$( printf '%s' "${WP_VERSION}" | cut -d. -f1,2 )"
+          composer update wp-phpunit/wp-phpunit --with "wp-phpunit/wp-phpunit:~${branch}.0" \
+            --with-dependencies --prefer-dist --no-progress --no-interaction
+          composer show wp-phpunit/wp-phpunit | head -n 3
+
+      - name: PHPUnit — unit tier
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # No WordPress, no database. Runs first so a domain-level break is reported without WP noise.
+        run: composer run test:unit
+
+      - name: PHPUnit — integration tier
+        working-directory: ${{ env.PLUGIN_PATH }}
+        # Read by tests/integration/wp-tests-config.php; the names must match it. DB_HOST is
+        # 127.0.0.1, not "localhost": mysqli reads "localhost" as a unix socket and the service is TCP only.
+        env:
+          WP_TESTS_DB_NAME: wordpress_unit_tests
+          WP_TESTS_DB_USER: wp
+          WP_TESTS_DB_PASSWORD: wp
+          WP_TESTS_DB_HOST: 127.0.0.1:3306
+        run: composer run test:integration
+
+  # The plugin must refuse to load below its floors, and say why. The job above cannot test that,
+  # so this one runs with no Composer, no WordPress and no PHPUnit. `tests/compat/refusal-check.php`
+  # reads both floors from the Gatekeeper and holds no version numbers; when a floor rises, add a
+  # leg below for the version that just became unsupported. The script fails on a supported environment.
+  compat:
+    # Reads as e.g. "Tests / Refuses on PHP 7.4" in the checks list.
+    name: Refuses on PHP ${{ matrix.php }}${{ matrix.wp && format(' + WP {0}', matrix.wp) || '' }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Below the PHP floor; an empty wp means the script uses the plugin's own WordPress floor.
+          - php: '7.4'
+            wp: ''
+          - php: '8.3'
+            wp: ''
+          # A supported PHP with an unsupported WordPress; the script sets the version, no install needed.
+          - php: '8.4'
+            wp: '6.8'
+
+    steps:
+
+      - name: Check out plugin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 (2.37.2)
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Parse-check the files an unsupported PHP still has to read
+        # Not `git ls-files`: the rest of the tree is PHP 8.4 syntax. These two are all a refused site parses.
+        run: |
+          php -l ig-syntax-hiliter.php
+          php -l classes/class-ig-syntax-hiliter-gatekeeper.php
+
+      - name: The plugin must refuse to load, and say why
+        env:
+          # Empty means "use the plugin's own floor".
+          IGSH_COMPAT_WP_VERSION: ${{ matrix.wp }}
+        run: php tests/compat/refusal-check.php

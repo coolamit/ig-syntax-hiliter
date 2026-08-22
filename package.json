@@ -1,0 +1,63 @@
+{
+	"name": "igsyntax-hiliter",
+	"version": "6.0.0",
+	"description": "Build tooling for the iG:Syntax Hiliter WordPress plugin. Nothing here ships at runtime — the plugin loads only the compiled output in assets/build/, plus the vendored library in assets/lib/.",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"author": "Amit Gupta",
+	"homepage": "https://github.com/coolamit/ig-syntax-hiliter",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/coolamit/ig-syntax-hiliter.git"
+	},
+	"bugs": {
+		"url": "https://github.com/coolamit/ig-syntax-hiliter/issues"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"build": "npm run build:blocks && npm run build:css && npm run build:js",
+		"build:blocks": "wp-scripts build --source-path=assets/src/block --output-path=assets/build/block",
+		"build:css": "sass --no-source-map --style=compressed assets/src/scss:assets/build/css",
+		"build:js": "npm run build:js:compile && npm run build:js:minify",
+		"build:js:compile": "tsc -p tsconfig.assets.json",
+		"build:js:minify": "mkdir -p assets/build/js && for file in node_modules/.cache/igsh-js/*.js; do terser \"$file\" --compress --mangle --output \"assets/build/js/$(basename \"$file\")\"; done",
+		"start": "wp-scripts start --source-path=assets/src/block --output-path=assets/build/block",
+		"test:unit:js": "wp-scripts test-unit-js",
+		"watch:css": "npm run build:css -- --watch",
+		"lint:js": "wp-scripts lint-js assets/src",
+		"lint:style": "wp-scripts lint-style 'assets/src/**/*.scss'",
+		"lint:types": "tsc --noEmit && tsc -p tsconfig.assets.json --noEmit",
+		"format": "wp-scripts format assets/src"
+	},
+	"devDependencies": {
+		"@types/jest": "^30.0.0",
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"@wordpress/block-editor": "^16.1.0",
+		"@wordpress/blocks": "^15.25.0",
+		"@wordpress/components": "^38.0.0",
+		"@wordpress/data": "^10.52.0",
+		"@wordpress/element": "^8.4.0",
+		"@wordpress/i18n": "^6.25.0",
+		"@wordpress/rich-text": "^7.52.0",
+		"@wordpress/scripts": "^34.0.0",
+		"@wordpress/shortcode": "^4.52.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"sass": "^1.102.0",
+		"terser": "^5.49.2",
+		"typescript": "^5.9.3"
+	},
+	"jest": {
+		"preset": "@wordpress/jest-preset-default",
+		"transform": {
+			"\\.[jt]sx?$": "@wordpress/scripts/config/babel-transform"
+		},
+		"transformIgnorePatterns": [
+			"/node_modules/(?!(?:.*/)?(uuid|marked)/)",
+			"\\.pnp\\.[^\\\\/]+$"
+		]
+	}
+}

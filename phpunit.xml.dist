@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	PHPUnit is pinned to 9.6: the WordPress test library calls PHPUnit 9 only APIs that 10 removed.
+	`make test-unit` / `make test-integration` map to the two suites below. Running `phpunit`
+	without naming a suite is rejected by tests/bootstrap.php, because each tier needs its own bootstrap.
+	The `-test.php` suffix is what keeps the traits and fixtures beside the cases out of the suites.
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+	bootstrap="tests/bootstrap.php"
+	cacheResultFile=".phpunit.cache/test-results"
+	colors="true"
+	verbose="false"
+	beStrictAboutOutputDuringTests="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	beStrictAboutTodoAnnotatedTests="true"
+	convertDeprecationsToExceptions="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	failOnEmptyTestSuite="true"
+	failOnIncomplete="true"
+	failOnRisky="true"
+	failOnWarning="true"
+	>
+
+	<testsuites>
+		<!-- Pure PHP. No WordPress, no database. -->
+		<testsuite name="unit">
+			<directory suffix="-test.php">tests/unit</directory>
+		</testsuite>
+
+		<!-- Runs against a real WordPress install and the wordpress_unit_tests database. -->
+		<testsuite name="integration">
+			<directory suffix="-test.php">tests/integration</directory>
+		</testsuite>
+	</testsuites>
+
+	<coverage>
+		<include>
+			<directory suffix=".php">classes</directory>
+			<file>autoloader.php</file>
+			<file>ig-syntax-hiliter.php</file>
+		</include>
+	</coverage>
+
+</phpunit>

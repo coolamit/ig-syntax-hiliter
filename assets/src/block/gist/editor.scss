@@ -1,0 +1,10 @@
+/**
+ * Editor styling for the Gist block.
+ */
+
+.wp-block-igsyntax-hiliter-gist {
+
+	.igsh-gist-block__url {
+		flex: 1 1 auto; // The Placeholder fieldset is a flex row; grow to fill it.
+	}
+}

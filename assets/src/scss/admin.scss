@@ -1,0 +1,285 @@
+/*
+ * Settings page styles, compiled to `assets/build/css/admin.css`.
+ * Colours are wp-admin's own.
+ */
+
+$igsh-accent: #2271b1;
+$igsh-off: #8c8f94;
+$igsh-error: #d63638;
+$igsh-warning: #dba617;
+$igsh-radius: 3px;
+
+.igsh-settings {
+
+	&__intro {
+		max-width: 46rem;
+	}
+
+	/* Below the breakpoint the preview goes under the controls. */
+	&__layout {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 24px;
+		align-items: flex-start;
+	}
+
+	&__controls {
+		flex: 1 1 32rem;
+
+		/* A table will not shrink below its content unless it is told it may. */
+		min-width: 0;
+	}
+
+	&__table {
+
+		td .description {
+			margin-top: 6px;
+			max-width: 46rem;
+		}
+	}
+
+	&__control {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	&__select {
+		min-width: 16rem;
+	}
+
+	/*
+	 * 40px matches wp-admin's `min-height` for `.button` and `select`. The
+	 * `.wp-core-ui` and `.button` in this selector are load-bearing: wp-admin
+	 * styles `.wp-core-ui .button` at 0-2-0 and `.wp-core-ui .button .dashicons`
+	 * at 0-3-0, so a bare `&__refresh` at 0-1-0 loses `display`, `padding`,
+	 * `min-height` and `line-height`.
+	 */
+	.wp-core-ui &__refresh.button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		min-width: 40px;
+		height: 40px;
+		min-height: 40px;
+		padding: 0;
+
+		.dashicons {
+			width: 20px;
+			height: 20px;
+			font-size: 20px;
+			line-height: 1;
+		}
+
+		/*
+		 * The class is put on by the click handler, not the page lock. Lands at
+		 * 0-5-0, so the `prefers-reduced-motion` block at the foot of this file
+		 * must match it.
+		 */
+		&.is-busy .dashicons {
+			animation: igsh-spin 1s linear infinite;
+		}
+	}
+}
+
+@keyframes igsh-spin {
+
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/*
+ * Toggle switch. A button, not a checkbox: wp-admin styles
+ * `input[type="checkbox"]` above any class of ours and forces the box back to
+ * 16px, leaving most of the switch unclickable. `role="switch"` gives the
+ * keyboard behaviour.
+ */
+.igsh-toggle {
+	display: inline-block;
+	position: relative;
+	width: 44px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	background: none;
+	vertical-align: middle;
+	cursor: pointer;
+
+	&:disabled {
+		cursor: progress;
+	}
+
+	&__track {
+		display: block;
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: $igsh-off;
+		border-radius: 12px;
+		transition: background-color 0.15s ease-in-out;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: 3px;
+			left: 3px;
+			width: 18px;
+			height: 18px;
+			background: #fff;
+			border-radius: 50%;
+			transition: transform 0.15s ease-in-out;
+		}
+	}
+
+	&[aria-checked="true"] &__track {
+		background: $igsh-accent;
+
+		&::after {
+			transform: translateX(20px);
+		}
+	}
+
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:focus-visible &__track {
+		box-shadow: 0 0 0 2px #fff, 0 0 0 4px $igsh-accent;
+	}
+
+	&:disabled &__track {
+		opacity: 0.6;
+	}
+}
+
+/* The preview box, beside the settings. */
+.igsh-preview {
+	flex: 1 1 26rem;
+	max-width: 40rem;
+
+	/*
+	 * A flex item will not shrink below its content unless told it may; without
+	 * this the panel wraps under the settings.
+	 */
+	min-width: 0;
+
+	/*
+	 * Sticky so the last toggle and the box it changes stay together; `top`
+	 * clears the admin bar.
+	 */
+	position: sticky;
+	top: 46px;
+
+	&__heading {
+		margin-top: 0;
+	}
+
+	/*
+	 * As tall as its content. Must not be given a fixed height — a box sized for
+	 * the tallest theme leaves smaller ones painting a slab of their own
+	 * background under the last line.
+	 */
+	&__box {
+
+		/* The frame keeps a light theme from disappearing into wp-admin's white. */
+		padding: 12px;
+		border: 1px solid #dcdcde;
+		background: #f6f7f7;
+		border-radius: $igsh-radius;
+
+		/*
+		 * Beats the themes' own `pre[class*="language-"]`, so nothing here needs
+		 * `!important`. `max-height` is a backstop.
+		 */
+		pre[class*="language-"] {
+			margin: 0;
+			max-width: 100%;
+			max-height: 32rem;
+			overflow: auto;
+		}
+	}
+
+	/*
+	 * On the front end this button is simply not loaded when the setting is off;
+	 * the preview has to show it coming and going without a reload.
+	 */
+	&--no-copy .copy-to-clipboard-button {
+		display: none;
+	}
+}
+
+@media screen and (max-width: 782px) {
+
+	.igsh-preview {
+		position: static;
+	}
+}
+
+/*
+ * The revert section. Quieter than a warning notice. The heading is pushed
+ * clear of the settings table so it does not read as one more setting — this
+ * tool rewrites post content site-wide.
+ */
+.igsh-revert__heading {
+	margin-top: 9rem;
+}
+
+.igsh-revert {
+	max-width: 46rem;
+	padding: 16px 20px;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid $igsh-warning;
+	background: #fff;
+	border-radius: $igsh-radius;
+
+	p:first-child {
+		margin-top: 0;
+	}
+
+	p:last-child {
+		margin-bottom: 0;
+	}
+
+	&__warning {
+		color: $igsh-error;
+	}
+
+	&__progress {
+
+		progress {
+			width: 100%;
+			max-width: 24rem;
+			height: 16px;
+		}
+	}
+
+	&__status {
+		font-style: italic;
+		min-height: 1.4em;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.igsh-toggle__track,
+	.igsh-toggle__track::after {
+		transition: none;
+	}
+
+	/*
+	 * The spinner is the one animation with no end of its own. This selector
+	 * matches the one that sets the animation specificity for specificity and
+	 * wins on source order.
+	 */
+	.wp-core-ui .igsh-settings__refresh.button.is-busy .dashicons {
+		animation: none;
+	}
+}

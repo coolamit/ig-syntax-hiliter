@@ -1,0 +1,103 @@
+/*
+ * Styles for the notice stack in `assets/src/js/notices.ts`.
+ * Colours are copied from wp-admin's own notices in `wp-admin/css/common.css`.
+ */
+
+// Colours from wp-admin `common.css` (`.notice-success`, `.notice-error`,
+// `.notice-info`, `.notice p`).
+$igsh-notice-success: #4ab866;
+$igsh-notice-success-bg: #eff9f1;
+
+$igsh-notice-error: #cc1818;
+$igsh-notice-error-bg: #fcf0f0;
+
+$igsh-notice-busy: #3858e9;
+$igsh-notice-busy-bg: #fff;
+
+$igsh-notice-text: #1e1e1e;
+$igsh-notice-radius: 3px;
+$igsh-notice-fade: 0.15s;         // must match FADE_MS in assets/src/js/notices.ts
+
+/*
+ * Top right, clear of the admin bar; the bar's height is a custom property
+ * WordPress keeps current across breakpoints. A flex column, so prepending
+ * pushes the rest down.
+ */
+.igsh-notices {
+	position: fixed;
+	z-index: 100000;
+	top: calc(var(--wp-admin--admin-bar--height, 32px) + 24px);
+	right: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-width: 24rem;
+
+	// Something to read, never something in the way of a control underneath it.
+	pointer-events: none;
+}
+
+/*
+ * Padding and text metrics are core's; the shadow is the one departure — this
+ * floats over the page.
+ */
+.igsh-notice {
+	padding: 8px 12px;
+	color: $igsh-notice-text;
+	font-size: 13px;
+	line-height: 1.54;
+	background: $igsh-notice-busy-bg;
+	border-left: 4px solid $igsh-notice-busy;
+	border-radius: $igsh-notice-radius;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	animation: igsh-notice-in $igsh-notice-fade ease-in-out;
+	transition:
+		opacity $igsh-notice-fade ease-in-out,
+		transform $igsh-notice-fade ease-in-out;
+
+	&--success {
+		background: $igsh-notice-success-bg;
+		border-left-color: $igsh-notice-success;
+	}
+
+	&--error {
+		background: $igsh-notice-error-bg;
+		border-left-color: $igsh-notice-error;
+	}
+
+	&--leaving {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+}
+
+/* Arrives from above, which is the direction the stack grows from. */
+@keyframes igsh-notice-in {
+
+	from {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+}
+
+@media screen and (max-width: 782px) {
+
+	.igsh-notices {
+		top: calc(var(--wp-admin--admin-bar--height, 46px) + 16px);
+		right: 16px;
+		left: 16px;
+		max-width: none;
+	}
+}
+
+/*
+ * With motion off a message appears and goes at once; the removal timer still
+ * runs.
+ */
+@media (prefers-reduced-motion: reduce) {
+
+	.igsh-notice {
+		animation: none;
+		transition: none;
+	}
+}

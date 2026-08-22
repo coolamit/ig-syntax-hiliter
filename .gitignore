@@ -1,4 +1,10 @@
 
+.phpunit.cache
+vendor/
+.env
+.env.production
+*.log
+
 # OS
 .DS_Store
 Thumbs.db
@@ -9,12 +15,22 @@ Thumbs.db
 .settings/
 .build/
 .idea/
-nbproject/
+.vscode/
 
-# Compass/SASS/SCSS
-.sass-cache
-*.css.map
-
-#npm
 node_modules/
 
+.scratchpad/*
+.specs/*
+.claude/
+.ai/
+.agents/
+CLAUDE.md
+
+# Compiled output: assets/src/ -> assets/build/. Nothing generated is committed.
+assets/build/
+
+# Tooling caches
+.phpcs.cache
+.phpunit.result.cache
+
+# composer.lock and package-lock.json are committed on purpose. Do not ignore them.

@@ -1,0 +1,1380 @@
+<?php
+/**
+ * Tests for the block to shortcode revert tool.
+ *
+ * @package iG_Syntax_Hiliter
+ */
+
+declare( strict_types = 1 );
+
+namespace iG\Syntax_Hiliter\Tests\Integration;
+
+use iG\Syntax_Hiliter\Admin;
+use iG\Syntax_Hiliter\Block;
+use iG\Syntax_Hiliter\Block_Converter;
+use iG\Syntax_Hiliter\Gist_Embed;
+use iG\Syntax_Hiliter\Renderer;
+use iG\Syntax_Hiliter\Shortcode_Handler;
+use iG\Syntax_Hiliter\Snippet;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Hook_Test_Helpers;
+use iG\Syntax_Hiliter\Tests\Integration\Traits\Pipeline_Test_Helpers;
+use WP_REST_Request;
+use WP_UnitTestCase;
+
+/**
+ * The revert tool rewrites a site owner's content, so the two things it must never
+ * do are damage a byte it was not asked to touch, and leave a post behind.
+ */
+class Block_Converter_Test extends WP_UnitTestCase {
+
+	use Pipeline_Test_Helpers;
+
+	use Hook_Test_Helpers;
+
+	/**
+	 * Route the batches are fetched from.
+	 *
+	 * @var string
+	 */
+	protected const string _ROUTE = '/' . Admin::REST_NAMESPACE . '/revert';
+
+	/**
+	 * Code used by most of the fixtures. It carries braces, quotes and a closing
+	 * HTML tag, all of which the delimiter pattern and the rewrite have to survive.
+	 *
+	 * @var string
+	 */
+	protected const string _CODE = "function f( \$a ) {\n\techo '<b>' . \$a . '</b>';\n}";
+
+	/**
+	 * The code the zero case is about.
+	 *
+	 * @var string
+	 */
+	protected const string _ZERO = '0';
+
+	/**
+	 * Batch size used while the batching tests run.
+	 *
+	 * @var int
+	 */
+	protected int $_batch_size = 2;
+
+	/**
+	 * PCRE settings as they stood before a test lowered them.
+	 *
+	 * @var array
+	 */
+	protected array $_pcre_settings = [];
+
+	/**
+	 * Registers the pipeline and the routes.
+	 *
+	 * @return void
+	 */
+	public function set_up(): void {
+
+		parent::set_up();
+
+		Shortcode_Handler::get_instance();
+		Admin::get_instance();
+		Block_Converter::get_instance();
+
+		// The class hooks from its constructor, which runs once per process, and the test case restores the hook registry after every test, so the action is put back by hand.
+		if ( false === has_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] ) ) {
+			add_action( 'rest_api_init', [ Block_Converter::get_instance(), 'register_rest_routes' ] );
+		}
+
+		$GLOBALS['wp_rest_server'] = null;  // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Forcing a fresh REST server so the routes above are registered on it. The global is core's, not this plugin's.
+
+		rest_get_server();
+
+		add_filter( Block_Converter::FILTER_BATCH_SIZE, [ $this, 'get_batch_size' ] );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name comes from the class constant it is named after.
+
+	}
+
+	/**
+	 * Puts the PCRE settings back for whatever runs next, whether or not the test
+	 * which lowered them got as far as putting them back itself.
+	 *
+	 * @return void
+	 */
+	public function tear_down(): void {
+
+		$this->_restore_pcre();
+
+		parent::tear_down();
+
+	}
+
+	/**
+	 * Reports the batch size the current test wants.
+	 *
+	 * @return int
+	 */
+	public function get_batch_size(): int {
+		return $this->_batch_size;
+	}
+
+	/**
+	 * Method to lower the PCRE settings until an ordinary pattern gives up. The JIT
+	 * goes as well as the limit, since with it on PCRE only gives up on a pattern
+	 * with real work to do.
+	 *
+	 * @return void
+	 */
+	protected function _make_pcre_give_up(): void {
+
+		foreach ( [ 'pcre.jit', 'pcre.backtrack_limit' ] as $setting ) {
+			$this->_pcre_settings[ $setting ] = (string) ini_get( $setting );
+		}
+
+		ini_set( 'pcre.jit', '0' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Making PCRE give up on purpose is the only way to reach the branch under test. The values are put back below.
+		ini_set( 'pcre.backtrack_limit', '0' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- As above.
+
+	}
+
+	/**
+	 * Method to put back whatever self::_make_pcre_give_up() changed.
+	 *
+	 * @return void
+	 */
+	protected function _restore_pcre(): void {
+
+		foreach ( $this->_pcre_settings as $setting => $value ) {
+			ini_set( $setting, $value );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the values saved before they were lowered.
+		}
+
+		$this->_pcre_settings = [];
+
+	}
+
+	/**
+	 * Method to check that PCRE really is giving up, so that a test which says it is
+	 * measuring the failure branch is measuring it.
+	 *
+	 * @return bool
+	 */
+	protected function _pcre_is_giving_up(): bool {
+		return ( null === preg_replace( '/\s+/', ' ', 'a  b' ) );
+	}
+
+	/**
+	 * Method to become somebody who is allowed to run the tool.
+	 *
+	 * @return void
+	 */
+	protected function _become_administrator(): void {
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+	}
+
+	/**
+	 * Method to run one batch and get the response body.
+	 *
+	 * @param int $cursor Id of the last post already handled.
+	 *
+	 * @return array
+	 */
+	protected function _process( int $cursor ): array {
+
+		$request = new WP_REST_Request( 'POST', self::_ROUTE );
+
+		$request->set_body_params( [ 'cursor' => $cursor ] );
+
+		return (array) rest_do_request( $request )->get_data();
+
+	}
+
+	/**
+	 * Method to run the tool to completion, the way the settings page runs it.
+	 *
+	 * @return array Running totals, plus how many requests it took.
+	 */
+	protected function _run_to_completion(): array {
+
+		$totals = [
+			'processed'         => 0,
+			'converted'         => 0,
+			'skipped'           => 0,
+			'failed'            => 0,
+			'blocks_left_alone' => 0,
+			'requests'          => 0,
+		];
+
+		$cursor = 0;
+
+		do {
+
+			$batch = $this->_process( $cursor );
+
+			++$totals['requests'];
+
+			foreach ( [ 'processed', 'converted', 'skipped', 'failed', 'blocks_left_alone' ] as $key ) {
+				$totals[ $key ] += (int) $batch[ $key ];
+			}
+
+			$cursor = (int) $batch['cursor'];
+
+			$this->assertLessThan( 40, $totals['requests'], 'The batching did not finish, so it is going round in circles.' );
+
+		} while ( empty( $batch['done'] ) );
+
+		return $totals;
+
+	}
+
+	/**
+	 * The rewrite is surgical. The block delimiter becomes a shortcode and every
+	 * other byte of the post is exactly where it was.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_rewrites_only_the_block_delimiter(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "<!-- wp:paragraph -->\n<p>Before the code, with a  double  space and an [email]a@b.com[/email] tag.</p>\n<!-- /wp:paragraph -->\n\n";
+		$suffix = "\n\n<!-- wp:paragraph -->\n<p>After the code.</p>\n<!-- /wp:paragraph -->";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$prefix . static::_block(
+						[
+							'code'     => self::_CODE,
+							'language' => 'php',
+						]
+					) . $suffix
+				),
+			]
+		);
+
+		$this->_run_to_completion();
+
+		$expected = sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::_CODE );
+
+		$this->assertSame( $prefix . $expected . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * The shortcode the tool writes renders the same code box the block rendered.
+	 * A revert which changed what the reader sees would not be a revert.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_renders_the_same_from_the_shortcode_as_from_the_block(): void {
+
+		$this->_become_administrator();
+
+		$attributes = [
+			'code'            => self::_CODE,
+			'language'        => 'php',
+			'firstLine'       => 12,
+			'highlightLines'  => '2,4-6',
+			'file'            => 'example.php',
+			'showLineNumbers' => true,
+		];
+
+		$renderer = Renderer::get_instance();
+
+		$renderer->reset_counter();
+
+		$from_block = $renderer->render_snippet(
+			Snippet::from_block_attributes( $attributes, '', Shortcode_Handler::get_instance()->show_line_numbers() )
+		);
+
+		$post_id = self::factory()->post->create(
+			[ 'post_content' => wp_slash( static::_block( $attributes ) ) ]
+		);
+
+		$this->_run_to_completion();
+
+		$renderer->reset_counter();
+
+		$rendered = apply_filters( 'the_content', get_post_field( 'post_content', $post_id, 'raw' ) );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hook is what an integration test does.
+
+		// Every code box is wrapped; this fixture's also carries a file label.
+		$this->assertSame( 1, preg_match( '#<div class="igsh-code-box" id="[^"]+">.*?</pre></div>#s', $rendered, $matches ) );
+		$this->assertSame( $from_block, $matches[0] );
+
+	}
+
+	/**
+	 * Every block attribute finds its shortcode attribute, and one the block never
+	 * set stays unset so that the site default goes on deciding.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_maps_block_attributes_on_to_shortcode_attributes(): void {
+
+		$with_everything = Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'            => 'x',
+				'language'        => 'PHP',
+				'showLineNumbers' => false,
+				'firstLine'       => 12,
+				'highlightLines'  => '4-6,2',
+				'file'            => 'wp-config.php',
+			]
+		);
+
+		$this->assertStringContainsString( 'language="php"', $with_everything );
+		$this->assertStringContainsString( 'gutter="no"', $with_everything );
+		$this->assertStringContainsString( 'firstline="12"', $with_everything );
+		$this->assertStringContainsString( 'highlight="2,4-6"', $with_everything );
+		$this->assertStringContainsString( 'file="wp-config.php"', $with_everything );
+
+		$with_nothing = Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'     => 'x',
+				'language' => 'php',
+			]
+		);
+
+		$this->assertSame( "[sourcecode language=\"php\"]\nx\n[/sourcecode]", $with_nothing );
+
+	}
+
+	/**
+	 * A file label carrying the characters that end a shortcode attribute, or the
+	 * shortcode itself, cannot break out of the shortcode it is written into.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_does_not_let_a_hostile_file_label_break_the_shortcode(): void {
+
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'     => self::_CODE,
+				'language' => 'php',
+				'file'     => 'we"ird] [php]name.php',
+			]
+		);
+
+		$this->assertSame(
+			1,
+			preg_match( sprintf( '/%s/', get_shortcode_regex( [ 'sourcecode' ] ) ), $shortcode, $matches ),
+			'The shortcode the tool wrote does not parse as one shortcode.'
+		);
+
+		$this->assertSame( $shortcode, $matches[0], 'Something outside the shortcode was left over.' );
+		$this->assertSame( self::_CODE, trim( $matches[5] ) );
+
+		$atts = shortcode_parse_atts( $matches[3] );
+
+		$this->assertSame( 'php', $atts['language'] );
+		$this->assertSame( 'weird phpname.php', $atts['file'] );
+
+	}
+
+	/**
+	 * A PCRE failure while cleaning the language must not write `language=""` into
+	 * every snippet the run rewrites. The language here is one PCRE has real work to
+	 * do on, so a cleaned name coming back proves both that it was kept and that what
+	 * would break the shortcode was still taken off.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_cleans_a_language_up_even_when_pcre_has_given_up(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'     => self::_CODE,
+				'language' => 'PHP" ]',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertStringContainsString( 'language="php"', $shortcode, 'The language came back blanked, or still carrying what breaks a shortcode.' );
+
+	}
+
+	/**
+	 * The same failure on the file label, where the pattern is only tidying whitespace
+	 * and everything which makes the label safe has already happened. So the label
+	 * comes back untidy rather than not at all.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_keeps_a_file_label_through_a_pattern_pcre_gave_up_on(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'     => self::_CODE,
+				'language' => 'php',
+				'file'     => 'my  notes.php',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertStringContainsString( 'file="my  notes.php"', $shortcode, 'The label came back tidied, blanked or not at all.' );
+
+	}
+
+	/**
+	 * A snippet whose code quotes this plugin's own tags converts like any other: the
+	 * tags are written with doubled brackets, which the matcher steps over.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_converts_a_snippet_quoting_this_plugins_tags_escaped(): void {
+
+		$this->_become_administrator();
+
+		$code = "[sourcecode language=\"php\"]\nfunction f() {}\n[/sourcecode]";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					static::_block(
+						[
+							'code'     => $code,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'], 'The block holding this plugin\'s own tags has to convert like any other.' );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] + $totals['blocks_left_alone'] );
+
+		$this->assertSame(
+			"[sourcecode language=\"php\"]\n[[sourcecode language=\"php\"]]\nfunction f() {}\n[[/sourcecode]]\n[/sourcecode]",
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'Both tags in the code have to be doubled, or the snippet ends where the author\'s closing tag is.'
+		);
+
+	}
+
+	/**
+	 * A block whose code could not be escaped is left as it was found and reported:
+	 * PCRE giving up reads like nothing to escape, and unescaped code would be cut
+	 * short at the first closing tag in it.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_leaves_a_block_whose_code_cannot_be_escaped_alone(): void {
+
+		$this->_make_pcre_give_up();
+
+		$shortcode = Block_Converter::get_instance()->block_to_shortcode(
+			[
+				'code'     => 'echo "[/sourcecode]";',
+				'language' => 'php',
+			]
+		);
+
+		$gave_up = $this->_pcre_is_giving_up();
+
+		$this->_restore_pcre();
+
+		$this->assertTrue( $gave_up, 'PCRE ran to completion, so this is not the test it says it is.' );
+		$this->assertNull( $shortcode, 'A shortcode was written from code that could not be escaped.' );
+
+	}
+
+	/**
+	 * A big snippet is the one most worth rescuing and the one a pattern gives up on.
+	 * The code carries `[`, so the shortcode range scan crosses the whole of it too,
+	 * and the whole route is exercised: the snippet reaches the database as a block,
+	 * comes back out, and goes in again as a shortcode.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_converts_a_snippet_far_too_big_for_a_pattern(): void {
+
+		$this->_become_administrator();
+
+		$code = '';
+
+		for ( $line = 0; $line < 5000; $line++ ) {
+			$code .= sprintf( "\$data[%d] = [ 'name' => \"row %d\", 'ok' => true ];\n", $line, $line );
+		}
+
+		$this->assertGreaterThan(
+			200 * KB_IN_BYTES,
+			strlen( $code ),
+			'The fixture is not big enough to be the test it says it is.'
+		);
+
+		$content = "Before.\n\n" . static::_block(
+			[
+				'code'     => $code,
+				'language' => 'php',
+			]
+		) . "\n\nAfter.";
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$this->assertSame(
+			$content,
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The fixture did not reach the database whole, so what follows would prove nothing.'
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] );
+
+		$this->assertSame(
+			sprintf( "Before.\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]\n\nAfter.", $code ),
+			get_post_field( 'post_content', $post_id, 'raw' )
+		);
+
+	}
+
+	/**
+	 * Code which reads like a delimiter does not end one: `serialize_block_attributes()`
+	 * escapes `--`, `<` and `>`, which is what the end of the delimiter is found by.
+	 * The rewrite is exercised on its own, since a shortcode holding a delimiter in its
+	 * code does not survive `Content_Protector` on the way to the database.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_keeps_a_delimiter_lookalike_in_the_code(): void {
+
+		$code = sprintf(
+			"function f() {\n\treturn { a: 1 };\n}\n// <!-- wp:%s {\"code\":\"gotcha\"} /--> and a bare --> as well\n",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$result = Block_Converter::get_instance()->convert_content(
+			static::_block(
+				[
+					'code'     => $code,
+					'language' => 'php',
+				]
+			)
+		);
+
+		$this->assertSame( 1, $result['converted'] );
+
+		$this->assertSame(
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $code ),
+			$result['content']
+		);
+
+	}
+
+	/**
+	 * A snippet about blocks still holds a delimiter after the first run, so the post
+	 * still matches the marker and is offered again. The second run has to leave it
+	 * alone: rewriting a delimiter inside a shortcode nests one shortcode in another.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_leaves_the_snippet_the_first_run_wrote_alone_on_a_second_run(): void {
+
+		$this->_become_administrator();
+
+		$code = sprintf(
+			"function f() {\n\treturn { a: 1 };\n}\n// <!-- wp:%s {\"code\":\"gotcha\"} /--> is in a comment\n",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					static::_block(
+						[
+							'code'     => $code,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		$first    = $this->_run_to_completion();
+		$expected = sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $code );
+
+		$this->assertSame( 1, $first['converted'] );
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+		$second = $this->_run_to_completion();
+
+		$this->assertSame( 1, $second['processed'], 'The marker is still in the content, so the post is still handed out.' );
+		$this->assertSame( 0, $second['converted'] + $second['failed'] );
+		$this->assertSame( 1, $second['skipped'], 'Nothing in the post was rewritten, so the post was left alone.' );
+		$this->assertSame( 0, $second['blocks_left_alone'], 'What is left is a snippet, not a block, so no block was left alone.' );
+
+		$this->assertSame(
+			$expected,
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The second run rewrote the snippet the first run wrote.'
+		);
+
+		$this->assertSame(
+			1,
+			Block_Converter::get_instance()->count_remaining(),
+			'The count is a LIKE over the content and the marker is still in it, so the post goes on being counted.'
+		);
+
+	}
+
+	/**
+	 * A scan that gave up rewrites nothing. PCRE giving up reads like "there are no
+	 * shortcodes here", and every delimiter inside one would then be rewritten.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_rewrites_nothing_on_a_scan_pcre_gave_up_on(): void {
+
+		$content = sprintf(
+			"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]\n\n",
+			Block_Converter::BLOCK_NAME
+		) . static::_block(
+			[
+				'code'     => self::_CODE,
+				'language' => 'php',
+			]
+		);
+
+		$limit = (string) ini_get( 'pcre.backtrack_limit' );
+
+		ini_set( 'pcre.backtrack_limit', '1' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Making PCRE give up on purpose is the only way to reach the branch under test. The value is put back below.
+
+		$result = Block_Converter::get_instance()->convert_content( $content );
+
+		ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the value saved above.
+
+		$this->assertNotSame( PREG_NO_ERROR, preg_last_error(), 'PCRE did not give up, so this is not the test it says it is.' );
+		$this->assertSame( 0, $result['converted'] + $result['skipped'] + $result['failed'] );
+		$this->assertSame( $content, $result['content'], 'A scan that gave up rewrote the content anyway.' );
+
+	}
+
+	/**
+	 * A delimiter inside a snippet is the author's text and a delimiter beside it is a
+	 * block, and the tool has to tell the two apart in the same post. Leaving the block
+	 * behind would be the fix for the case above overreaching.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_still_converts_a_block_beside_a_snippet_which_quotes_one(): void {
+
+		$this->_become_administrator();
+
+		$quoted = sprintf(
+			"[php]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/php]",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$quoted . "\n\n" . static::_block(
+						[
+							'code'     => self::_CODE,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'], 'The block beside the snippet is a block and had to convert.' );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] + $totals['blocks_left_alone'] );
+
+		$this->assertSame(
+			sprintf( "%s\n\n[sourcecode language=\"php\"]\n%s\n[/sourcecode]", $quoted, self::_CODE ),
+			get_post_field( 'post_content', $post_id, 'raw' ),
+			'The snippet quoting a delimiter is not byte identical to what went in.'
+		);
+
+	}
+
+	/**
+	 * A post whose rewrite cannot be written back is reported as a failure and keeps
+	 * every byte it had; a post reported as done while its blocks are still blocks
+	 * costs the site owner their code.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_reports_a_post_whose_write_fails_and_leaves_it_as_it_was(): void {
+
+		$this->_become_administrator();
+
+		$content = static::_block(
+			[
+				'code'     => self::_CODE,
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		add_filter( 'wp_insert_post_empty_content', '__return_true' );
+
+		$totals = $this->_run_to_completion();
+
+		remove_filter( 'wp_insert_post_empty_content', '__return_true' );
+
+		$this->assertSame( 1, $totals['failed'], 'The rewrite could not be written, so that is the bucket the post lands in.' );
+		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ), 'The write failed, so the post is exactly as it was.' );
+
+	}
+
+	/**
+	 * Every post examined lands in exactly one bucket, so the three add up to what
+	 * was processed; the progress meter is driven off that.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_adds_the_post_buckets_up_to_what_was_processed(): void {
+
+		$this->_become_administrator();
+
+		$this->_batch_size = 20;
+
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					static::_block(
+						[
+							'code'     => self::_CODE,
+							'language' => 'php',
+						]
+					)
+				),
+			]
+		);
+
+		// A delimiter inside one of this plugin's shortcodes matches the marker and has nothing to rewrite: a skipped post.
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					sprintf(
+						"[sourcecode language=\"php\"]\n// <!-- wp:%s {\"code\":\"gotcha\"} /-->\n[/sourcecode]",
+						Block_Converter::BLOCK_NAME
+					)
+				),
+			]
+		);
+
+		self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					sprintf( '<!-- wp:%s {"code": "echo 1;",} /-->', Block_Converter::BLOCK_NAME )
+				),
+			]
+		);
+
+		$batch = $this->_process( 0 );
+
+		$this->assertSame( 3, $batch['processed'] );
+		$this->assertSame( 1, $batch['converted'], 'The batch is only a mixed one if every bucket got a post.' );
+		$this->assertSame( 1, $batch['skipped'], 'The batch is only a mixed one if every bucket got a post.' );
+		$this->assertSame( 1, $batch['failed'], 'The batch is only a mixed one if every bucket got a post.' );
+
+	}
+
+	/**
+	 * A delimiter the tool cannot read is reported as a failure, not as a post it
+	 * chose to leave alone: one is the site owner's to look at, the other is not.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_counts_a_delimiter_that_cannot_be_read_as_a_failure_and_not_a_skip(): void {
+
+		$this->_become_administrator();
+
+		$content = sprintf(
+			"Before.\n\n<!-- wp:%s {\"code\": \"echo 1;\",} /-->\n\nAfter.",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['failed'] );
+		$this->assertSame( 0, $totals['converted'] + $totals['skipped'] );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A delimiter which is not self closing is not this plugin's block, whatever its
+	 * name says, and is left exactly where it was found.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_leaves_a_delimiter_which_is_not_self_closing_byte_identical(): void {
+
+		$this->_become_administrator();
+
+		$content = sprintf(
+			"<!-- wp:%1\$s {\"code\":\"echo 1;\"} -->\n<pre>echo 1;</pre>\n<!-- /wp:%1\$s -->",
+			Block_Converter::BLOCK_NAME
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 0, $totals['converted'] + $totals['failed'] );
+		$this->assertSame( 1, $totals['skipped'] );
+		$this->assertSame( 0, $totals['blocks_left_alone'], 'Nothing here is a block of this plugin\'s, so nothing was left alone.' );
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * A block carrying no code has nothing to show a reader, so it is taken out
+	 * rather than written into the post as an empty shortcode.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_removes_a_block_carrying_no_code(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "Before.\n\n";
+		$suffix = "\n\nAfter.";
+
+		$post_id = self::factory()->post->create(
+			[ 'post_content' => wp_slash( $prefix . static::_block( [] ) . $suffix ) ]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+	}
+
+	/**
+	 * The batching is cursor based, so it never slides over a post as the rows it
+	 * is walking stop matching.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_gets_through_every_post_in_batches(): void {
+
+		$this->_become_administrator();
+
+		$this->_batch_size = 2;
+
+		$post_ids = [];
+
+		for ( $i = 0; $i < 7; $i++ ) {
+			$post_ids[] = self::factory()->post->create(
+				[
+					'post_content' => wp_slash(
+						sprintf( 'Post %d.', $i ) . "\n\n" . static::_block(
+							[
+								'code'     => sprintf( 'echo %d;', $i ),
+								'language' => 'php',
+							]
+						)
+					),
+				]
+			);
+		}
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 7, $totals['converted'] );
+		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] );
+		$this->assertGreaterThan( 3, $totals['requests'], 'Seven posts in batches of two cannot be one request.' );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+		foreach ( $post_ids as $index => $post_id ) {
+
+			$content = get_post_field( 'post_content', $post_id, 'raw' );
+
+			$this->assertStringNotContainsString( Block_Converter::BLOCK_MARKER, $content );
+			$this->assertStringContainsString( sprintf( "[sourcecode language=\"php\"]\necho %d;\n[/sourcecode]", $index ), $content );
+
+		}
+
+	}
+
+	/**
+	 * A run that stops halfway leaves the site in a state the next run picks up from,
+	 * and the posts it already finished are not touched a second time.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_resumes_an_interrupted_run_without_doing_anything_twice(): void {
+
+		$this->_become_administrator();
+
+		$this->_batch_size = 2;
+
+		for ( $i = 0; $i < 5; $i++ ) {
+			self::factory()->post->create(
+				[
+					'post_content' => wp_slash(
+						static::_block(
+							[
+								'code'     => sprintf( 'echo %d;', $i ),
+								'language' => 'php',
+							]
+						)
+					),
+				]
+			);
+		}
+
+		$first = $this->_process( 0 );
+
+		$this->assertSame( 2, $first['converted'] );
+		$this->assertFalse( $first['done'] );
+
+		// The browser was closed, so the next run starts over from the beginning.
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 3, $totals['converted'] );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+		$query = new \WP_Query(
+			[
+				'post_type'              => 'post',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			]
+		);
+
+		$this->assertCount( 5, $query->posts );
+
+		foreach ( $query->posts as $post_id ) {
+			$this->assertSame(
+				1,
+				substr_count( (string) get_post_field( 'post_content', $post_id, 'raw' ), '[sourcecode ' ),
+				'A post already converted was converted again.'
+			);
+		}
+
+	}
+
+	/**
+	 * The scope is public post types and every status but the two which mean the
+	 * content is gone. Drafts and scheduled posts are in; the trash is not.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_covers_drafts_but_not_the_trash(): void {
+
+		$this->_become_administrator();
+
+		$this->_batch_size = 20;
+
+		$content = static::_block(
+			[
+				'code'     => 'echo 1;',
+				'language' => 'php',
+			]
+		);
+
+		$in  = [];
+		$out = [];
+
+		foreach ( [ 'publish', 'draft', 'pending', 'private', 'future' ] as $status ) {
+
+			$args = [
+				'post_content' => wp_slash( $content ),
+				'post_status'  => $status,
+			];
+
+			if ( 'future' === $status ) {
+				$args['post_date'] = gmdate( 'Y-m-d H:i:s', time() + YEAR_IN_SECONDS );
+			}
+
+			$in[ $status ] = self::factory()->post->create( $args );
+
+		}
+
+		foreach ( [ 'trash', 'auto-draft' ] as $status ) {
+			$out[ $status ] = self::factory()->post->create(
+				[
+					'post_content' => wp_slash( $content ),
+					'post_status'  => $status,
+				]
+			);
+		}
+
+		$this->_run_to_completion();
+
+		foreach ( $in as $status => $post_id ) {
+			$this->assertStringNotContainsString(
+				Block_Converter::BLOCK_MARKER,
+				(string) get_post_field( 'post_content', $post_id, 'raw' ),
+				sprintf( 'A %s post was left holding a block.', $status )
+			);
+		}
+
+		foreach ( $out as $status => $post_id ) {
+			$this->assertSame(
+				$content,
+				get_post_field( 'post_content', $post_id, 'raw' ),
+				sprintf( 'A %s post was rewritten, and it should not have been.', $status )
+			);
+		}
+
+	}
+
+	/**
+	 * The route which rewrites content is behind the same check as the one which
+	 * saves a setting, and a refusal changes nothing.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_refuses_the_revert_route_to_anybody_who_may_not_manage_options(): void {
+
+		$content = static::_block(
+			[
+				'code'     => 'echo 1;',
+				'language' => 'php',
+			]
+		);
+
+		$post_id = self::factory()->post->create( [ 'post_content' => wp_slash( $content ) ] );
+
+		wp_set_current_user( 0 );
+
+		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'GET', self::_ROUTE ) )->get_status() );
+		$this->assertSame( 401, rest_do_request( new WP_REST_Request( 'POST', self::_ROUTE ) )->get_status() );
+
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'subscriber' ] ) );
+
+		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'GET', self::_ROUTE ) )->get_status() );
+		$this->assertSame( 403, rest_do_request( new WP_REST_Request( 'POST', self::_ROUTE ) )->get_status() );
+
+		$this->assertSame( $content, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * The tag the tool writes is the generic one every version has read, pinned as a
+	 * literal so a rename anywhere in the chain fails here.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_always_writes_the_generic_tag(): void {
+
+		$this->assertSame( 'sourcecode', Block_Converter::SHORTCODE_TAG );
+
+	}
+
+	/**
+	 * The Gist block vanishes on deactivation exactly as the code block does, so it
+	 * is converted too. The address it becomes is the one the embed already resolved
+	 * it to, and every other byte of the post is where it was.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_turns_a_gist_block_into_a_github_shortcode(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "<!-- wp:paragraph -->\n<p>Before the Gist.</p>\n<!-- /wp:paragraph -->\n\n";
+		$suffix = "\n\n<!-- wp:paragraph -->\n<p>After the Gist.</p>\n<!-- /wp:paragraph -->";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$prefix . static::_gist_block( [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ] ) . $suffix
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+
+		$expected = $prefix . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]' . $suffix;
+
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+		// The shortcode carries no delimiter, so the post stops matching the marker and a second run is handed nothing.
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+		$second = $this->_run_to_completion();
+
+		$this->assertSame( 0, $second['processed'] );
+		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
+
+	}
+
+	/**
+	 * The shortcode the tool writes embeds the same Gist the block embedded. A revert
+	 * which changed what the reader sees would not be a revert.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_embeds_the_same_from_the_github_shortcode_as_from_the_gist_block(): void {
+
+		$this->_become_administrator();
+
+		Gist_Embed::get_instance();
+
+		$attributes = [ 'url' => 'https://gist.github.com/coolamit/9a1b2c3d4e5f' ];
+		$from_block = Block::get_instance()->render_gist( $attributes );
+
+		$this->assertNotSame( '', $from_block, 'The fixture has to render something for this to be measuring anything.' );
+
+		$post_id = self::factory()->post->create(
+			[ 'post_content' => wp_slash( static::_gist_block( $attributes ) ) ]
+		);
+
+		$this->_run_to_completion();
+
+		$rendered = apply_filters( 'the_content', get_post_field( 'post_content', $post_id, 'raw' ) );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hook is what an integration test does.
+
+		$this->assertStringContainsString( $from_block, $rendered );
+
+	}
+
+	/**
+	 * A post holding one of each converts both, and it is still one post converted:
+	 * the buckets count posts and only the blocks inside them are of two kinds.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_converts_both_blocks_in_a_post_holding_both(): void {
+
+		$this->_become_administrator();
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					static::_block(
+						[
+							'code'     => self::_CODE,
+							'language' => 'php',
+						]
+					) . "\n\n" . static::_gist_block( [ 'url' => 'https://gist.github.com/9a1b2c3d4e5f' ] )
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['processed'] );
+		$this->assertSame( 1, $totals['converted'] );
+
+		$this->assertSame(
+			sprintf( "[sourcecode language=\"php\"]\n%s\n[/sourcecode]", self::_CODE ) . "\n\n" . '[github gist="https://gist.github.com/9a1b2c3d4e5f"]',
+			get_post_field( 'post_content', $post_id, 'raw' )
+		);
+
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+	}
+
+	/**
+	 * A Gist block naming no Gist this plugin will print shows a reader nothing
+	 * today, so it is taken out rather than written into the post as a shortcode
+	 * that would show them nothing either.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_removes_a_gist_block_naming_no_gist(): void {
+
+		$this->_become_administrator();
+
+		$prefix = "Before.\n\n";
+		$suffix = "\n\nAfter.";
+
+		$post_id = self::factory()->post->create(
+			[
+				'post_content' => wp_slash(
+					$prefix . static::_gist_block( [ 'url' => 'https://example.com/not a gist/..' ] ) . $suffix
+				),
+			]
+		);
+
+		$totals = $this->_run_to_completion();
+
+		$this->assertSame( 1, $totals['converted'] );
+		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
+
+	}
+
+	/**
+	 * A Gist delimiter written inside a snippet is somebody documenting this plugin,
+	 * not a block, so it is left exactly where it was found.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_leaves_a_gist_delimiter_inside_a_snippet_alone(): void {
+
+		$content = sprintf(
+			"[sourcecode language=\"html\"]\n<!-- wp:%s {\"url\":\"https://gist.github.com/9a1b2c3d4e5f\"} /-->\n[/sourcecode]",
+			Block_Converter::GIST_BLOCK_NAME
+		);
+
+		$result = Block_Converter::get_instance()->convert_content( $content );
+
+		$this->assertSame( 0, $result['converted'] );
+		$this->assertSame( $content, $result['content'] );
+
+	}
+
+	/**
+	 * The Gist block name the tool matches and the shortcode tag it writes are the ones
+	 * stored content carries, pinned as literals so a rename anywhere in the chain fails here.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_names_the_gist_block_and_tag_stored_content_carries(): void {
+
+		$this->assertSame( 'igsyntax-hiliter/gist', Block_Converter::GIST_BLOCK_NAME );
+		$this->assertSame( 'github', Block_Converter::GIST_SHORTCODE_TAG );
+
+	}
+
+	/**
+	 * The revert tool's one registration.
+	 *
+	 * The settings screen drives the tool entirely over REST, so without this the
+	 * Uninstall section's buttons answer 404.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_registers_the_block_converters_hooks(): void {
+
+		$converter = Block_Converter::get_instance();
+
+		$this->_assert_hooked(
+			'rest_api_init',
+			[ $converter, 'register_rest_routes' ],
+			null,
+			'The revert routes exist, which is the only way the tool can be reached.'
+		);
+
+	}
+
+	/**
+	 * The revert tool keeps it rather than dropping the block. The other two cases are
+	 * a snippet which does not show up; this one is a snippet gone from the post for good.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_keeps_a_block_whose_code_is_zero_in_the_revert_tool(): void {
+
+		$block = static::_block(
+			[
+				'code'     => static::_ZERO,
+				'language' => 'php',
+			]
+		);
+
+		$result = Block_Converter::get_instance()->convert_content( $block );
+
+		$this->assertSame( 1, $result['converted'], 'The block was not converted.' );
+
+		$this->assertStringContainsString(
+			static::_ZERO,
+			$result['content'],
+			'The revert tool dropped the block, so the code is no longer in the post at all.'
+		);
+
+		$this->assertStringNotContainsString(
+			'<!-- wp:',
+			$result['content'],
+			'A block delimiter survived the rewrite.'
+		);
+
+		$rendered = $this->_filter( 'the_content', $result['content'] );
+
+		$this->assertStringContainsString(
+			'>' . static::_ZERO . '<',
+			$rendered,
+			'The shortcode the tool wrote does not render the code it was given.'
+		);
+
+	}
+
+} // end of class
+
+// EOF

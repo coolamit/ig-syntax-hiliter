@@ -1,0 +1,65 @@
+# Files and directories that are NOT part of the released plugin.
+# What ships: runtime PHP, assets/build/, assets/lib/, templates/, readmes, changelog, licences.
+#
+# Not a .gitignore. Both 10up actions feed this to `rsync --exclude-from`, so these are rsync
+# patterns over the working tree on disk: assets/build/ ships because it is git-ignored but present.
+# Without this file both actions fall back to `git archive`, which cannot see assets/build/.
+# No negation. A pattern with no slash matches that basename at any depth; one with a slash
+# matches the path tail; a trailing slash restricts to directories.
+
+# Version control and forge config. `.git*` covers all of these; the rest are for readability.
+.git*
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.github/
+
+# WordPress.org listing assets; the deploy action reads them from the checkout, not the plugin.
+.wordpress-org/
+
+# Local tooling and scratch space. Not committed, but rsync copies from disk.
+.specs/
+.scratchpad/
+.claude/
+.ai/
+.agents/
+CLAUDE.md
+Makefile
+.editorconfig
+.DS_Store
+Thumbs.db
+
+# Dev dependencies. Composer is dev-only and the block is bundled by wp-scripts.
+node_modules/
+vendor/
+
+# Sources compiled before release: assets/src/ -> assets/build/. The output tree ships; the
+# release job runs `npm run build` before packaging.
+assets/src/
+
+# Build-tool and test-runner config.
+package.json
+package-lock.json
+composer.json
+composer.lock
+phpcs.xml
+phpcs.xml.dist
+phpunit.xml
+phpunit.xml.dist
+# A glob, so a third tsconfig does not ship.
+tsconfig*.json
+# Ambient TypeScript declarations, read only by `tsc --noEmit`.
+types/
+.nvmrc
+.distignore
+
+# Tests and tooling caches.
+tests/
+.phpunit.cache
+.phpunit.result.cache
+.phpcs.cache
+
+# Scratch directories the release workflow creates in the workspace; listed so they can never reach the archive.
+zipfile/
+dist/

@@ -1,0 +1,16 @@
+/*
+ * Keeps an embedded Gist to a readable height.
+ * Loaded only when the "Limit the height of Gist embeds" setting is on.
+ */
+
+.gist {
+
+	/*
+	 * `.gist-data` is one file, so a multi-file Gist gets a box each.
+	 * `max-height` is a ceiling.
+	 */
+	.gist-data {
+		max-height: 400px;
+		overflow: auto;
+	}
+}

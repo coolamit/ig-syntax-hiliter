@@ -1,0 +1,45 @@
+/**
+ * Editor styling for the code snippet block — a snippet is edited as plain
+ * text and has to look like code.
+ */
+
+/*
+ * Fallback of a custom property rather than a value of its own: inside the
+ * editor iframe the plugin's chosen-font rule loads before this stylesheet, so
+ * a plain `font-family` here would lose.
+ */
+/* stylelint-disable-next-line value-keyword-case -- Font names. */
+$igsh-editor-font: Menlo, Consolas, "DejaVu Sans Mono", monaco, monospace;
+
+.wp-block-igsyntax-hiliter-code {
+
+	.igsh-code-block__input {
+		display: block;
+		box-sizing: border-box;
+		width: 100%;
+		padding: 1em;
+		border: 1px solid #e0e0e0;
+		border-radius: 2px;
+		background: #f6f7f7;
+		color: #1e1e1e;
+		font-family: var(--igsh-editor-font, #{$igsh-editor-font});
+
+		/*
+		 * Never ligatures in a textarea: a caret cannot sit inside one glyph
+		 * standing for two. `none` covers contextual alternates, and `->`/`=>`
+		 * are contextual.
+		 */
+		font-variant-ligatures: none;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		tab-size: 4;
+		white-space: pre;
+		overflow-x: auto;
+		resize: none;
+	}
+
+	.igsh-code-block__input::placeholder {
+		color: #757575;
+		opacity: 1;
+	}
+}

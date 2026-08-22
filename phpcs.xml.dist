@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<ruleset name="iG Syntax Hiliter">
+
+	<description>Coding standards for the iG:Syntax Hiliter plugin.</description>
+
+	<!--
+		#############################################################################
+		FILES TO CHECK
+		#############################################################################
+
+		Every tracked PHP file, so a new file is covered without touching this list.
+	-->
+	<file>classes</file>
+	<file>tests</file>
+	<file>templates</file>
+	<file>ig-syntax-hiliter.php</file>
+	<file>autoloader.php</file>
+	<file>uninstall.php</file>
+
+	<!--
+		#############################################################################
+		COMMAND LINE DEFAULTS
+		#############################################################################
+	-->
+	<arg name="extensions" value="php"/>
+	<arg name="basepath" value="."/>
+	<arg name="cache" value=".phpcs.cache"/>
+	<arg name="tab-width" value="4"/>
+	<arg name="colors"/>
+	<arg value="sp"/><!-- Show sniff codes and progress. -->
+
+	<!--
+		#############################################################################
+		PATHS THAT ARE NEVER CHECKED
+		#############################################################################
+	-->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<!-- Generated output, assets/build/. -->
+	<exclude-pattern>*/build/*</exclude-pattern>
+	<exclude-pattern>*/assets/lib/*</exclude-pattern><!-- Vendored Prism.js. -->
+	<exclude-pattern>*/.scratchpad/*</exclude-pattern>
+
+	<!--
+		#############################################################################
+		RULE SETS
+		#############################################################################
+
+		`WordPress` is Core + Docs + Extra, referenced as one ruleset so WPCS additions are picked up.
+	-->
+	<rule ref="WordPress"/>
+
+	<!-- Minimum PHP version the plugin supports. -->
+	<rule ref="PHPCompatibilityWP"/>
+	<config name="testVersion" value="8.4-"/>
+
+	<!-- Minimum WordPress version the plugin supports. -->
+	<config name="minimum_wp_version" value="6.9"/>
+
+	<!--
+		#############################################################################
+		SNIFF CONFIGURATION
+		#############################################################################
+	-->
+
+	<!-- Tabs for indentation, never spaces. -->
+	<rule ref="Generic.WhiteSpace.DisallowSpaceIndent"/>
+	<rule ref="Universal.WhiteSpace.PrecisionAlignment">
+		<properties>
+			<property name="ignoreAlignmentBefore" type="array">
+				<element value="T_COMMENT"/>
+				<element value="T_DOC_COMMENT_WHITESPACE"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Spaces inside parentheses: foo( $bar ). -->
+	<rule ref="WordPress.WhiteSpace.ControlStructureSpacing">
+		<properties>
+			<property name="blank_line_check" value="false"/>
+		</properties>
+	</rule>
+
+	<!-- Every PHP file ends with `// EOF` and every class with `// end of class`; neither ends in a period, which is what this sniff wants. -->
+	<rule ref="Squiz.Commenting.InlineComment.InvalidEndChar">
+		<severity>0</severity>
+	</rule>
+
+	<!-- House style: a blank line after the opening brace and before the closing one. -->
+	<rule ref="PSR2.Methods.FunctionClosingBrace.SpacingBeforeClose">
+		<severity>0</severity>
+	</rule>
+	<rule ref="PSR2.Classes.ClassDeclaration.CloseBraceAfterBody">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Text domain used by every translation function in the plugin. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="igsyntax-hiliter"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Everything global must carry one of the plugin's prefixes. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="ig_syntax_hiliter"/>
+				<element value="IG_SYNTAX_HILITER"/>
+				<element value="iG\Syntax_Hiliter"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!--
+		#############################################################################
+		PER PATH EXCEPTIONS
+		#############################################################################
+	-->
+
+	<!-- Short array syntax, enforced: WPCS's `array()` mandate off, the opposite rule on. -->
+	<rule ref="Universal.Arrays.DisallowShortArraySyntax">
+		<severity>0</severity>
+	</rule>
+	<rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+
+	<!-- A leading underscore marks a protected member; the visibility keyword is present too. -->
+	<rule ref="PSR2.Classes.PropertyDeclaration.Underscore">
+		<severity>0</severity>
+	</rule>
+	<rule ref="PSR2.Methods.MethodDeclaration.Underscore">
+		<severity>0</severity>
+	</rule>
+
+	<!-- The `iG` branding starts lowercase, and the test class is named after the class. -->
+	<rule ref="PEAR.NamingConventions.ValidClassName.StartWithCapital">
+		<exclude-pattern>*/classes/class-ig-syntax-hiliter-gatekeeper.php</exclude-pattern>
+		<exclude-pattern>*/tests/*/class-ig-syntax-hiliter-gatekeeper-test.php</exclude-pattern>
+	</rule>
+
+	<!-- Test bootstraps run before or without WordPress: no WP_Filesystem, and STDERR is their only output. -->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>*/tests/*</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<exclude-pattern>*/tests/*wp-tests-config.php</exclude-pattern>
+	</rule>
+
+</ruleset>

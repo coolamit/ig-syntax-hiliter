@@ -1,0 +1,101 @@
+/*
+ * The bits the Prism themes do not cover.
+ * Compiled to `assets/build/css/frontend-chrome.css`.
+ */
+
+/*
+ * The fallback of a custom property, so the font setting supplies only a value
+ * and never a rule.
+ */
+/* stylelint-disable-next-line value-keyword-case -- Font names. */
+$igsh-code-font: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+
+.igsh-code-box {
+	max-width: 100%;
+
+	/*
+	 * The file name label. Sits above the box and outside it: the line-numbers
+	 * plugin owns the left gutter and the line-highlight plugin the top-left
+	 * corner, and anything added inside the `pre` slides those overlays off the
+	 * lines they mark.
+	 */
+	&__file {
+		display: block;
+		margin: 0 0 2px;
+		overflow: hidden;
+		font-family: inherit;
+		font-size: 0.8em;
+		font-style: italic;
+		line-height: 1.6;
+		text-align: left;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		opacity: 0.75;
+	}
+
+	/*
+	 * Minimal styling for sites loading no theme. Positioned because the
+	 * line-highlight plugin hangs its overlay off it. `[class*="language-"]`
+	 * takes the selector to 0-2-1, past every theme; descendant and never
+	 * child, because the toolbar plugin wraps each `pre` in a `.code-toolbar`
+	 * div at runtime.
+	 */
+	pre[class*="language-"] {
+		position: relative;
+		overflow: auto;
+		max-width: 100%;
+		tab-size: 4;
+
+		/*
+		 * Scrolls sideways, never wraps — a wrapped line puts the numbers out
+		 * of step with the code. Declared on the `pre` because Prism's
+		 * line-numbers plugin sets `white-space: inherit` on the `code` at the
+		 * same 0-2-2 and loads later.
+		 */
+		white-space: pre;
+		word-wrap: normal;
+	}
+
+	/* `.igsh-code-box pre > code` — descendant to the `pre`, child from it. */
+	pre > code {
+		display: block;
+		white-space: pre;
+		word-wrap: normal;
+
+		/*
+		 * PHP sends only the values; the selectors and fallbacks are here. The
+		 * token spans are claimed as well as the `code`, for `prism-z-touch`, which
+		 * sets `pre[class*="language-"] * { font-family: monospace }`. `inherit` is
+		 * the fallback for the last two. The bare `*` rather than `& *` is for
+		 * stylelint's `scss/selector-no-redundant-nesting-selector`; both
+		 * compile the same.
+		 */
+		&,
+		* {
+			font-family: var(--igsh-code-font, #{$igsh-code-font});
+			font-variant-ligatures: var(--igsh-code-ligatures, inherit);
+			letter-spacing: var(--igsh-code-letter-spacing, inherit);
+		}
+	}
+}
+
+/*
+ * Toolbar opt out. Put `igsh-no-toolbar` on the `pre` or anything wrapping it;
+ * the toolbar plugin wraps each `pre` in a `.code-toolbar` div, so both shapes
+ * need covering. The `pre` selector is the hook for a theme's own CSS.
+ */
+pre.igsh-no-toolbar ~ .toolbar,
+.igsh-no-toolbar .code-toolbar > .toolbar {
+	display: none;
+}
+
+/*
+ * The themes paint a `language-none` box like any other; this just keeps the
+ * text in the box colour.
+ */
+code.language-none,
+pre[class*="language-"] > code.language-none {
+	color: inherit;
+	background: none;
+	text-shadow: none;
+}

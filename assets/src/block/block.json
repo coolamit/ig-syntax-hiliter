@@ -1,0 +1,47 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "igsyntax-hiliter/code",
+	"title": "iG:Syntax Hiliter",
+	"category": "formatting",
+	"icon": "editor-code",
+	"description": "Post syntax highlighted source code.",
+	"keywords": [ "code", "syntax", "highlight", "snippet", "source" ],
+	"textdomain": "igsyntax-hiliter",
+	"supports": {
+		"html": false,
+		"customClassName": false,
+		"anchor": false,
+		"align": false,
+		"color": false,
+		"spacing": false,
+		"typography": false
+	},
+	"attributes": {
+		"code": {
+			"type": "string",
+			"default": ""
+		},
+		"language": {
+			"type": "string",
+			"default": ""
+		},
+		"showLineNumbers": {
+			"type": "boolean"
+		},
+		"firstLine": {
+			"type": "number",
+			"default": 1
+		},
+		"highlightLines": {
+			"type": "string",
+			"default": ""
+		},
+		"file": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"editorScript": "file:./index.ts",
+	"editorStyle": "file:./index.css"
+}

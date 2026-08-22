@@ -1,0 +1,369 @@
+<?php
+/**
+ * Tests for the language registry.
+ *
+ * @package iG_Syntax_Hiliter
+ */
+
+declare( strict_types = 1 );
+
+namespace iG\Syntax_Hiliter\Tests\Unit;
+
+use iG\Syntax_Hiliter\Language_Registry;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Manifest parsing, overlaying and resolution.
+ *
+ * All of it is the WordPress free half of the class; the half which knows about
+ * options, caching and filters belongs to the integration tier.
+ */
+class Language_Registry_Test extends TestCase {
+
+	/**
+	 * Temporary directory made for a test, removed afterwards.
+	 *
+	 * @var string
+	 */
+	protected string $temp_dir = '';
+
+	/**
+	 * Clean up any temporary directory the test made.
+	 *
+	 * @return void
+	 */
+	protected function tearDown(): void {
+
+		if ( ! empty( $this->temp_dir ) && is_dir( $this->temp_dir ) ) {
+
+			foreach ( (array) glob( $this->temp_dir . '/*' ) as $file ) {
+				unlink( (string) $file );
+			}
+
+			rmdir( $this->temp_dir );
+
+		}
+
+		$this->temp_dir = '';
+
+		parent::tearDown();
+
+	}
+
+	/**
+	 * Makes a throwaway directory for a test to write fixtures into.
+	 *
+	 * @return string Absolute path with no trailing slash.
+	 */
+	protected function make_temp_dir(): string {
+
+		$this->temp_dir = sys_get_temp_dir() . '/igsh-registry-' . uniqid( '', true );
+
+		mkdir( $this->temp_dir, 0777, true );
+
+		return $this->temp_dir;
+
+	}
+
+	/**
+	 * A registry which knows a few languages and a few aliases.
+	 *
+	 * @return \iG\Syntax_Hiliter\Language_Registry
+	 */
+	protected function get_fixture_registry(): Language_Registry {
+
+		return new Language_Registry(
+			[
+				'languages' => [
+					'javascript' => [
+						'title' => 'JavaScript',
+					],
+					'markup'     => [
+						'title' => 'Markup',
+					],
+				],
+				'aliases'   => [
+					'js'    => 'javascript',
+					'html'  => 'markup',
+					'ghost' => 'nowhere',
+				],
+			]
+		);
+
+	}
+
+	/**
+	 * A manifest entry is kept only when its language file is actually there.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_intersects_the_manifest_with_the_files_on_disk(): void {
+
+		$dir = $this->make_temp_dir();
+
+		file_put_contents( $dir . '/prism-present.min.js', '// present' );
+		file_put_contents(
+			$dir . '/components.json',
+			(string) json_encode(
+				[
+					'languages' => [
+						'meta'    => [ 'path' => 'components/prism-{id}' ],
+						'present' => [ 'title' => 'Present' ],
+						'missing' => [ 'title' => 'Missing' ],
+					],
+				]
+			)
+		);
+
+		$registry = Language_Registry::get_instance()->parse_manifest( $dir . '/components.json', $dir );
+
+		$this->assertArrayHasKey( 'present', $registry['languages'] );
+		$this->assertArrayNotHasKey( 'missing', $registry['languages'] );
+		$this->assertArrayNotHasKey( 'meta', $registry['languages'] );
+		$this->assertSame( 'Present', $registry['languages']['present']['title'] );
+
+	}
+
+	/**
+	 * Aliases are read whether the manifest gives one or many.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_reads_the_manifest_aliases(): void {
+
+		$dir = $this->make_temp_dir();
+
+		file_put_contents( $dir . '/prism-one.min.js', '// one' );
+		file_put_contents( $dir . '/prism-two.min.js', '// two' );
+		file_put_contents(
+			$dir . '/components.json',
+			(string) json_encode(
+				[
+					'languages' => [
+						'one' => [
+							'title' => 'One',
+							'alias' => 'uno',
+						],
+						'two' => [
+							'title' => 'Two',
+							'alias' => [ 'dos', 'DUE' ],
+						],
+					],
+				]
+			)
+		);
+
+		$registry = Language_Registry::get_instance()->parse_manifest( $dir . '/components.json', $dir );
+
+		$this->assertSame(
+			[
+				'uno' => 'one',
+				'dos' => 'two',
+				'due' => 'two',
+			],
+			$registry['aliases']
+		);
+
+	}
+
+	/**
+	 * A manifest which is missing, empty or malformed yields an empty registry.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_survives_an_unreadable_manifest(): void {
+
+		$dir = $this->make_temp_dir();
+
+		file_put_contents( $dir . '/broken.json', '{ not json at all' );
+
+		$empty = [
+			'languages' => [],
+			'aliases'   => [],
+		];
+
+		$this->assertSame( $empty, Language_Registry::get_instance()->parse_manifest( $dir . '/nope.json', $dir ) );
+		$this->assertSame( $empty, Language_Registry::get_instance()->parse_manifest( $dir . '/broken.json', $dir ) );
+
+	}
+
+	/**
+	 * An overlay replaces the language of the same name and adds its own.
+	 *
+	 * The plugin builds with no overlay of its own; this covers the `ig_syntax_hiliter/languages` filter.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_lets_an_overlay_replace_the_bundled_languages(): void {
+
+		$base = [
+			'languages' => [
+				'php'  => [
+					'title' => 'PHP',
+				],
+				'ruby' => [
+					'title' => 'Ruby',
+				],
+			],
+			'aliases'   => [
+				'rb'    => 'ruby',
+				'stale' => 'perl',
+			],
+		];
+
+		$overlay = [
+			'languages' => [
+				'php'    => [
+					'title' => 'php',
+				],
+				'mylang' => [
+					'title' => 'mylang',
+				],
+			],
+			'aliases'   => [],
+		];
+
+		$merged = Language_Registry::get_instance()->merge( $base, $overlay );
+
+		$this->assertSame( 'php', $merged['languages']['php']['title'], 'The overlay wins where both name the same language.' );
+		$this->assertSame( 'Ruby', $merged['languages']['ruby']['title'], 'And a language the overlay says nothing about is left as it was.' );
+		$this->assertArrayHasKey( 'mylang', $merged['languages'] );
+
+		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
+
+	}
+
+	/**
+	 * Called with no overlay, the merge still drops a dangling alias and sorts.
+	 *
+	 * That is the shape `build()` uses it in.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_still_tidies_the_registry_when_merging_nothing(): void {
+
+		$merged = Language_Registry::get_instance()->merge(
+			[
+				'languages' => [
+					'ruby' => [
+						'title' => 'Ruby',
+					],
+					'php'  => [
+						'title' => 'PHP',
+					],
+				],
+				'aliases'   => [
+					'rb'    => 'ruby',
+					'stale' => 'perl',
+					'php'   => 'ruby',
+				],
+			]
+		);
+
+		$this->assertSame( [ 'php', 'ruby' ], array_keys( $merged['languages'] ) );
+
+		// stale points nowhere; php shadows a language id.
+		$this->assertSame( [ 'rb' => 'ruby' ], $merged['aliases'] );
+
+	}
+
+	/**
+	 * Resolution is case insensitive, whitespace tolerant and alias aware, and
+	 * anything it cannot confirm resolves to nothing, a dangling alias included.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_resolves_only_a_name_it_can_confirm(): void {
+
+		$registry = $this->get_fixture_registry();
+
+		$this->assertSame( 'javascript', $registry->resolve( 'javascript' ) );
+		$this->assertSame( 'javascript', $registry->resolve( 'js' ) );
+		$this->assertSame( 'javascript', $registry->resolve( '  JS  ' ) );
+		$this->assertSame( 'javascript', $registry->resolve( 'JavaScript' ) );
+		$this->assertSame( 'markup', $registry->resolve( 'HTML' ) );
+
+		$this->assertNull( $registry->resolve( 'madeuplang' ) );
+		$this->assertNull( $registry->resolve( '' ) );
+		$this->assertNull( $registry->resolve( '   ' ) );
+		$this->assertNull( $registry->resolve( Language_Registry::NO_LANGUAGE ) );
+		$this->assertNull( $registry->resolve( 'ghost' ) );
+
+	}
+
+	/**
+	 * The registry answers the questions the renderer and asset manager ask of it.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_answers_the_lookups_the_renderer_and_asset_manager_make(): void {
+
+		$registry = $this->get_fixture_registry();
+
+		$this->assertTrue( $registry->has( 'javascript' ) );
+		$this->assertTrue( $registry->has( ' JavaScript ' ) );
+		$this->assertFalse( $registry->has( 'js' ) );
+		$this->assertFalse( $registry->has( 'madeuplang' ) );
+
+		$this->assertSame(
+			[
+				[
+					'id'    => 'javascript',
+					'title' => 'JavaScript',
+				],
+				[
+					'id'    => 'markup',
+					'title' => 'Markup',
+				],
+			],
+			$registry->get_choices()
+		);
+
+	}
+
+	/**
+	 * The manifest the plugin actually ships parses, and holds what it should.
+	 *
+	 * Checks that the shipped manifest is readable, that its aliases survive parsing,
+	 * and that the two ids which are not languages are not treated as though they were.
+	 *
+	 * @test
+	 *
+	 * @return void
+	 */
+	public function it_parses_the_manifest_the_plugin_ships(): void {
+
+		$library  = dirname( __DIR__, 2 ) . '/assets/lib/prism';
+		$registry = new Language_Registry(
+			Language_Registry::get_instance()->parse_manifest(
+				$library . '/components.json',
+				$library . '/components'
+			)
+		);
+
+		$this->assertGreaterThan( 250, count( $registry->get_languages() ) );
+
+		$this->assertSame( 'bash', $registry->resolve( 'shell' ) );
+
+		// "none" is a convention of the highlighter, not a language it can load.
+		$this->assertFalse( $registry->has( Language_Registry::NO_LANGUAGE ) );
+
+	}
+
+} // end of class
+
+// EOF

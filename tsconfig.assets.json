@@ -1,0 +1,37 @@
+{
+	// The plugin's own scripts: assets/src/js/ -> assets/build/js/. Classic global scripts, no modules.
+	// Unlike tsconfig.json this one emits: `npm run build:js` compiles with it, and `noEmitOnError`
+	// makes a type error fail the build. `npm run lint:types` passes --noEmit on the command line.
+	"compilerOptions": {
+		// ES2018 rather than src/'s ES2022: ig-prism-setup runs for every visitor.
+		// The lib needs ES2018 for Promise.prototype.finally.
+		"target": "ES2018",
+		"module": "none",
+		"lib": [ "ES2018", "DOM", "DOM.Iterable" ],
+
+		"strict": true,
+		"noImplicitOverride": true,
+		"noUncheckedIndexedAccess": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+
+		"allowJs": false,
+		"forceConsistentCasingInFileNames": true,
+
+		// Global scripts with no import or export, which isolatedModules refuses (TS1208).
+		"isolatedModules": false,
+
+		"skipLibCheck": true,
+		"useDefineForClassFields": true,
+
+		"noEmit": false,
+		"noEmitOnError": true,
+		"removeComments": false,
+		"outDir": "node_modules/.cache/igsh-js"
+	},
+
+	// The whole directory, so a new script needs no change here or in package.json.
+	"include": [ "assets/src/js/**/*" ]
+}
