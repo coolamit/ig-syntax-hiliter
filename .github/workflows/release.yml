@@ -1,7 +1,7 @@
 # Release workflow. Fires on a `v*` tag, and a release is a tag on master and nothing else: a tag
 # anywhere else is refused first. `build` builds the assets, checks the tag, plugin header and
 # readme.txt agree on the version, produces and verifies the zip and publishes the GitHub
-# release; `deploy` pushes that artifact to WordPress.org SVN, in dry run mode. Tests are not re-run.
+# release; `deploy` commits that artifact to WordPress.org SVN. Tests are not re-run.
 # The repo is `ig-syntax-hiliter`, the slug is `igsyntax-hiliter`: a zip whose root is anything but
 # the slug installs as a different plugin, so SLUG is set on both 10up actions and the root is asserted.
 name: Release
@@ -344,7 +344,7 @@ jobs:
           retention-days: 30
 
   deploy:
-    name: Deploy to WordPress.org (dry run)
+    name: Deploy to WordPress.org
     needs: build
     runs-on: ubuntu-latest
 
@@ -421,10 +421,10 @@ jobs:
       - name: Deploy to WordPress.org
         uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # 2.3.0 (= the `stable` branch at pin time)
         with:
-          # DRY RUN. Flip this one line to `false` to publish for real; the log prints the `svn status`
-          # of what would be committed. It must be the `dry-run` input: a `DRY_RUN` environment
-          # variable does nothing at this pinned version and would publish for real.
-          dry-run: true
+          # Set to `true` for a dry run: nothing is committed and the log prints the `svn status` of
+          # what would be. It must be the `dry-run` input: a `DRY_RUN` environment variable does
+          # nothing at this pinned version and would publish for real.
+          dry-run: false
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
