@@ -92,7 +92,7 @@ class Gist_Embed {
 
 		$embed_filters = [ 'the_content' ];
 
-		if ( Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ) ) {
+		if ( Shortcode_Handler::get_instance()->is_plugin_option_on( 'gist_in_comments', 'no' ) ) {
 			$embed_filters[] = 'comment_text';
 		} else {
 			$this->_link_filters[] = 'comment_text';
@@ -128,7 +128,7 @@ class Gist_Embed {
 			return;
 		}
 
-		if ( ! Shortcode_Handler::is_plugin_option_on( 'gist_limit_height', 'yes' ) ) {
+		if ( ! Shortcode_Handler::get_instance()->is_plugin_option_on( 'gist_limit_height', 'yes' ) ) {
 			return;
 		}
 
@@ -194,7 +194,7 @@ class Gist_Embed {
 			static::TAG
 		);
 
-		$id = static::resolve_id( $atts );
+		$id = $this->resolve_id( $atts );
 
 		if ( empty( $id ) ) {
 			return '';
@@ -224,12 +224,12 @@ class Gist_Embed {
 	 * The one place `gist=` and `id=` become a Gist id, so the embed and the revert tool
 	 * cannot disagree. `gist` wins where it names anything.
 	 *
-	 * @param array $atts Attributes, with `gist` and `id` keys as `self::render()` receives them.
+	 * @param array $atts Attributes, with `gist` and `id` keys as `render()` receives them.
 	 *
 	 * @return string The Gist id, or an empty string where the attributes name no Gist this
 	 *                plugin will print.
 	 */
-	public static function resolve_id( array $atts ): string {
+	public function resolve_id( array $atts ): string {
 
 		$id   = $atts['id'] ?? 0;
 		$path = wp_parse_url( untrailingslashit( (string) ( $atts['gist'] ?? '' ) ), PHP_URL_PATH );
@@ -249,7 +249,7 @@ class Gist_Embed {
 			return '';
 		}
 
-		return static::_sanitize_id( (string) $id );
+		return $this->_sanitize_id( (string) $id );
 
 	}
 
@@ -264,7 +264,7 @@ class Gist_Embed {
 	 *
 	 * @return string
 	 */
-	protected static function _sanitize_id( string $id ): string {
+	protected function _sanitize_id( string $id ): string {
 
 		if ( 1 !== preg_match( '/^[A-Za-z0-9]+$/', $id ) ) {
 			return '';

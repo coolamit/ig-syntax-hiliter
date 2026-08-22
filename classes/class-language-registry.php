@@ -157,8 +157,8 @@ class Language_Registry {
 			return;
 		}
 
-		$registry = Cache::create( static::_get_cache_key() )
-						->updates_with( [ static::class, 'build' ] )
+		$registry = Cache::create( $this->_get_cache_key() )
+						->updates_with( [ $this, 'build' ] )
 						->expires_in( static::_CACHE_EXPIRY )
 						->get();
 
@@ -168,7 +168,7 @@ class Language_Registry {
 			 * registry renders every snippet unhighlighted, which beats a fatal.
 			 */
 			try {
-				$registry = static::build();
+				$registry = $this->build();
 			} catch ( Throwable $e ) {
 				$registry = [];
 			}
@@ -206,12 +206,12 @@ class Language_Registry {
 	 *
 	 * @return array
 	 */
-	public static function build(): array {
+	public function build(): array {
 
 		$library_dir = sprintf( '%s/%s', dirname( __DIR__ ), static::_LIBRARY_DIR );
 
-		return static::merge(
-			static::parse_manifest(
+		return $this->merge(
+			$this->parse_manifest(
 				sprintf( '%s/components.json', $library_dir ),
 				sprintf( '%s/components', $library_dir )
 			)
@@ -229,7 +229,7 @@ class Language_Registry {
 	 *
 	 * @return array Registry array with `languages` and `aliases` keys.
 	 */
-	public static function parse_manifest( string $manifest_path, string $components_dir ): array {
+	public function parse_manifest( string $manifest_path, string $components_dir ): array {
 
 		$registry = [
 			'languages' => [],
@@ -299,7 +299,7 @@ class Language_Registry {
 	 *
 	 * @return array
 	 */
-	public static function merge( array $base, array $overlay = [] ): array {
+	public function merge( array $base, array $overlay = [] ): array {
 
 		$languages = array_merge(
 			( is_array( $base['languages'] ?? null ) ) ? $base['languages'] : [],
@@ -438,7 +438,7 @@ class Language_Registry {
 	 *
 	 * @return string
 	 */
-	protected static function _get_cache_key(): string {
+	protected function _get_cache_key(): string {
 
 		$version = Helper::get_version( '0' );
 

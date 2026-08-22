@@ -201,8 +201,8 @@ class Content_Protector {
 		 * code box, so the paragraph around it is one the author wrote and it is left
 		 * where it is.
 		 */
-		$content = static::_replace(
-			sprintf( '#<p>\s*%s\s*</p>#', static::_get_placeholder_pattern() ),
+		$content = $this->_replace(
+			sprintf( '#<p>\s*%s\s*</p>#', $this->_get_placeholder_pattern() ),
 			function ( array $matches ) use ( $restore ): string {
 
 				$entry = $this->_stash[ $matches[1] ] ?? null;
@@ -217,8 +217,8 @@ class Content_Protector {
 			$content
 		);
 
-		return static::_replace(
-			sprintf( '#%s#', static::_get_placeholder_pattern() ),
+		return $this->_replace(
+			sprintf( '#%s#', $this->_get_placeholder_pattern() ),
 			$restore,
 			$content
 		);
@@ -240,8 +240,8 @@ class Content_Protector {
 			return $content;
 		}
 
-		return static::_replace(
-			sprintf( '#%s#', static::_get_placeholder_pattern() ),
+		return $this->_replace(
+			sprintf( '#%s#', $this->_get_placeholder_pattern() ),
 			function ( array $matches ): string {
 
 				$entry = $this->_stash[ $matches[1] ] ?? null;
@@ -313,7 +313,7 @@ class Content_Protector {
 	 *
 	 * @return string
 	 */
-	public static function get_placeholder( string $key ): string {
+	public function get_placeholder( string $key ): string {
 		return sprintf( '{%s%s}', static::PLACEHOLDER_PREFIX, $key );
 	}
 
@@ -332,7 +332,7 @@ class Content_Protector {
 	 *
 	 * @return string
 	 */
-	protected static function _replace( string $pattern, callable $callback, string $content, int $flags = 0 ): string {
+	protected function _replace( string $pattern, callable $callback, string $content, int $flags = 0 ): string {
 
 		$count  = 0;
 		$result = preg_replace_callback( $pattern, $callback, $content, -1, $count, $flags );
@@ -367,7 +367,7 @@ class Content_Protector {
 			return $content;
 		}
 
-		$ranges    = static::_get_delimiter_ranges( $content );
+		$ranges    = $this->_get_delimiter_ranges( $content );
 		$length    = strlen( $content );
 		$protected = '';
 		$copied    = 0;
@@ -377,7 +377,7 @@ class Content_Protector {
 
 			$start     = (int) $matches[0][1];
 			$raw       = (string) $matches[0][0];
-			$delimiter = static::_get_delimiter_end( $start, $ranges );
+			$delimiter = $this->_get_delimiter_end( $start, $ranges );
 
 			if ( ! is_null( $delimiter ) ) {
 
@@ -434,7 +434,7 @@ class Content_Protector {
 				break;
 			}
 
-			$delimiter = static::_read_delimiter( $content, $open );
+			$delimiter = $this->_read_delimiter( $content, $open );
 
 			if ( is_null( $delimiter ) ) {
 
@@ -478,7 +478,7 @@ class Content_Protector {
 	 *
 	 * @return array List of `[ start, end ]` byte offsets, end exclusive.
 	 */
-	protected static function _get_delimiter_ranges( string $content ): array {
+	protected function _get_delimiter_ranges( string $content ): array {
 
 		$ranges = [];
 		$search = 0;
@@ -491,7 +491,7 @@ class Content_Protector {
 				break;
 			}
 
-			$delimiter = static::_read_delimiter( $content, $open );
+			$delimiter = $this->_read_delimiter( $content, $open );
 
 			if ( is_null( $delimiter ) ) {
 
@@ -524,7 +524,7 @@ class Content_Protector {
 	 * @return array|null Two keys, `name` and `end`, or NULL when this comment is not a
 	 *                    block delimiter.
 	 */
-	protected static function _read_delimiter( string $content, int $offset ): ?array {
+	protected function _read_delimiter( string $content, int $offset ): ?array {
 
 		$length = strlen( $content );
 		$cursor = $offset + 4;
@@ -619,11 +619,11 @@ class Content_Protector {
 	 * Method to find where the delimiter holding an offset ends.
 	 *
 	 * @param int   $offset Byte offset to place.
-	 * @param array $ranges Ranges from `self::_get_delimiter_ranges()`.
+	 * @param array $ranges Ranges from `_get_delimiter_ranges()`.
 	 *
 	 * @return int|null End of the delimiter holding the offset, or NULL when it is in none of them.
 	 */
-	protected static function _get_delimiter_end( int $offset, array $ranges ): ?int {
+	protected function _get_delimiter_end( int $offset, array $ranges ): ?int {
 
 		foreach ( $ranges as $range ) {
 
@@ -705,7 +705,7 @@ class Content_Protector {
 
 		$this->_stash[ $key ] = $entry;
 
-		$placeholder = static::get_placeholder( $key );
+		$placeholder = $this->get_placeholder( $key );
 
 		if ( $isolate ) {
 			$placeholder = sprintf( "\n\n%s\n\n", $placeholder );
@@ -734,7 +734,7 @@ class Content_Protector {
 		}
 
 		return Renderer::get_instance()->render_snippet(
-			Shortcode_Handler::build_snippet( $entry['tag'], $entry['atts'], $entry['code'] )
+			Shortcode_Handler::get_instance()->build_snippet( $entry['tag'], $entry['atts'], $entry['code'] )
 		);
 
 	}
@@ -743,7 +743,7 @@ class Content_Protector {
 	 * Method to note that a protected run has finished.
 	 *
 	 * A run begins in one callback and ends in another, so no `finally` can close the
-	 * pair; `self::is_protecting()` is built so a run left in flight is harmless.
+	 * pair; `is_protecting()` is built so a run left in flight is harmless.
 	 *
 	 * @return void
 	 */
@@ -848,7 +848,7 @@ class Content_Protector {
 	 *
 	 * @return string
 	 */
-	protected static function _get_placeholder_pattern(): string {
+	protected function _get_placeholder_pattern(): string {
 		return sprintf( '\{%s([0-9a-f]{32})\}', preg_quote( static::PLACEHOLDER_PREFIX, '#' ) );
 	}
 

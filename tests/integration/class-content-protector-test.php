@@ -588,7 +588,7 @@ class Content_Protector_Test extends WP_UnitTestCase {
 	 */
 	public function it_leaves_a_placeholder_an_author_typed_alone(): void {
 
-		$content = sprintf( 'Before %s after.', Content_Protector::get_placeholder( str_repeat( 'a', 32 ) ) );
+		$content = sprintf( 'Before %s after.', Content_Protector::get_instance()->get_placeholder( str_repeat( 'a', 32 ) ) );
 
 		$this->assertSame( $content, $this->_store( $content ) );
 		$this->assertStringContainsString( $content, (string) apply_filters( 'the_content', $content ) );  // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Running content through core's own hooks is what an integration test does.
@@ -698,7 +698,7 @@ class Content_Protector_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			3000,
-			substr_count( $rendered, Renderer::escape_verbatim( $line ) ),
+			substr_count( $rendered, Renderer::get_instance()->escape_verbatim( $line ) ),
 			'Every line of the code came back, escaped as the author typed it and not one line short.'
 		);
 

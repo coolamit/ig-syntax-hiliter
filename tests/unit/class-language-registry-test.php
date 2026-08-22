@@ -117,7 +117,7 @@ class Language_Registry_Test extends TestCase {
 			)
 		);
 
-		$registry = Language_Registry::parse_manifest( $dir . '/components.json', $dir );
+		$registry = Language_Registry::get_instance()->parse_manifest( $dir . '/components.json', $dir );
 
 		$this->assertArrayHasKey( 'present', $registry['languages'] );
 		$this->assertArrayNotHasKey( 'missing', $registry['languages'] );
@@ -157,7 +157,7 @@ class Language_Registry_Test extends TestCase {
 			)
 		);
 
-		$registry = Language_Registry::parse_manifest( $dir . '/components.json', $dir );
+		$registry = Language_Registry::get_instance()->parse_manifest( $dir . '/components.json', $dir );
 
 		$this->assertSame(
 			[
@@ -188,8 +188,8 @@ class Language_Registry_Test extends TestCase {
 			'aliases'   => [],
 		];
 
-		$this->assertSame( $empty, Language_Registry::parse_manifest( $dir . '/nope.json', $dir ) );
-		$this->assertSame( $empty, Language_Registry::parse_manifest( $dir . '/broken.json', $dir ) );
+		$this->assertSame( $empty, Language_Registry::get_instance()->parse_manifest( $dir . '/nope.json', $dir ) );
+		$this->assertSame( $empty, Language_Registry::get_instance()->parse_manifest( $dir . '/broken.json', $dir ) );
 
 	}
 
@@ -231,7 +231,7 @@ class Language_Registry_Test extends TestCase {
 			'aliases'   => [],
 		];
 
-		$merged = Language_Registry::merge( $base, $overlay );
+		$merged = Language_Registry::get_instance()->merge( $base, $overlay );
 
 		$this->assertSame( 'php', $merged['languages']['php']['title'], 'The overlay wins where both name the same language.' );
 		$this->assertSame( 'Ruby', $merged['languages']['ruby']['title'], 'And a language the overlay says nothing about is left as it was.' );
@@ -252,7 +252,7 @@ class Language_Registry_Test extends TestCase {
 	 */
 	public function it_still_tidies_the_registry_when_merging_nothing(): void {
 
-		$merged = Language_Registry::merge(
+		$merged = Language_Registry::get_instance()->merge(
 			[
 				'languages' => [
 					'ruby' => [
@@ -349,7 +349,7 @@ class Language_Registry_Test extends TestCase {
 
 		$library  = dirname( __DIR__, 2 ) . '/assets/lib/prism';
 		$registry = new Language_Registry(
-			Language_Registry::parse_manifest(
+			Language_Registry::get_instance()->parse_manifest(
 				$library . '/components.json',
 				$library . '/components'
 			)

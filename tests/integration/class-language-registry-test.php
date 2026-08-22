@@ -123,7 +123,7 @@ class Language_Registry_Test extends WP_UnitTestCase {
 	 */
 	protected function _remember_cache_key(): void {
 
-		$key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
+		$key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( Language_Registry::get_instance() );
 
 		$this->_cache_keys[ $key ] = $key;
 
@@ -344,7 +344,7 @@ class Language_Registry_Test extends WP_UnitTestCase {
 
 		$this->_remember_cache_key();
 
-		$key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
+		$key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( Language_Registry::get_instance() );
 
 		$this->assertTrue( Language_Registry::get_instance()->has( 'php' ), 'The registry built.' );
 
@@ -388,7 +388,7 @@ class Language_Registry_Test extends WP_UnitTestCase {
 
 		$this->_set_singleton( Language_Registry::class, null );
 
-		$this->_registry_cache_key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( null );
+		$this->_registry_cache_key = (string) ( new ReflectionMethod( Language_Registry::class, '_get_cache_key' ) )->invoke( Language_Registry::get_instance() );
 
 		update_option(
 			$this->_option_name( $this->_registry_cache_key ),

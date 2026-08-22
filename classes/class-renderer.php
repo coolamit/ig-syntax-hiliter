@@ -127,9 +127,9 @@ class Renderer {
 
 		$markup = sprintf(
 			'<pre %1$s><code class="language-%2$s">%3$s</code></pre>',
-			static::_build_attributes( $attributes ),
+			$this->_build_attributes( $attributes ),
 			esc_attr( $language ),
-			static::escape_verbatim( $snippet->code )
+			$this->escape_verbatim( $snippet->code )
 		);
 
 		/*
@@ -143,12 +143,12 @@ class Renderer {
 
 		if ( ! empty( $label ) ) {
 
-			$shortened = static::shorten_file_label( $label );
+			$shortened = $this->shorten_file_label( $label );
 
 			$file = sprintf(
 				'<span class="igsh-code-box__file"%1$s>%2$s</span>',
-				static::_build_label_title( $label, $shortened ),
-				static::escape_verbatim( $shortened )
+				$this->_build_label_title( $label, $shortened ),
+				$this->escape_verbatim( $shortened )
 			);
 
 		}
@@ -172,7 +172,7 @@ class Renderer {
 	 *
 	 * @return string The label, or its last characters behind an ellipsis.
 	 */
-	public static function shorten_file_label( string $label ): string {
+	public function shorten_file_label( string $label ): string {
 
 		$length = ( function_exists( 'mb_strlen' ) ) ? mb_strlen( $label, 'UTF-8' ) : strlen( $label );
 
@@ -199,13 +199,13 @@ class Renderer {
 	 *
 	 * @return string The attribute with its leading space, or an empty string.
 	 */
-	protected static function _build_label_title( string $label, string $shortened ): string {
+	protected function _build_label_title( string $label, string $shortened ): string {
 
 		if ( $shortened === $label ) {
 			return '';
 		}
 
-		return sprintf( ' title="%s"', static::escape_verbatim( $label ) );
+		return sprintf( ' title="%s"', $this->escape_verbatim( $label ) );
 
 	}
 
@@ -222,7 +222,7 @@ class Renderer {
 	 *
 	 * @return string
 	 */
-	public static function escape_verbatim( string $text ): string {
+	public function escape_verbatim( string $text ): string {
 
 		// `esc_html()` with double encoding turned on and nothing else changed.
 		$escaped = _wp_specialchars( $text, ENT_QUOTES, false, true );
@@ -355,12 +355,12 @@ class Renderer {
 	 *
 	 * @return string
 	 */
-	protected static function _build_attributes( array $attributes ): string {
+	protected function _build_attributes( array $attributes ): string {
 
 		$markup = [];
 
 		foreach ( $attributes as $name => $value ) {
-			$markup[] = sprintf( '%s="%s"', $name, static::escape_verbatim( (string) $value ) );
+			$markup[] = sprintf( '%s="%s"', $name, $this->escape_verbatim( (string) $value ) );
 		}
 
 		return implode( ' ', $markup );

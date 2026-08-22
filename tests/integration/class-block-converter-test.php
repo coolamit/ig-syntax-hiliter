@@ -285,7 +285,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$renderer->reset_counter();
 
 		$from_block = $renderer->render_snippet(
-			Snippet::from_block_attributes( $attributes, '', Shortcode_Handler::show_line_numbers() )
+			Snippet::from_block_attributes( $attributes, '', Shortcode_Handler::get_instance()->show_line_numbers() )
 		);
 
 		$post_id = self::factory()->post->create(
@@ -314,7 +314,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	 */
 	public function it_maps_block_attributes_on_to_shortcode_attributes(): void {
 
-		$with_everything = Block_Converter::block_to_shortcode(
+		$with_everything = Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'            => 'x',
 				'language'        => 'PHP',
@@ -331,7 +331,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'highlight="2,4-6"', $with_everything );
 		$this->assertStringContainsString( 'file="wp-config.php"', $with_everything );
 
-		$with_nothing = Block_Converter::block_to_shortcode(
+		$with_nothing = Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'     => 'x',
 				'language' => 'php',
@@ -352,7 +352,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 	 */
 	public function it_does_not_let_a_hostile_file_label_break_the_shortcode(): void {
 
-		$shortcode = (string) Block_Converter::block_to_shortcode(
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'     => self::_CODE,
 				'language' => 'php',
@@ -390,7 +390,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->_make_pcre_give_up();
 
-		$shortcode = (string) Block_Converter::block_to_shortcode(
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'     => self::_CODE,
 				'language' => 'PHP" ]',
@@ -419,7 +419,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->_make_pcre_give_up();
 
-		$shortcode = (string) Block_Converter::block_to_shortcode(
+		$shortcode = (string) Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'     => self::_CODE,
 				'language' => 'php',
@@ -489,7 +489,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->_make_pcre_give_up();
 
-		$shortcode = Block_Converter::block_to_shortcode(
+		$shortcode = Block_Converter::get_instance()->block_to_shortcode(
 			[
 				'code'     => 'echo "[/sourcecode]";',
 				'language' => 'php',
@@ -575,7 +575,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 			Block_Converter::BLOCK_NAME
 		);
 
-		$result = Block_Converter::convert_content(
+		$result = Block_Converter::get_instance()->convert_content(
 			static::_block(
 				[
 					'code'     => $code,
@@ -645,7 +645,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			1,
-			Block_Converter::count_remaining(),
+			Block_Converter::get_instance()->count_remaining(),
 			'The count is a LIKE over the content and the marker is still in it, so the post goes on being counted.'
 		);
 
@@ -675,7 +675,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		ini_set( 'pcre.backtrack_limit', '1' );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Making PCRE give up on purpose is the only way to reach the branch under test. The value is put back below.
 
-		$result = Block_Converter::convert_content( $content );
+		$result = Block_Converter::get_instance()->convert_content( $content );
 
 		ini_set( 'pcre.backtrack_limit', $limit );  // phpcs:ignore WordPress.PHP.IniSet.Risky -- Putting back the value saved above.
 
@@ -897,7 +897,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $totals['converted'] );
 		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 	}
 
@@ -937,7 +937,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$this->assertSame( 7, $totals['converted'] );
 		$this->assertSame( 0, $totals['skipped'] + $totals['failed'] );
 		$this->assertGreaterThan( 3, $totals['requests'], 'Seven posts in batches of two cannot be one request.' );
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 		foreach ( $post_ids as $index => $post_id ) {
 
@@ -988,7 +988,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$totals = $this->_run_to_completion();
 
 		$this->assertSame( 3, $totals['converted'] );
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 		$query = new \WP_Query(
 			[
@@ -1161,7 +1161,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 		$this->assertSame( $expected, get_post_field( 'post_content', $post_id, 'raw' ) );
 
 		// The shortcode carries no delimiter, so the post stops matching the marker and a second run is handed nothing.
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 		$second = $this->_run_to_completion();
 
@@ -1236,7 +1236,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 			get_post_field( 'post_content', $post_id, 'raw' )
 		);
 
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 	}
 
@@ -1268,7 +1268,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $totals['converted'] );
 		$this->assertSame( $prefix . $suffix, get_post_field( 'post_content', $post_id, 'raw' ) );
-		$this->assertSame( 0, Block_Converter::count_remaining() );
+		$this->assertSame( 0, Block_Converter::get_instance()->count_remaining() );
 
 	}
 
@@ -1287,7 +1287,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 			Block_Converter::GIST_BLOCK_NAME
 		);
 
-		$result = Block_Converter::convert_content( $content );
+		$result = Block_Converter::get_instance()->convert_content( $content );
 
 		$this->assertSame( 0, $result['converted'] );
 		$this->assertSame( $content, $result['content'] );
@@ -1349,7 +1349,7 @@ class Block_Converter_Test extends WP_UnitTestCase {
 			]
 		);
 
-		$result = Block_Converter::convert_content( $block );
+		$result = Block_Converter::get_instance()->convert_content( $block );
 
 		$this->assertSame( 1, $result['converted'], 'The block was not converted.' );
 

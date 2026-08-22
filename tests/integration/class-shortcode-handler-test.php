@@ -389,7 +389,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$fixture  = static::_fixture();
 		$boxes    = $this->_code_boxes( $output );
-		$expected = Renderer::escape_verbatim( static::_payload() );
+		$expected = Renderer::get_instance()->escape_verbatim( static::_payload() );
 
 		$this->assertCount( count( $fixture ), $boxes, sprintf( '%s: one code box per snippet.', $context ) );
 
@@ -682,7 +682,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 		$output = $this->_filter( 'the_content', $stored );
 
 		$this->assertStringContainsString( sprintf( '<code class="language-%s">', $language ), $output, sprintf( '[%s] should render as %s.', $tag, $language ) );
-		$this->assertStringContainsString( Renderer::escape_verbatim( $code ), $output, sprintf( '[%s] mangled its code.', $tag ) );
+		$this->assertStringContainsString( Renderer::get_instance()->escape_verbatim( $code ), $output, sprintf( '[%s] mangled its code.', $tag ) );
 		$this->assertStringNotContainsString( sprintf( '[%s]', $tag ), $output );
 
 	}
@@ -701,7 +701,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<code class="language-python">', $output );
 		$this->assertStringContainsString( 'data-start="3"', $output );
-		$this->assertStringContainsString( Renderer::escape_verbatim( 'print( "hi" )' ), $output );
+		$this->assertStringContainsString( Renderer::get_instance()->escape_verbatim( 'print( "hi" )' ), $output );
 
 	}
 
@@ -845,7 +845,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 		$feed = get_the_content_feed( 'rss2' );
 
 		$this->assertStringContainsString( '<code class="language-php">', $feed );
-		$this->assertStringContainsString( Renderer::escape_verbatim( static::_payload() ), $feed );
+		$this->assertStringContainsString( Renderer::get_instance()->escape_verbatim( static::_payload() ), $feed );
 
 		$this->assertStringNotContainsString( '<script src="https://example.com/x.js">', $feed );  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Asserting the fixture's code is NOT emitted as markup.
 		$this->assertStringNotContainsString( '<?php', $feed );
@@ -918,7 +918,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 		$this->assertSame( 1, substr_count( $rendered, '<pre ' ), 'The escaped closing tag ended the snippet, so the box was cut short.' );
 
 		$this->assertStringContainsString(
-			Renderer::escape_verbatim( self::_QUOTED ),
+			Renderer::get_instance()->escape_verbatim( self::_QUOTED ),
 			$rendered,
 			'The reader was shown the doubled brackets rather than the tags the author wrote.'
 		);
@@ -1195,13 +1195,13 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			$expect_hilite,
-			Shortcode_Handler::is_plugin_option_on( 'hilite_comments', 'yes' ),
+			Shortcode_Handler::get_instance()->is_plugin_option_on( 'hilite_comments', 'yes' ),
 			sprintf( '%s did not read as expected for a setting which defaults to yes.', $description )
 		);
 
 		$this->assertSame(
 			$expect_gist,
-			Shortcode_Handler::is_plugin_option_on( 'gist_in_comments', 'no' ),
+			Shortcode_Handler::get_instance()->is_plugin_option_on( 'gist_in_comments', 'no' ),
 			sprintf( '%s did not read as expected for a setting which defaults to no.', $description )
 		);
 

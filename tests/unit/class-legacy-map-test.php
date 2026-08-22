@@ -172,7 +172,7 @@ class Legacy_Map_Test extends TestCase {
 
 		$library  = dirname( __DIR__, 2 ) . '/assets/lib/prism';
 		$registry = new Language_Registry(
-			Language_Registry::parse_manifest(
+			Language_Registry::get_instance()->parse_manifest(
 				$library . '/components.json',
 				$library . '/components'
 			)

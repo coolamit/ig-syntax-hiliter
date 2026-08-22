@@ -309,7 +309,7 @@ class Admin_Test extends WP_UnitTestCase {
 		$this->assertSame( [], $diagnostics, 'Rendering the settings screen must raise no notices, warnings or deprecations.' );
 		$this->assertStringContainsString( 'igsh-settings', $html );
 
-		foreach ( array_keys( Admin::get_settings_schema() ) as $name ) {
+		foreach ( array_keys( Admin::get_instance()->get_settings_schema() ) as $name ) {
 			$this->assertStringContainsString(
 				sprintf( 'data-igsh-option="%s"', $name ),
 				$html,
@@ -358,7 +358,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_puts_none_first_in_the_theme_dropdown_and_sorts_the_rest(): void {
 
-		$choices = Admin::get_theme_choices();
+		$choices = Admin::get_instance()->get_theme_choices();
 		$slugs   = array_keys( $choices );
 
 		$this->assertArrayHasKey( Themes::DEFAULT_THEME, $choices, 'The default theme is one the screen offers.' );
@@ -426,7 +426,7 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$this->assertStringContainsString(
 			'data-line="15-19,23"',
-			Admin::get_preview_markup(),
+			Admin::get_instance()->get_preview_markup(),
 			'The preview box asks for no line highlighting, so a reader never sees any.'
 		);
 
@@ -445,7 +445,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_shows_what_a_ligature_font_does_in_the_preview_snippet(): void {
 
-		$markup = Admin::get_preview_markup();
+		$markup = Admin::get_instance()->get_preview_markup();
 		$code   = html_entity_decode( wp_strip_all_tags( $markup ), ENT_QUOTES, 'UTF-8' );
 
 		foreach ( [ '=>', '&&', '===', '->' ] as $sequence ) {
@@ -471,7 +471,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_puts_the_font_control_below_the_theme_control(): void {
 
-		$names = array_keys( Admin::get_settings_schema() );
+		$names = array_keys( Admin::get_instance()->get_settings_schema() );
 
 		$this->assertSame( [ 'theme', 'font' ], array_slice( $names, 0, 2 ) );
 
@@ -502,7 +502,7 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$html = $this->_render();
 
-		$groups = Admin::get_font_groups();
+		$groups = Admin::get_instance()->get_font_groups();
 
 		$this->assertCount( 2, $groups );
 
@@ -549,7 +549,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_says_a_font_is_fetched_from_another_host(): void {
 
-		$schema = Admin::get_settings_schema();
+		$schema = Admin::get_instance()->get_settings_schema();
 
 		$this->assertStringContainsString( 'fonts.bunny.net', $schema['font']['description'] );
 
@@ -575,9 +575,9 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_gives_every_offered_theme_a_stylesheet_for_the_preview(): void {
 
-		$urls = Admin::get_theme_urls();
+		$urls = Admin::get_instance()->get_theme_urls();
 
-		$this->assertSame( array_keys( Admin::get_theme_choices() ), array_keys( $urls ) );
+		$this->assertSame( array_keys( Admin::get_instance()->get_theme_choices() ), array_keys( $urls ) );
 
 		foreach ( $urls as $slug => $url ) {
 
@@ -751,7 +751,7 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'ig-syntax-hiliter-theme-css',
-			Asset_Manager::get_theme_style_id(),
+			Asset_Manager::get_instance()->get_theme_style_id(),
 			'The script is told which tag to repaint, and that is the tag WordPress printed.'
 		);
 
@@ -1012,13 +1012,13 @@ class Admin_Test extends WP_UnitTestCase {
 		);
 
 		$this->assertSame(
-			Admin::get_theme_choices(),
+			Admin::get_instance()->get_theme_choices(),
 			$payload['choices'] ?? null,
 			'The answer carries the choices the dropdown is drawn from.'
 		);
 
 		$this->assertSame(
-			Admin::get_theme_urls(),
+			Admin::get_instance()->get_theme_urls(),
 			$payload['urls'] ?? null,
 			'And the stylesheet URLs, so the preview can paint a theme which has just appeared.'
 		);
@@ -1237,7 +1237,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_declares_every_dependency_against_a_setting_it_has(): void {
 
-		$schema  = Admin::get_settings_schema();
+		$schema  = Admin::get_instance()->get_settings_schema();
 		$checked = 0;
 
 		foreach ( $schema as $name => $setting ) {
@@ -1398,7 +1398,7 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_puts_every_offered_font_in_exactly_one_group(): void {
 
-		$groups = Admin::get_font_groups();
+		$groups = Admin::get_instance()->get_font_groups();
 
 		$this->assertCount( 2, $groups, 'With Ligature and Without Ligature, and nothing else.' );
 
@@ -1434,9 +1434,9 @@ class Admin_Test extends WP_UnitTestCase {
 	 */
 	public function it_sorts_each_font_group_by_name(): void {
 
-		$choices = Admin::get_font_choices();
+		$choices = Admin::get_instance()->get_font_choices();
 
-		foreach ( Admin::get_font_groups() as $label => $slugs ) {
+		foreach ( Admin::get_instance()->get_font_groups() as $label => $slugs ) {
 
 			$names = array_map(
 				static fn ( string $slug ): string => $choices[ $slug ],
@@ -1468,7 +1468,7 @@ class Admin_Test extends WP_UnitTestCase {
 
 		$validate = Validate::get_instance();
 
-		foreach ( Admin::get_settings_schema() as $name => $setting ) {
+		foreach ( Admin::get_instance()->get_settings_schema() as $name => $setting ) {
 
 			$this->assertEqualsCanonicalizing(
 				$validate->get_option_values( $name ),

@@ -39,7 +39,7 @@ class Fonts_Test extends WP_UnitTestCase {
 	 */
 	public function it_gives_every_offered_font_a_stylesheet_and_a_rule(): void {
 
-		$choices = Admin::get_font_choices();
+		$choices = Admin::get_instance()->get_font_choices();
 
 		$this->assertGreaterThan( 1, count( $choices ), 'There are fonts to offer.' );
 		$this->assertSame( Fonts::FONT_NONE, array_key_first( $choices ), 'None is the first choice.' );

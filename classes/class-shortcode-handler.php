@@ -103,7 +103,7 @@ class Shortcode_Handler {
 	 */
 	protected function _register_hooks(): void {
 
-		$hilite_comments = static::is_plugin_option_on( 'hilite_comments', 'yes' );
+		$hilite_comments = $this->is_plugin_option_on( 'hilite_comments', 'yes' );
 
 		$display_filters = [ 'the_content' ];
 		$strip_filters   = static::EXCERPT_FILTERS;
@@ -240,7 +240,7 @@ class Shortcode_Handler {
 	 */
 	public function strip_for_excerpt( mixed $content ): mixed {
 
-		if ( ! static::is_generating_excerpt() ) {
+		if ( ! $this->is_generating_excerpt() ) {
 			return $content;
 		}
 
@@ -258,7 +258,7 @@ class Shortcode_Handler {
 	 *
 	 * @return bool
 	 */
-	public static function is_generating_excerpt(): bool {
+	public function is_generating_excerpt(): bool {
 		return doing_filter( static::_EXCERPT_FILTER );
 	}
 
@@ -277,7 +277,7 @@ class Shortcode_Handler {
 	 */
 	public function claim_stripped_tags( mixed $tags ): mixed {
 
-		if ( ! is_array( $tags ) || static::is_generating_excerpt() ) {
+		if ( ! is_array( $tags ) || $this->is_generating_excerpt() ) {
 			return $tags;
 		}
 
@@ -298,7 +298,7 @@ class Shortcode_Handler {
 	 *
 	 * @return \iG\Syntax_Hiliter\Snippet
 	 */
-	public static function build_snippet( string $tag, array|string $atts, string $code ): Snippet {
+	public function build_snippet( string $tag, array|string $atts, string $code ): Snippet {
 
 		$code = Legacy_Map::get_instance()->unescape_tags( $code );
 		$atts = ( is_string( $atts ) ) ? shortcode_parse_atts( $atts ) : $atts;
@@ -306,13 +306,13 @@ class Shortcode_Handler {
 
 		// Drops attributes the plugin does not know, and keeps the `shortcode_atts_{$tag}`
 		// filter working.
-		$atts = shortcode_atts( static::get_default_atts(), $atts, $tag );
+		$atts = shortcode_atts( $this->get_default_atts(), $atts, $tag );
 
 		if ( Legacy_Map::GENERIC_TAG !== $tag ) {
 			$atts['language'] = $tag;
 		}
 
-		return Snippet::from_shortcode_atts( $atts, $code, static::show_line_numbers() );
+		return Snippet::from_shortcode_atts( $atts, $code, $this->show_line_numbers() );
 
 	}
 
@@ -324,7 +324,7 @@ class Shortcode_Handler {
 	 *
 	 * @return array
 	 */
-	public static function get_default_atts(): array {
+	public function get_default_atts(): array {
 
 		return [
 			'language'    => '',
@@ -346,7 +346,7 @@ class Shortcode_Handler {
 	 *
 	 * @return bool
 	 */
-	public static function show_line_numbers(): bool {
+	public function show_line_numbers(): bool {
 		return ( 'no' !== strtolower( trim( (string) Option::get_instance()->get( 'show_line_numbers' ) ) ) );
 	}
 
@@ -361,7 +361,7 @@ class Shortcode_Handler {
 	 *
 	 * @return string
 	 */
-	public static function get_plugin_option( string $name, string $fallback ): string {
+	public function get_plugin_option( string $name, string $fallback ): string {
 
 		$value = Option::get_instance()->get( $name );
 
@@ -387,8 +387,8 @@ class Shortcode_Handler {
 	 *
 	 * @return bool
 	 */
-	public static function is_plugin_option_on( string $name, string $fallback ): bool {
-		return ( 'yes' === Validate::get_instance()->to_yesno( static::get_plugin_option( $name, $fallback ), $fallback ) );
+	public function is_plugin_option_on( string $name, string $fallback ): bool {
+		return ( 'yes' === Validate::get_instance()->to_yesno( $this->get_plugin_option( $name, $fallback ), $fallback ) );
 	}
 
 } // end of class

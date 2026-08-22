@@ -30,7 +30,7 @@ trait Asset_Test_Helpers {
 	 */
 	protected function _reset_asset_state(): void {
 		// `Admin::$_settings_schema` embeds the theme choices and is memoised for the request, so it is cleared with the theme list.
-		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
+		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( Admin::get_instance(), null );
 
 		$manager = Asset_Manager::get_instance();
 
@@ -250,7 +250,7 @@ trait Asset_Test_Helpers {
 	protected function _forget_themes(): void {
 
 		( new ReflectionProperty( Themes::class, '_themes' ) )->setValue( Themes::get_instance(), null );
-		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
+		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( Admin::get_instance(), null );
 
 	}
 

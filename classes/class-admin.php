@@ -77,7 +77,7 @@ class Admin extends Base {
 	 *
 	 * @var array|null
 	 */
-	protected static ?array $_settings_schema = null;
+	protected ?array $_settings_schema = null;
 
 	/**
 	 * Class constructor, which is where this class hooks itself up to WordPress.
@@ -118,7 +118,7 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error TRUE when the request may proceed, an error otherwise.
 	 */
-	public static function rest_permission_check(): bool|WP_Error {
+	public function rest_permission_check(): bool|WP_Error {
 
 		if ( ! is_user_logged_in() ) {
 			return new WP_Error(
@@ -149,10 +149,10 @@ class Admin extends Base {
 	 *
 	 * @return array Setting name to its type, label, description and permitted values.
 	 */
-	public static function get_settings_schema(): array {
+	public function get_settings_schema(): array {
 
-		if ( is_array( static::$_settings_schema ) ) {
-			return static::$_settings_schema;
+		if ( is_array( $this->_settings_schema ) ) {
+			return $this->_settings_schema;
 		}
 
 		$yes_no = [
@@ -160,19 +160,19 @@ class Admin extends Base {
 			'no'  => __( 'No', 'igsyntax-hiliter' ),
 		];
 
-		static::$_settings_schema = [
+		$this->_settings_schema = [
 			'theme'             => [
 				'type'        => 'choice',
 				'label'       => __( 'Theme', 'igsyntax-hiliter' ),
 				'description' => __( 'Colour scheme used for code boxes on the front end.', 'igsyntax-hiliter' ),
-				'choices'     => static::get_theme_choices(),
+				'choices'     => $this->get_theme_choices(),
 			],
 			'font'              => [
 				'type'        => 'choice',
 				'label'       => __( 'Font', 'igsyntax-hiliter' ),
 				'description' => __( 'Typeface used for code boxes on the front end. Fonts are fetched from Bunny Fonts, a font service which does not store any visitor data. Each visitor\'s browser makes one request to "fonts.bunny.net". "None" fetches nothing.', 'igsyntax-hiliter' ),
-				'choices'     => static::get_font_choices(),
-				'groups'      => static::get_font_groups(),
+				'choices'     => $this->get_font_choices(),
+				'groups'      => $this->get_font_groups(),
 			],
 			'toolbar'           => [
 				'type'        => 'toggle',
@@ -226,7 +226,7 @@ class Admin extends Base {
 			],
 		];
 
-		return static::$_settings_schema;
+		return $this->_settings_schema;
 
 	}
 
@@ -238,7 +238,7 @@ class Admin extends Base {
 	 *
 	 * @return array Theme setting value to its label.
 	 */
-	public static function get_theme_choices(): array {
+	public function get_theme_choices(): array {
 
 		$themes = Themes::get_instance()->get_themes();
 
@@ -259,11 +259,11 @@ class Admin extends Base {
 	 *
 	 * @return array Theme setting value to the URL of its stylesheet.
 	 */
-	public static function get_theme_urls(): array {
+	public function get_theme_urls(): array {
 
 		$urls = [];
 
-		foreach ( array_keys( static::get_theme_choices() ) as $slug ) {
+		foreach ( array_keys( $this->get_theme_choices() ) as $slug ) {
 
 			$file = Themes::get_instance()->get_theme_file( $slug );
 
@@ -283,7 +283,7 @@ class Admin extends Base {
 	 *
 	 * @return array Font setting value to its label.
 	 */
-	public static function get_font_choices(): array {
+	public function get_font_choices(): array {
 
 		$fonts = Fonts::get_instance()->get_fonts();
 
@@ -305,7 +305,7 @@ class Admin extends Base {
 	 *
 	 * @return array Group label to a numerically indexed list of font slugs.
 	 */
-	public static function get_font_groups(): array {
+	public function get_font_groups(): array {
 
 		$groups = [
 			__( 'With Ligature', 'igsyntax-hiliter' )    => [],
@@ -315,7 +315,7 @@ class Admin extends Base {
 		$with    = array_key_first( $groups );
 		$without = array_key_last( $groups );
 
-		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
+		foreach ( array_keys( $this->get_font_choices() ) as $slug ) {
 
 			if ( Fonts::FONT_NONE === $slug ) {
 				continue;    // not a font, and it belongs above both groups
@@ -337,11 +337,11 @@ class Admin extends Base {
 	 *
 	 * @return array Font setting value to its stylesheet URL and its CSS.
 	 */
-	public static function get_font_data(): array {
+	public function get_font_data(): array {
 
 		$fonts = [];
 
-		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
+		foreach ( array_keys( $this->get_font_choices() ) as $slug ) {
 
 			$fonts[ $slug ] = [
 				'url' => Fonts::get_instance()->get_font_url( $slug ),
@@ -367,22 +367,22 @@ class Admin extends Base {
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'save_option' ],
-				'permission_callback' => [ static::class, 'rest_permission_check' ],
+				'permission_callback' => [ $this, 'rest_permission_check' ],
 				'args'                => [
 					'name'  => [
 						'type'              => 'string',
 						'required'          => true,
-						'enum'              => array_keys( static::get_settings_schema() ),
+						'enum'              => array_keys( $this->get_settings_schema() ),
 						'description'       => __( 'Name of the setting to save.', 'igsyntax-hiliter' ),
 						'sanitize_callback' => 'sanitize_key',
-						'validate_callback' => [ static::class, 'validate_option_name' ],
+						'validate_callback' => [ $this, 'validate_option_name' ],
 					],
 					'value' => [
 						'type'              => 'string',
 						'required'          => true,
 						'description'       => __( 'Value to save the setting as.', 'igsyntax-hiliter' ),
 						'sanitize_callback' => 'sanitize_text_field',
-						'validate_callback' => [ static::class, 'validate_option_value' ],
+						'validate_callback' => [ $this, 'validate_option_value' ],
 					],
 				],
 			]
@@ -394,7 +394,7 @@ class Admin extends Base {
 			[
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => [ $this, 'refresh_themes' ],
-				'permission_callback' => [ static::class, 'rest_permission_check' ],
+				'permission_callback' => [ $this, 'rest_permission_check' ],
 			]
 		);
 
@@ -414,12 +414,12 @@ class Admin extends Base {
 		Themes::get_instance()->get_themes( 'yes' );
 
 		// the schema was built for this request before the list changed under it
-		static::$_settings_schema = null;
+		$this->_settings_schema = null;
 
 		return new WP_REST_Response(
 			[
-				'choices' => static::get_theme_choices(),
-				'urls'    => static::get_theme_urls(),
+				'choices' => $this->get_theme_choices(),
+				'urls'    => $this->get_theme_urls(),
 			],
 			200
 		);
@@ -433,9 +433,9 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function validate_option_name( mixed $value ): bool|WP_Error {
+	public function validate_option_name( mixed $value ): bool|WP_Error {
 
-		if ( is_string( $value ) && array_key_exists( sanitize_key( $value ), static::get_settings_schema() ) ) {
+		if ( is_string( $value ) && array_key_exists( sanitize_key( $value ), $this->get_settings_schema() ) ) {
 			return true;
 		}
 
@@ -458,12 +458,12 @@ class Admin extends Base {
 	 *
 	 * @return true|\WP_Error
 	 */
-	public static function validate_option_value( mixed $value, WP_REST_Request $request ): bool|WP_Error {
+	public function validate_option_value( mixed $value, WP_REST_Request $request ): bool|WP_Error {
 
 		// The name may not be a string; casting an array raises a warning that is printed
 		// ahead of the 400.
 		$name   = ( is_scalar( $request['name'] ) ) ? sanitize_key( (string) $request['name'] ) : '';
-		$schema = static::get_settings_schema();
+		$schema = $this->get_settings_schema();
 
 		if ( ! isset( $schema[ $name ] ) ) {
 			return new WP_Error(
@@ -503,7 +503,7 @@ class Admin extends Base {
 
 		$name   = sanitize_key( (string) $request['name'] );
 		$value  = (string) $request['value'];
-		$schema = static::get_settings_schema();
+		$schema = $this->get_settings_schema();
 
 		if ( ! isset( $schema[ $name ]['choices'][ $value ] ) ) {
 			return new WP_Error(
@@ -551,7 +551,7 @@ class Admin extends Base {
 	 */
 	protected function _save_dependent_settings( string $name, string $value ): array {
 
-		$schema = static::get_settings_schema();
+		$schema = $this->get_settings_schema();
 		$moved  = [];
 
 		if ( 'yes' === $value && ! empty( $schema[ $name ]['requires'] ) ) {
@@ -617,7 +617,7 @@ class Admin extends Base {
 		$options  = $this->_option->get_all();
 		$settings = [];
 
-		foreach ( static::get_settings_schema() as $name => $setting ) {
+		foreach ( $this->get_settings_schema() as $name => $setting ) {
 
 			$value = $options[ $name ] ?? '';
 			$value = ( is_scalar( $value ) ) ? (string) $value : '';
@@ -639,7 +639,7 @@ class Admin extends Base {
 			[
 				'plugin_name' => static::PLUGIN_NAME,
 				'settings'    => $settings,
-				'preview'     => static::get_preview_markup( 'yes' === ( $settings['show_line_numbers']['value'] ?? 'yes' ) ),
+				'preview'     => $this->get_preview_markup( 'yes' === ( $settings['show_line_numbers']['value'] ?? 'yes' ) ),
 			],
 			true
 		);
@@ -659,7 +659,7 @@ class Admin extends Base {
 	 *
 	 * @return string Markup for the code box.
 	 */
-	public static function get_preview_markup( bool $show_line_numbers = true ): string {
+	public function get_preview_markup( bool $show_line_numbers = true ): string {
 
 		$code = <<<'PREVIEW'
 <?php
@@ -779,12 +779,12 @@ PREVIEW;
 			'nonce'        => wp_create_nonce( 'wp_rest' ),
 
 			// The theme stylesheets and the tag showing one: what the preview needs to repaint.
-			'themes'       => static::get_theme_urls(),
-			'themeStyleId' => Asset_Manager::get_theme_style_id(),
+			'themes'       => $this->get_theme_urls(),
+			'themeStyleId' => Asset_Manager::get_instance()->get_theme_style_id(),
 
 			// Fonts need a rule as well as a stylesheet.
-			'fonts'        => static::get_font_data(),
-			'fontStyleId'  => Asset_Manager::get_font_style_id(),
+			'fonts'        => $this->get_font_data(),
+			'fontStyleId'  => Asset_Manager::get_instance()->get_font_style_id(),
 			'i18n'         => [
 
 				// Messages name their setting, read off the control by the script.

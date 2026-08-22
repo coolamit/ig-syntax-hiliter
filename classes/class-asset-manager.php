@@ -153,8 +153,8 @@ class Asset_Manager {
 
 		$classes = ( is_array( $classes ) ) ? $classes : [];
 
-		$matching = Shortcode_Handler::is_plugin_option_on( 'match_braces', 'yes' );
-		$rainbow  = Shortcode_Handler::is_plugin_option_on( 'rainbow_braces', 'no' );
+		$matching = Shortcode_Handler::get_instance()->is_plugin_option_on( 'match_braces', 'yes' );
+		$rainbow  = Shortcode_Handler::get_instance()->is_plugin_option_on( 'rainbow_braces', 'no' );
 
 		if ( ! $matching && ! $rainbow ) {
 			return $classes;
@@ -235,7 +235,7 @@ class Asset_Manager {
 		}
 
 		$this->_enqueue_theme();
-		$this->_enqueue_font( Shortcode_Handler::get_plugin_option( 'font', Fonts::FONT_NONE ) );
+		$this->_enqueue_font( Shortcode_Handler::get_instance()->get_plugin_option( 'font', Fonts::FONT_NONE ) );
 		$this->_enqueue_engine();
 		$this->_enqueue_plugins();
 		$this->_enqueue_setup();
@@ -263,11 +263,11 @@ class Asset_Manager {
 
 		$this->_enqueue_engine();
 
-		static::_enqueue_toolbar();
-		static::_enqueue_copy_button();
-		static::_enqueue_line_numbers();
-		static::_enqueue_line_highlight();
-		static::_enqueue_match_braces();
+		$this->_enqueue_toolbar();
+		$this->_enqueue_copy_button();
+		$this->_enqueue_line_numbers();
+		$this->_enqueue_line_highlight();
+		$this->_enqueue_match_braces();
 
 		$this->_enqueue_setup();
 
@@ -281,8 +281,8 @@ class Asset_Manager {
 	 *
 	 * @return string
 	 */
-	public static function get_theme_style_id(): string {
-		return sprintf( '%s-css', static::_handle( 'theme' ) );
+	public function get_theme_style_id(): string {
+		return sprintf( '%s-css', $this->_handle( 'theme' ) );
 	}
 
 	/**
@@ -292,8 +292,8 @@ class Asset_Manager {
 	 *
 	 * @return string
 	 */
-	public static function get_font_style_id(): string {
-		return sprintf( '%s-css', static::_handle( 'font' ) );
+	public function get_font_style_id(): string {
+		return sprintf( '%s-css', $this->_handle( 'font' ) );
 	}
 
 	/**
@@ -331,26 +331,26 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_theme( ?string $theme = null ): void {
 
-		$theme = $theme ?? Shortcode_Handler::get_plugin_option( 'theme', Themes::DEFAULT_THEME );
+		$theme = $theme ?? Shortcode_Handler::get_instance()->get_plugin_option( 'theme', Themes::DEFAULT_THEME );
 
 		$theme = Themes::get_instance()->resolve_theme( $theme );
 
 		if ( Themes::THEME_NONE !== $theme ) {
 
 			wp_enqueue_style(
-				static::_handle( 'theme' ),
+				$this->_handle( 'theme' ),
 				Helper::get_asset_url( Themes::get_instance()->get_theme_file( $theme ) ),
 				[],
-				static::_get_version()
+				$this->_get_version()
 			);
 
 		}
 
 		wp_enqueue_style(
-			static::_handle( 'chrome' ),
+			$this->_handle( 'chrome' ),
 			Helper::get_asset_url( 'build/css/frontend-chrome.css' ),
 			[],
-			static::_get_version()
+			$this->_get_version()
 		);
 
 	}
@@ -373,7 +373,7 @@ class Asset_Manager {
 		}
 
 		wp_enqueue_style(
-			static::_handle( 'font' ),
+			$this->_handle( 'font' ),
 			Fonts::get_instance()->get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- This URL is not this plugin's.
@@ -385,7 +385,7 @@ class Asset_Manager {
 
 		$this->_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'chrome' ), Fonts::get_instance()->get_font_css( $font ) );
+		wp_add_inline_style( $this->_handle( 'chrome' ), Fonts::get_instance()->get_font_css( $font ) );
 
 	}
 
@@ -410,7 +410,7 @@ class Asset_Manager {
 		}
 
 		wp_enqueue_style(
-			static::_handle( 'editor-font' ),
+			$this->_handle( 'editor-font' ),
 			Fonts::get_instance()->get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- This URL is not this plugin's.
@@ -422,7 +422,7 @@ class Asset_Manager {
 
 		$this->_editor_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'editor-font' ), Fonts::get_instance()->get_editor_font_css( $font ) );
+		wp_add_inline_style( $this->_handle( 'editor-font' ), Fonts::get_instance()->get_editor_font_css( $font ) );
 
 	}
 
@@ -434,18 +434,18 @@ class Asset_Manager {
 	protected function _enqueue_engine(): void {
 
 		wp_enqueue_script(
-			static::_handle( 'engine' ),
-			static::_get_library_url( 'components/prism-core.min.js' ),
+			$this->_handle( 'engine' ),
+			$this->_get_library_url( 'components/prism-core.min.js' ),
 			[],
-			static::_get_version(),
+			$this->_get_version(),
 			true
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'autoloader' ),
-			static::_get_library_url( 'plugins/autoloader/prism-autoloader.min.js' ),
-			[ static::_handle( 'engine' ) ],
-			static::_get_version(),
+			$this->_handle( 'autoloader' ),
+			$this->_get_library_url( 'plugins/autoloader/prism-autoloader.min.js' ),
+			[ $this->_handle( 'engine' ) ],
+			$this->_get_version(),
 			true
 		);
 
@@ -458,30 +458,30 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_plugins(): void {
 
-		if ( Shortcode_Handler::is_plugin_option_on( 'toolbar', 'yes' ) ) {
+		if ( Shortcode_Handler::get_instance()->is_plugin_option_on( 'toolbar', 'yes' ) ) {
 
-			static::_enqueue_toolbar();
+			$this->_enqueue_toolbar();
 
-			if ( Shortcode_Handler::is_plugin_option_on( 'copy_code', 'yes' ) ) {
-				static::_enqueue_copy_button();
+			if ( Shortcode_Handler::get_instance()->is_plugin_option_on( 'copy_code', 'yes' ) ) {
+				$this->_enqueue_copy_button();
 			}
 		}
 
 		// Line highlighting reads the rendered line numbers, so the two load together.
 		if ( $this->_needs_line_numbers || $this->_needs_line_highlight ) {
-			static::_enqueue_line_numbers();
+			$this->_enqueue_line_numbers();
 		}
 
 		// Either setting needs the script; the rainbow colours paint spans this script creates.
 		if (
-			Shortcode_Handler::is_plugin_option_on( 'match_braces', 'yes' )
-			|| Shortcode_Handler::is_plugin_option_on( 'rainbow_braces', 'no' )
+			Shortcode_Handler::get_instance()->is_plugin_option_on( 'match_braces', 'yes' )
+			|| Shortcode_Handler::get_instance()->is_plugin_option_on( 'rainbow_braces', 'no' )
 		) {
-			static::_enqueue_match_braces();
+			$this->_enqueue_match_braces();
 		}
 
 		if ( $this->_needs_line_highlight ) {
-			static::_enqueue_line_highlight();
+			$this->_enqueue_line_highlight();
 		}
 
 	}
@@ -493,29 +493,29 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	protected static function _enqueue_toolbar(): void {
+	protected function _enqueue_toolbar(): void {
 
-		$version = static::_get_version();
+		$version = $this->_get_version();
 
 		wp_enqueue_style(
-			static::_handle( 'toolbar' ),
-			static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.css' ),
+			$this->_handle( 'toolbar' ),
+			$this->_get_library_url( 'plugins/toolbar/prism-toolbar.min.css' ),
 			[],
 			$version
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'toolbar' ),
-			static::_get_library_url( 'plugins/toolbar/prism-toolbar.min.js' ),
-			[ static::_handle( 'engine' ) ],
+			$this->_handle( 'toolbar' ),
+			$this->_get_library_url( 'plugins/toolbar/prism-toolbar.min.js' ),
+			[ $this->_handle( 'engine' ) ],
 			$version,
 			true
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'show-language' ),
-			static::_get_library_url( 'plugins/show-language/prism-show-language.min.js' ),
-			[ static::_handle( 'toolbar' ) ],
+			$this->_handle( 'show-language' ),
+			$this->_get_library_url( 'plugins/show-language/prism-show-language.min.js' ),
+			[ $this->_handle( 'toolbar' ) ],
 			$version,
 			true
 		);
@@ -529,13 +529,13 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	protected static function _enqueue_copy_button(): void {
+	protected function _enqueue_copy_button(): void {
 
 		wp_enqueue_script(
-			static::_handle( 'copy-to-clipboard' ),
-			static::_get_library_url( 'plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js' ),
-			[ static::_handle( 'toolbar' ) ],
-			static::_get_version(),
+			$this->_handle( 'copy-to-clipboard' ),
+			$this->_get_library_url( 'plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js' ),
+			[ $this->_handle( 'toolbar' ) ],
+			$this->_get_version(),
 			true
 		);
 
@@ -546,21 +546,21 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	protected static function _enqueue_line_numbers(): void {
+	protected function _enqueue_line_numbers(): void {
 
-		$version = static::_get_version();
+		$version = $this->_get_version();
 
 		wp_enqueue_style(
-			static::_handle( 'line-numbers' ),
-			static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.css' ),
+			$this->_handle( 'line-numbers' ),
+			$this->_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.css' ),
 			[],
 			$version
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'line-numbers' ),
-			static::_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.js' ),
-			[ static::_handle( 'engine' ) ],
+			$this->_handle( 'line-numbers' ),
+			$this->_get_library_url( 'plugins/line-numbers/prism-line-numbers.min.js' ),
+			[ $this->_handle( 'engine' ) ],
 			$version,
 			true
 		);
@@ -575,21 +575,21 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	protected static function _enqueue_line_highlight(): void {
+	protected function _enqueue_line_highlight(): void {
 
-		$version = static::_get_version();
+		$version = $this->_get_version();
 
 		wp_enqueue_style(
-			static::_handle( 'line-highlight' ),
-			static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.css' ),
+			$this->_handle( 'line-highlight' ),
+			$this->_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.css' ),
 			[],
 			$version
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'line-highlight' ),
-			static::_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.js' ),
-			[ static::_handle( 'line-numbers' ) ],
+			$this->_handle( 'line-highlight' ),
+			$this->_get_library_url( 'plugins/line-highlight/prism-line-highlight.min.js' ),
+			[ $this->_handle( 'line-numbers' ) ],
 			$version,
 			true
 		);
@@ -604,21 +604,21 @@ class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	protected static function _enqueue_match_braces(): void {
+	protected function _enqueue_match_braces(): void {
 
-		$version = static::_get_version();
+		$version = $this->_get_version();
 
 		wp_enqueue_style(
-			static::_handle( 'match-braces' ),
-			static::_get_library_url( 'plugins/match-braces/prism-match-braces.min.css' ),
+			$this->_handle( 'match-braces' ),
+			$this->_get_library_url( 'plugins/match-braces/prism-match-braces.min.css' ),
 			[],
 			$version
 		);
 
 		wp_enqueue_script(
-			static::_handle( 'match-braces' ),
-			static::_get_library_url( 'plugins/match-braces/prism-match-braces.min.js' ),
-			[ static::_handle( 'engine' ) ],
+			$this->_handle( 'match-braces' ),
+			$this->_get_library_url( 'plugins/match-braces/prism-match-braces.min.js' ),
+			[ $this->_handle( 'engine' ) ],
 			$version,
 			true
 		);
@@ -632,18 +632,18 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_setup(): void {
 
-		$handle       = static::_handle( 'setup' );
-		$dependencies = [ static::_handle( 'autoloader' ) ];
+		$handle       = $this->_handle( 'setup' );
+		$dependencies = [ $this->_handle( 'autoloader' ) ];
 
-		if ( wp_script_is( static::_handle( 'toolbar' ), 'enqueued' ) ) {
-			$dependencies[] = static::_handle( 'toolbar' );
+		if ( wp_script_is( $this->_handle( 'toolbar' ), 'enqueued' ) ) {
+			$dependencies[] = $this->_handle( 'toolbar' );
 		}
 
 		wp_enqueue_script(
 			$handle,
 			Helper::get_asset_url( 'build/js/ig-prism-setup.js' ),
 			$dependencies,
-			static::_get_version(),
+			$this->_get_version(),
 			true
 		);
 
@@ -672,7 +672,7 @@ class Asset_Manager {
 	 *
 	 * @return string
 	 */
-	protected static function _handle( string $name ): string {
+	protected function _handle( string $name ): string {
 		return sprintf( '%s-%s', static::HANDLE_PREFIX, $name );
 	}
 
@@ -683,7 +683,7 @@ class Asset_Manager {
 	 *
 	 * @return string
 	 */
-	protected static function _get_library_url( string $path ): string {
+	protected function _get_library_url( string $path ): string {
 
 		return Helper::get_asset_url(
 			sprintf( '%s/%s', static::LIBRARY_PATH, ltrim( $path, '/' ) )
@@ -696,7 +696,7 @@ class Asset_Manager {
 	 *
 	 * @return string
 	 */
-	protected static function _get_version(): string {
+	protected function _get_version(): string {
 		return Helper::get_version( '0' );
 	}
 

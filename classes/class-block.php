@@ -163,14 +163,14 @@ class Block {
 	 */
 	public function render( mixed $attributes = [] ): string {
 
-		if ( static::_is_excerpt_context() ) {
+		if ( $this->_is_excerpt_context() ) {
 			return '';
 		}
 
 		$snippet = Snippet::from_block_attributes(
 			( is_array( $attributes ) ) ? $attributes : [],
 			'',
-			Shortcode_Handler::show_line_numbers()
+			Shortcode_Handler::get_instance()->show_line_numbers()
 		);
 
 		// `'' ===` and not `empty()`: `0` is code.
@@ -223,7 +223,7 @@ class Block {
 	 *
 	 * @return bool
 	 */
-	protected static function _is_excerpt_context(): bool {
+	protected function _is_excerpt_context(): bool {
 
 		foreach ( Shortcode_Handler::EXCERPT_FILTERS as $filter ) {
 
@@ -285,7 +285,7 @@ class Block {
 			'noLanguage'         => Language_Registry::NO_LANGUAGE,
 			'legacyTags'         => Legacy_Map::get_instance()->get_tags(),
 			'genericTag'         => Legacy_Map::GENERIC_TAG,
-			'defaultLineNumbers' => Shortcode_Handler::show_line_numbers(),
+			'defaultLineNumbers' => Shortcode_Handler::get_instance()->show_line_numbers(),
 		];
 
 	}

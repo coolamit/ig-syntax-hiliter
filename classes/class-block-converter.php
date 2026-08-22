@@ -104,7 +104,7 @@ class Block_Converter {
 	 * The characters a language name may carry into a shortcode attribute.
 	 *
 	 * A plain list, not a pattern; membership is tested without PCRE — see
-	 * `self::_sanitize_language()`.
+	 * `_sanitize_language()`.
 	 *
 	 * @var string
 	 */
@@ -158,13 +158,13 @@ class Block_Converter {
 				[
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => [ $this, 'get_status' ],
-					'permission_callback' => [ Admin::class, 'rest_permission_check' ],
+					'permission_callback' => [ Admin::get_instance(), 'rest_permission_check' ],
 					'args'                => [],
 				],
 				[
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => [ $this, 'process_batch' ],
-					'permission_callback' => [ Admin::class, 'rest_permission_check' ],
+					'permission_callback' => [ Admin::get_instance(), 'rest_permission_check' ],
 					'args'                => [
 						'cursor' => [
 							'type'              => 'integer',
@@ -173,7 +173,7 @@ class Block_Converter {
 							'minimum'           => 0,
 							'description'       => __( 'Id of the last post the caller has already been given. Zero starts at the beginning.', 'igsyntax-hiliter' ),
 							'sanitize_callback' => 'absint',
-							'validate_callback' => [ static::class, 'validate_cursor' ],
+							'validate_callback' => [ $this, 'validate_cursor' ],
 						],
 					],
 				],
@@ -189,7 +189,7 @@ class Block_Converter {
 	 *
 	 * @return bool
 	 */
-	public static function validate_cursor( mixed $value ): bool {
+	public function validate_cursor( mixed $value ): bool {
 		return ( is_numeric( $value ) && 0 <= (int) $value );
 	}
 
@@ -202,8 +202,8 @@ class Block_Converter {
 
 		return new WP_REST_Response(
 			[
-				'total'      => static::count_remaining(),
-				'batch_size' => static::get_batch_size(),
+				'total'      => $this->count_remaining(),
+				'batch_size' => $this->get_batch_size(),
 			]
 		);
 
@@ -225,8 +225,8 @@ class Block_Converter {
 	public function process_batch( WP_REST_Request $request ): WP_REST_Response {
 
 		$cursor     = absint( $request['cursor'] );
-		$batch_size = static::get_batch_size();
-		$rows       = static::_get_batch( $cursor, $batch_size );
+		$batch_size = $this->get_batch_size();
+		$rows       = $this->_get_batch( $cursor, $batch_size );
 
 		$counts = [
 			'processed'         => 0,
@@ -243,12 +243,12 @@ class Block_Converter {
 			$post_id = (int) $row->ID;
 			$cursor  = max( $cursor, $post_id );
 
-			$result = static::convert_content( (string) $row->post_content );
+			$result = $this->convert_content( (string) $row->post_content );
 
 			// Counted ahead of the branches below, which skip the rest of the loop.
 			$counts['blocks_left_alone'] += $result['skipped'];
 
-			if ( 0 < $result['converted'] && ! static::_save_content( $post_id, $result['content'] ) ) {
+			if ( 0 < $result['converted'] && ! $this->_save_content( $post_id, $result['content'] ) ) {
 
 				++$counts['failed'];
 
@@ -297,7 +297,7 @@ class Block_Converter {
 	 *
 	 * @return bool Whether the content was written.
 	 */
-	protected static function _save_content( int $post_id, string $content ): bool {
+	protected function _save_content( int $post_id, string $content ): bool {
 
 		$saved = wp_update_post(
 			[
@@ -324,7 +324,7 @@ class Block_Converter {
 	 *               became shortcodes; `skipped`, how many were deliberately left alone; and
 	 *               `failed`, how many could not be read.
 	 */
-	public static function convert_content( string $content ): array {
+	public function convert_content( string $content ): array {
 
 		$result = [
 			'content'   => $content,
@@ -337,8 +337,8 @@ class Block_Converter {
 			return $result;
 		}
 
-		$delimiters = static::_get_delimiters( $content );
-		$shortcodes = static::_get_shortcode_ranges( $content, $delimiters );
+		$delimiters = $this->_get_delimiters( $content );
+		$shortcodes = $this->_get_shortcode_ranges( $content, $delimiters );
 
 		if ( is_null( $shortcodes ) ) {
 			return $result;    // where the shortcodes are is unknown, so nothing here can be rewritten safely
@@ -351,11 +351,11 @@ class Block_Converter {
 
 			$open = $delimiter['open'];
 
-			if ( ! is_null( static::_get_enclosing_end( $open, $shortcodes ) ) ) {
+			if ( ! is_null( $this->_get_enclosing_end( $open, $shortcodes ) ) ) {
 				continue;    // the author's code, which merely reads like a block
 			}
 
-			$attributes = static::_decode_attributes( $delimiter['attrs'] );
+			$attributes = $this->_decode_attributes( $delimiter['attrs'] );
 
 			if ( is_null( $attributes ) ) {
 
@@ -366,8 +366,8 @@ class Block_Converter {
 			}
 
 			$shortcode = ( static::GIST_BLOCK_NAME === $delimiter['block'] )
-				? static::gist_block_to_shortcode( $attributes )
-				: static::block_to_shortcode( $attributes );
+				? $this->gist_block_to_shortcode( $attributes )
+				: $this->block_to_shortcode( $attributes );
 
 			if ( is_null( $shortcode ) ) {
 
@@ -401,7 +401,7 @@ class Block_Converter {
 	 * @return array List of delimiters, each with `block`, `open`, `attrs` and `end`, in the
 	 *               order they appear.
 	 */
-	protected static function _get_delimiters( string $content ): array {
+	protected function _get_delimiters( string $content ): array {
 
 		$delimiters = [];
 		$search     = 0;
@@ -414,7 +414,7 @@ class Block_Converter {
 				break;
 			}
 
-			$delimiter = static::_read_delimiter( $content, $open );
+			$delimiter = $this->_read_delimiter( $content, $open );
 
 			if ( is_null( $delimiter ) ) {
 
@@ -445,12 +445,12 @@ class Block_Converter {
 	 * outside a delimiter owns every byte it covers.
 	 *
 	 * @param string $content    Content to scan.
-	 * @param array  $delimiters Delimiters from `self::_get_delimiters()`.
+	 * @param array  $delimiters Delimiters from `_get_delimiters()`.
 	 *
 	 * @return array|null List of ranges, each with `open` and `end`, end exclusive; or NULL
 	 *                    when PCRE gave up on the content.
 	 */
-	protected static function _get_shortcode_ranges( string $content, array $delimiters ): ?array {
+	protected function _get_shortcode_ranges( string $content, array $delimiters ): ?array {
 
 		$tags = Legacy_Map::get_instance()->get_tags();
 
@@ -466,7 +466,7 @@ class Block_Converter {
 		while ( $offset <= $length && 1 === preg_match( $pattern, $content, $matches, PREG_OFFSET_CAPTURE, $offset ) ) {
 
 			$start     = (int) $matches[0][1];
-			$delimiter = static::_get_enclosing_end( $start, $delimiters );
+			$delimiter = $this->_get_enclosing_end( $start, $delimiters );
 
 			if ( ! is_null( $delimiter ) ) {
 
@@ -499,7 +499,7 @@ class Block_Converter {
 	 *
 	 * @return int|null End of the range holding the offset, or NULL when it is in none of them.
 	 */
-	protected static function _get_enclosing_end( int $offset, array $ranges ): ?int {
+	protected function _get_enclosing_end( int $offset, array $ranges ): ?int {
 
 		foreach ( $ranges as $range ) {
 
@@ -526,7 +526,7 @@ class Block_Converter {
 	 * @return array|null Three keys, `block`, `attrs` and `end`, or NULL when this is not one
 	 *                    of this plugin's self closing delimiters.
 	 */
-	protected static function _read_delimiter( string $content, int $offset ): ?array {
+	protected function _read_delimiter( string $content, int $offset ): ?array {
 
 		$after = $offset + 4;
 		$gap   = strspn( $content, static::_DELIMITER_WHITESPACE, $after );
@@ -535,7 +535,7 @@ class Block_Converter {
 			return null;
 		}
 
-		$block = static::_read_block_name( $content, $after + $gap );
+		$block = $this->_read_block_name( $content, $after + $gap );
 
 		if ( is_null( $block ) ) {
 			return null;
@@ -610,7 +610,7 @@ class Block_Converter {
 	 *
 	 * @return string|null The block name, or NULL where the delimiter names some other block.
 	 */
-	protected static function _read_block_name( string $content, int $offset ): ?string {
+	protected function _read_block_name( string $content, int $offset ): ?string {
 
 		$length = strlen( $content );
 
@@ -642,7 +642,7 @@ class Block_Converter {
 	 * @return string|null The shortcode, an empty string when there is no snippet to write one
 	 *                     for, or NULL when the snippet cannot be written as one.
 	 */
-	public static function block_to_shortcode( array $attributes ): ?string {
+	public function block_to_shortcode( array $attributes ): ?string {
 
 		$code = ( isset( $attributes['code'] ) && is_scalar( $attributes['code'] ) ) ? (string) $attributes['code'] : '';
 
@@ -661,7 +661,7 @@ class Block_Converter {
 		}
 
 		$atts = [
-			'language' => static::_sanitize_language( (string) ( $attributes['language'] ?? '' ) ),
+			'language' => $this->_sanitize_language( (string) ( $attributes['language'] ?? '' ) ),
 		];
 
 		if ( array_key_exists( 'showLineNumbers', $attributes ) ) {
@@ -682,7 +682,7 @@ class Block_Converter {
 			$atts['highlight'] = $highlight;
 		}
 
-		$file = static::_sanitize_label( (string) ( $attributes['file'] ?? '' ) );
+		$file = $this->_sanitize_label( (string) ( $attributes['file'] ?? '' ) );
 
 		if ( ! empty( $file ) ) {
 			$atts['file'] = $file;
@@ -715,10 +715,10 @@ class Block_Converter {
 	 * @return string|null The shortcode, an empty string when there is no Gist to write one
 	 *                     for, or NULL when one cannot be written.
 	 */
-	public static function gist_block_to_shortcode( array $attributes ): ?string {
+	public function gist_block_to_shortcode( array $attributes ): ?string {
 
 		$url = ( isset( $attributes['url'] ) && is_scalar( $attributes['url'] ) ) ? (string) $attributes['url'] : '';
-		$id  = Gist_Embed::resolve_id( [ 'gist' => trim( $url ) ] );
+		$id  = Gist_Embed::get_instance()->resolve_id( [ 'gist' => trim( $url ) ] );
 
 		// A block naming no valid Gist renders nothing today, so it is dropped.
 		if ( empty( $id ) ) {
@@ -741,11 +741,11 @@ class Block_Converter {
 	 *
 	 * @return int
 	 */
-	public static function count_remaining(): int {
+	public function count_remaining(): int {
 
 		global $wpdb;
 
-		$clause = static::_get_where_clause();
+		$clause = $this->_get_where_clause();
 
 		if ( is_null( $clause ) ) {
 			return 0;
@@ -769,7 +769,7 @@ class Block_Converter {
 	 *
 	 * @return int
 	 */
-	public static function get_batch_size(): int {
+	public function get_batch_size(): int {
 
 		/**
 		 * Filters how many posts the revert tool examines per request.
@@ -793,11 +793,11 @@ class Block_Converter {
 	 *
 	 * @return array List of row objects with `ID` and `post_content`.
 	 */
-	protected static function _get_batch( int $cursor, int $limit ): array {
+	protected function _get_batch( int $cursor, int $limit ): array {
 
 		global $wpdb;
 
-		$clause = static::_get_where_clause();
+		$clause = $this->_get_where_clause();
 
 		if ( is_null( $clause ) ) {
 			return [];
@@ -829,7 +829,7 @@ class Block_Converter {
 	 * @return array|null Two keys, `sql` and `values`, or NULL when there is nothing that
 	 *                    could match.
 	 */
-	protected static function _get_where_clause(): ?array {
+	protected function _get_where_clause(): ?array {
 
 		global $wpdb;
 
@@ -867,7 +867,7 @@ class Block_Converter {
 	 *
 	 * @return array|null The attributes, or NULL when they cannot be read.
 	 */
-	protected static function _decode_attributes( string $raw ): ?array {
+	protected function _decode_attributes( string $raw ): ?array {
 
 		$raw = trim( $raw );
 
@@ -891,7 +891,7 @@ class Block_Converter {
 	 *
 	 * @return string
 	 */
-	protected static function _sanitize_language( string $language ): string {
+	protected function _sanitize_language( string $language ): string {
 
 		$language = strtolower( trim( $language ) );
 		$safe     = '';
@@ -919,7 +919,7 @@ class Block_Converter {
 	 *
 	 * @return string
 	 */
-	protected static function _sanitize_label( string $label ): string {
+	protected function _sanitize_label( string $label ): string {
 
 		$label     = str_replace( [ '[', ']', '"' ], '', wp_strip_all_tags( $label ) );
 		$collapsed = preg_replace( '/\s+/', ' ', $label );

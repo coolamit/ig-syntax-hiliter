@@ -11,6 +11,7 @@ namespace iG\Syntax_Hiliter\Tests\Unit;
 
 use iG\Syntax_Hiliter\Migrate;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use ReflectionMethod;
 
 /**
@@ -31,6 +32,9 @@ class Migrate_Test extends TestCase {
 
 		$normalize = new ReflectionMethod( Migrate::class, '_normalize_version' );
 
+		// The constructor reaches `Option`, which needs WordPress; the method does not.
+		$migrate = ( new ReflectionClass( Migrate::class ) )->newInstanceWithoutConstructor();
+
 		// A float key would be truncated to an int, so these are pairs and not a map.
 		$cases = [
 			[ '6.0.1-beta-1', '6.0.1' ],
@@ -43,7 +47,7 @@ class Migrate_Test extends TestCase {
 		];
 
 		foreach ( $cases as [ $version, $normalised ] ) {
-			$this->assertSame( $normalised, $normalize->invoke( null, $version ), sprintf( 'Normalising "%s"', $version ) );
+			$this->assertSame( $normalised, $normalize->invoke( $migrate, $version ), sprintf( 'Normalising "%s"', $version ) );
 		}
 
 	}
