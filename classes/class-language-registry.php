@@ -314,9 +314,7 @@ class Language_Registry {
 		// Drop aliases which point nowhere, and aliases which shadow a language id.
 		$aliases = array_filter(
 			$aliases,
-			function ( $id, $alias ) use ( $languages ): bool {
-				return ( isset( $languages[ $id ] ) && ! isset( $languages[ $alias ] ) );
-			},
+			fn ( $id, $alias ): bool => ( isset( $languages[ $id ] ) && ! isset( $languages[ $alias ] ) ),
 			ARRAY_FILTER_USE_BOTH
 		);
 
@@ -421,9 +419,7 @@ class Language_Registry {
 
 		usort(
 			$choices,
-			function ( array $one, array $two ): int {
-				return strcasecmp( $one['title'], $two['title'] );
-			}
+			fn ( array $one, array $two ): int => strcasecmp( $one['title'], $two['title'] )
 		);
 
 		return $choices;

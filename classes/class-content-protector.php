@@ -107,9 +107,7 @@ class Content_Protector {
 
 		return $this->_replace_shortcodes(
 			$content,
-			function ( array $matches ): string {
-				return $this->_protect_match( $matches, true );
-			}
+			fn ( array $matches ): string => $this->_protect_match( $matches, true )
 		);
 
 	}
@@ -134,9 +132,7 @@ class Content_Protector {
 
 		$content = $this->_replace_shortcodes(
 			$content,
-			function ( array $matches ): string {
-				return $this->_protect_match( $matches, false );
-			}
+			fn ( array $matches ): string => $this->_protect_match( $matches, false )
 		);
 
 		return $this->_protect_blocks( $content );
@@ -159,9 +155,7 @@ class Content_Protector {
 
 		return $this->_replace_shortcodes(
 			$content,
-			function (): string {
-				return '';
-			}
+			fn (): string => ''
 		);
 
 	}
@@ -389,9 +383,7 @@ class Content_Protector {
 
 			$protected .= substr( $content, $copied, $start - $copied ) . (string) $callback(
 				array_map(
-					function ( array $capture ): string {
-						return (string) $capture[0];
-					},
+					fn ( array $capture ): string => (string) $capture[0],
 					$matches
 				)
 			);
