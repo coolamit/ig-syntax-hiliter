@@ -674,8 +674,8 @@ class Block_Converter {
 			$atts['firstline'] = (string) $first_line;
 		}
 
-		$highlight = Renderer::compact_line_ranges(
-			Snippet::parse_line_ranges( $attributes['highlightLines'] ?? '' )
+		$highlight = Renderer::get_instance()->compact_line_ranges(
+			Snippet::from_block_attributes( $attributes )->highlight_lines
 		);
 
 		if ( ! empty( $highlight ) ) {

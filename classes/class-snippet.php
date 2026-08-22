@@ -87,39 +87,38 @@ class Snippet {
 	/**
 	 * Class constructor.
 	 *
-	 * @param string $code              The source code, pristine and unescaped.
-	 * @param string $language          Language as typed by the author.
-	 * @param bool   $show_line_numbers Whether line numbers are shown.
-	 * @param int    $first_line        Number the first line is labelled with.
-	 * @param array  $highlight_lines   Line numbers to highlight.
-	 * @param string $file              Optional file name label.
+	 * Takes the attribute set of a shortcode, which is the plugin's own vocabulary, and does
+	 * every normalisation here; the named constructors only map their source onto it.
+	 * `language` (or `lang`), `firstline` (or `num`), `highlight`, `file` and `gutter` are
+	 * read; anything else is ignored.
+	 *
+	 * @param string $code                 The source code, pristine and unescaped.
+	 * @param array  $atts                 Attributes, keyed by name.
+	 * @param bool   $default_line_numbers Site wide line number setting, used when `gutter`
+	 *                                     says nothing.
 	 */
-	public function __construct(
-		string $code,
-		string $language = self::_DEFAULT_LANGUAGE,
-		bool $show_line_numbers = true,
-		int $first_line = 1,
-		array $highlight_lines = [],
-		string $file = ''
-	) {
+	public function __construct( string $code, array $atts = [], bool $default_line_numbers = true ) {
 
-		$language = trim( $language );
+		$atts = $this->_normalize_atts( $atts );
+
+		$language = $this->_get_att( $atts, 'language' );
+		$language = ( empty( $language ) ) ? $this->_get_att( $atts, 'lang' ) : $language;
 
 		$this->code              = $code;
 		$this->language          = ( empty( $language ) ) ? static::_DEFAULT_LANGUAGE : $language;
-		$this->show_line_numbers = $show_line_numbers;
-		$this->first_line        = max( 1, $first_line );
-		$this->highlight_lines   = static::normalize_line_numbers( $highlight_lines );
-		$this->file              = static::sanitize_file_label( $file );
+		$this->show_line_numbers = $this->_yesno_to_bool( $this->_get_att( $atts, 'gutter' ) ) ?? $default_line_numbers;
+		$this->first_line        = max(
+			1,
+			$this->_to_line_number( $atts['num'] ?? 0 ),
+			$this->_to_line_number( $atts['firstline'] ?? 0 )
+		);
+		$this->highlight_lines   = $this->_parse_line_ranges( $atts['highlight'] ?? '' );
+		$this->file              = $this->_sanitize_file_label( $this->_get_att( $atts, 'file' ) );
 
 	}
 
 	/**
 	 * Named constructor which builds a snippet from legacy shortcode attributes.
-	 *
-	 * Understands `language` (or `lang`), `firstline` (or `num`), `highlight`,
-	 * `file` and `gutter`. `plaintext`, `toolbar` and `strict_mode` are accepted and
-	 * ignored; anything else is discarded.
 	 *
 	 * @param array|string $atts                 Raw shortcode attributes. WordPress passes an
 	 *                                           empty string when a shortcode has none.
@@ -130,31 +129,7 @@ class Snippet {
 	 * @return \iG\Syntax_Hiliter\Snippet
 	 */
 	public static function from_shortcode_atts( array|string $atts = [], string $code = '', bool $default_line_numbers = true ): self {
-
-		$atts = static::_normalize_atts( is_array( $atts ) ? $atts : [] );
-
-		$language = static::_get_att( $atts, 'language' );
-		$language = ( empty( $language ) ) ? static::_get_att( $atts, 'lang' ) : $language;
-		$language = ( empty( $language ) ) ? static::_DEFAULT_LANGUAGE : $language;
-
-		$first_line = max(
-			1,
-			static::_to_line_number( static::_get_att( $atts, 'num' ) ),
-			static::_to_line_number( static::_get_att( $atts, 'firstline' ) )
-		);
-
-		$gutter            = static::yesno_to_bool( static::_get_att( $atts, 'gutter' ) );
-		$show_line_numbers = ( null === $gutter ) ? $default_line_numbers : $gutter;
-
-		return new static(
-			trim( $code ),
-			$language,
-			$show_line_numbers,
-			$first_line,
-			static::parse_line_ranges( static::_get_att( $atts, 'highlight' ) ),
-			static::_get_att( $atts, 'file' )
-		);
-
+		return new static( trim( $code ), ( is_array( $atts ) ) ? $atts : [], $default_line_numbers );
 	}
 
 	/**
@@ -169,21 +144,21 @@ class Snippet {
 	 */
 	public static function from_block_attributes( array $attributes = [], string $code = '', bool $default_line_numbers = true ): self {
 
-		$code = ( isset( $attributes['code'] ) ) ? (string) $attributes['code'] : $code;
-
-		$show_line_numbers = $default_line_numbers;
+		$atts = [
+			'language'  => $attributes['language'] ?? '',
+			'firstline' => $attributes['firstLine'] ?? 1,
+			'highlight' => $attributes['highlightLines'] ?? '',
+			'file'      => $attributes['file'] ?? '',
+		];
 
 		if ( isset( $attributes['showLineNumbers'] ) ) {
-			$show_line_numbers = (bool) $attributes['showLineNumbers'];
+			$atts['gutter'] = ( $attributes['showLineNumbers'] ) ? 'yes' : 'no';
 		}
 
 		return new static(
-			$code,
-			(string) ( $attributes['language'] ?? '' ),
-			$show_line_numbers,
-			static::_to_line_number( $attributes['firstLine'] ?? 1 ),
-			static::parse_line_ranges( $attributes['highlightLines'] ?? '' ),
-			(string) ( $attributes['file'] ?? '' )
+			( isset( $attributes['code'] ) ) ? (string) $attributes['code'] : $code,
+			$atts,
+			$default_line_numbers
 		);
 
 	}
@@ -200,7 +175,7 @@ class Snippet {
 	 *
 	 * @return array Sorted, unique list of line numbers.
 	 */
-	public static function parse_line_ranges( mixed $value ): array {
+	protected function _parse_line_ranges( mixed $value ): array {
 
 		$parts = ( is_array( $value ) ) ? $value : explode( ',', (string) $value );
 		$lines = [];
@@ -221,7 +196,7 @@ class Snippet {
 
 			if ( ! str_contains( $part, '-' ) ) {
 
-				$line = static::_to_line_number( $part );
+				$line = $this->_to_line_number( $part );
 
 				if ( 0 < $line ) {
 					$lines[ $line ] = $line;
@@ -232,8 +207,8 @@ class Snippet {
 			}
 
 			$range = explode( '-', $part, 2 );
-			$start = static::_to_line_number( trim( $range[0] ) );
-			$end   = static::_to_line_number( trim( $range[1] ) );
+			$start = $this->_to_line_number( trim( $range[0] ) );
+			$end   = $this->_to_line_number( trim( $range[1] ) );
 
 			if ( $end < $start ) {
 				[ $start, $end ] = [ $end, $start ];
@@ -253,7 +228,7 @@ class Snippet {
 			}
 		}
 
-		return static::normalize_line_numbers( $lines );
+		return $this->_normalize_line_numbers( $lines );
 
 	}
 
@@ -264,7 +239,7 @@ class Snippet {
 	 *
 	 * @return array Sorted, unique list of line numbers, all greater than zero.
 	 */
-	public static function normalize_line_numbers( array $lines ): array {
+	protected function _normalize_line_numbers( array $lines ): array {
 
 		$lines = array_filter(
 			array_map( 'intval', $lines ),
@@ -284,12 +259,13 @@ class Snippet {
 	/**
 	 * Method to turn a yes/no attribute value into a boolean.
 	 *
+	 * Three-state on purpose: an attribute has to be able to express no opinion.
+	 *
 	 * @param string $value Attribute value.
 	 *
-	 * @return bool|null TRUE or FALSE when the value is yes or no, NULL otherwise, which tells
-	 *                   the caller the author expressed no opinion.
+	 * @return bool|null TRUE or FALSE when the value is yes or no, NULL otherwise.
 	 */
-	public static function yesno_to_bool( string $value ): ?bool {
+	protected function _yesno_to_bool( string $value ): ?bool {
 
 		$value = strtolower( trim( $value ) );
 
@@ -315,7 +291,7 @@ class Snippet {
 	 *
 	 * @return string
 	 */
-	public static function sanitize_file_label( string $file ): string {
+	protected function _sanitize_file_label( string $file ): string {
 
 		$collapsed = preg_replace( '/\s+/', ' ', $file );
 
@@ -336,7 +312,7 @@ class Snippet {
 	 *
 	 * @return int Zero or greater.
 	 */
-	protected static function _to_line_number( mixed $value ): int {
+	protected function _to_line_number( mixed $value ): int {
 
 		// A float beyond the integer range cannot be cast to one without a warning and a
 		// nonsense result.
@@ -355,26 +331,27 @@ class Snippet {
 	}
 
 	/**
-	 * Method to lower case attribute names and stringify their values.
+	 * Method to lower case attribute names and drop what cannot be an attribute value.
 	 *
 	 * Numerically indexed attributes, which is how WordPress reports a valueless
-	 * attribute, are discarded.
+	 * attribute, and objects are discarded. Scalars and arrays are kept as they are, so a
+	 * number reaches `_to_line_number()` as the number it was.
 	 *
 	 * @param array $atts Raw attributes.
 	 *
 	 * @return array
 	 */
-	protected static function _normalize_atts( array $atts ): array {
+	protected function _normalize_atts( array $atts ): array {
 
 		$normalized = [];
 
 		foreach ( $atts as $key => $value ) {
 
-			if ( ! is_string( $key ) || is_array( $value ) || is_object( $value ) ) {
+			if ( ! is_string( $key ) || is_object( $value ) ) {
 				continue;
 			}
 
-			$normalized[ strtolower( trim( $key ) ) ] = (string) $value;
+			$normalized[ strtolower( trim( $key ) ) ] = $value;
 
 		}
 
@@ -383,15 +360,15 @@ class Snippet {
 	}
 
 	/**
-	 * Method to read one normalized attribute.
+	 * Method to read one normalized attribute as text.
 	 *
 	 * @param array  $atts Normalized attributes.
 	 * @param string $name Attribute name.
 	 *
-	 * @return string Attribute value, or an empty string when it is not there.
+	 * @return string Attribute value, or an empty string when it is not there or not a scalar.
 	 */
-	protected static function _get_att( array $atts, string $name ): string {
-		return trim( $atts[ $name ] ?? '' );
+	protected function _get_att( array $atts, string $name ): string {
+		return ( isset( $atts[ $name ] ) && is_scalar( $atts[ $name ] ) ) ? trim( (string) $atts[ $name ] ) : '';
 	}
 
 } // end of class

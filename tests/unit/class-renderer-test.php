@@ -95,7 +95,15 @@ class Renderer_Test extends TestCase {
 	public function it_renders_the_whole_markup_shape(): void {
 
 		$markup = $this->renderer->render_snippet(
-			new Snippet( 'echo 1;', 'php', true, 5, [ 2, 4, 5, 6 ], 'index.php' )
+			new Snippet(
+				'echo 1;',
+				[
+					'language'  => 'php',
+					'firstline' => 5,
+					'highlight' => '2,4-6',
+					'file'      => 'index.php',
+				]
+			)
 		);
 
 		$this->assertSame(
@@ -118,7 +126,7 @@ class Renderer_Test extends TestCase {
 	 */
 	public function it_wraps_a_snippet_without_a_file_label_and_writes_no_label_span(): void {
 
-		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php' ) );
+		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', [ 'language' => 'php' ] ) );
 
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $markup );
 		$this->assertStringEndsWith( '</pre></div>', $markup );
@@ -136,7 +144,7 @@ class Renderer_Test extends TestCase {
 	 */
 	public function it_writes_only_the_attributes_a_snippet_needs(): void {
 
-		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', 'php', false ) );
+		$markup = $this->renderer->render_snippet( new Snippet( 'echo 1;', [ 'language' => 'php' ], false ) );
 
 		$this->assertStringNotContainsString( 'line-numbers', $markup );
 		$this->assertStringNotContainsString( 'data-start', $markup );
@@ -166,7 +174,7 @@ class Renderer_Test extends TestCase {
 	public function it_escapes_code_exactly_once(): void {
 
 		$code   = "<?php\n\$x = '<script src=\"http://example.com/x.js\"></script>';\n// A & B\n";  // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- Test data, not a script the plugin loads.
-		$markup = $this->renderer->render_snippet( new Snippet( $code, 'php' ) );
+		$markup = $this->renderer->render_snippet( new Snippet( $code, [ 'language' => 'php' ] ) );
 
 		$expected = '<div class="igsh-code-box" id="ig-sh-1">'
 			. '<pre class="language-php line-numbers" data-no-optimize="1" data-cfasync="false">'
@@ -204,7 +212,7 @@ class Renderer_Test extends TestCase {
 
 			$this->assertStringContainsString(
 				sprintf( '<code class="language-php">%s</code>', $expected ),
-				$this->renderer->render_snippet( new Snippet( (string) $typed, 'php' ) ),
+				$this->renderer->render_snippet( new Snippet( (string) $typed, [ 'language' => 'php' ] ) ),
 				sprintf( '"%s" was not left as the author typed it.', $typed )
 			);
 
@@ -253,7 +261,7 @@ class Renderer_Test extends TestCase {
 
 		foreach ( [ 'madeuplang', '', 'none', 'typescript', 'code', 'text' ] as $language ) {
 
-			$markup = $this->renderer->render_snippet( new Snippet( 'x', $language ) );
+			$markup = $this->renderer->render_snippet( new Snippet( 'x', [ 'language' => $language ] ) );
 
 			$this->assertStringContainsString(
 				'<code class="language-none">',
@@ -330,11 +338,11 @@ class Renderer_Test extends TestCase {
 	 */
 	public function it_gives_repeated_snippets_unique_ids(): void {
 
-		$snippet = new Snippet( 'echo 1;', 'php' );
+		$snippet = new Snippet( 'echo 1;', [ 'language' => 'php' ] );
 
 		$first  = $this->renderer->render_snippet( $snippet );
 		$second = $this->renderer->render_snippet( $snippet );
-		$third  = $this->renderer->render_snippet( new Snippet( 'echo 2;', 'php' ) );
+		$third  = $this->renderer->render_snippet( new Snippet( 'echo 2;', [ 'language' => 'php' ] ) );
 
 		// Anchored on the container: `assertStringContainsString( 'id="ig-sh-1"' )` passes whichever element carries the id.
 		$this->assertStringStartsWith( '<div class="igsh-code-box" id="ig-sh-1">', $first );
@@ -443,7 +451,15 @@ class Renderer_Test extends TestCase {
 
 		$this->assertSame( 39, strlen( $label ), 'The fixture is not longer than the label length.' );
 
-		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+		$markup = $this->renderer->render_snippet(
+			new Snippet(
+				'x',
+				[
+					'language' => 'php',
+					'file'     => $label,
+				]
+			)
+		);
 
 		$this->assertStringContainsString(
 			sprintf(
@@ -469,7 +485,15 @@ class Renderer_Test extends TestCase {
 
 		$this->assertSame( 30, strlen( $label ), 'The fixture is not exactly the label length.' );
 
-		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+		$markup = $this->renderer->render_snippet(
+			new Snippet(
+				'x',
+				[
+					'language' => 'php',
+					'file'     => $label,
+				]
+			)
+		);
 
 		$this->assertStringContainsString(
 			sprintf( '<span class="igsh-code-box__file">%s</span>', $label ),
@@ -492,7 +516,15 @@ class Renderer_Test extends TestCase {
 
 		$label = str_repeat( 'é', 35 );
 
-		$markup = $this->renderer->render_snippet( new Snippet( 'x', 'php', true, 1, [], $label ) );
+		$markup = $this->renderer->render_snippet(
+			new Snippet(
+				'x',
+				[
+					'language' => 'php',
+					'file'     => $label,
+				]
+			)
+		);
 
 		$this->assertStringContainsString(
 			sprintf( '>…%s</span>', str_repeat( 'é', 29 ) ),
@@ -522,7 +554,15 @@ class Renderer_Test extends TestCase {
 		// Valid ISO-8859-1, invalid UTF-8: the shape a pre-4.2 latin1 column still holds.
 		$code = "\xA9 " . 'if ( $a < $b ) { echo "x"; }';
 
-		$markup = $this->renderer->render_snippet( new Snippet( $code, 'php', true, 1, [], "caf\xE9 & co.php" ) );
+		$markup = $this->renderer->render_snippet(
+			new Snippet(
+				$code,
+				[
+					'language' => 'php',
+					'file'     => "caf\xE9 & co.php",
+				]
+			)
+		);
 
 		$this->assertSame(
 			1,
@@ -552,12 +592,12 @@ class Renderer_Test extends TestCase {
 	 */
 	public function it_compacts_the_line_ranges(): void {
 
-		$this->assertSame( '', Renderer::compact_line_ranges( [] ) );
-		$this->assertSame( '3', Renderer::compact_line_ranges( [ 3 ] ) );
-		$this->assertSame( '2,4-6', Renderer::compact_line_ranges( [ 2, 4, 5, 6 ] ) );
-		$this->assertSame( '1-3', Renderer::compact_line_ranges( [ 3, 1, 2 ] ) );
-		$this->assertSame( '1,3,5', Renderer::compact_line_ranges( [ 1, 3, 5 ] ) );
-		$this->assertSame( '1-2,9-10', Renderer::compact_line_ranges( [ 1, 2, 9, 10 ] ) );
+		$this->assertSame( '', $this->renderer->compact_line_ranges( [] ) );
+		$this->assertSame( '3', $this->renderer->compact_line_ranges( [ 3 ] ) );
+		$this->assertSame( '2,4-6', $this->renderer->compact_line_ranges( [ 2, 4, 5, 6 ] ) );
+		$this->assertSame( '1-3', $this->renderer->compact_line_ranges( [ 3, 1, 2 ] ) );
+		$this->assertSame( '1,3,5', $this->renderer->compact_line_ranges( [ 1, 3, 5 ] ) );
+		$this->assertSame( '1-2,9-10', $this->renderer->compact_line_ranges( [ 1, 2, 9, 10 ] ) );
 
 	}
 
@@ -612,16 +652,23 @@ class Renderer_Test extends TestCase {
 	 */
 	public function it_produces_no_offset_for_a_first_line_below_one(): void {
 
-		foreach ( [ 0, -7 ] as $first_line ) {
+		foreach ( [ 0, 'nonsense' ] as $first_line ) {
 
 			$markup = $this->renderer->render_snippet(
-				new Snippet( 'echo 1;', 'php', true, $first_line, [ 2 ] )
+				new Snippet(
+					'echo 1;',
+					[
+						'language'  => 'php',
+						'firstline' => $first_line,
+						'highlight' => '2',
+					]
+				)
 			);
 
 			$this->assertStringNotContainsString(
 				'data-line-offset',
 				$markup,
-				sprintf( 'A first line of %d is clamped to 1, so there is no offset to state.', $first_line )
+				sprintf( 'A first line of "%s" is clamped to 1, so there is no offset to state.', $first_line )
 			);
 
 			$this->assertStringNotContainsString( 'data-start', $markup );

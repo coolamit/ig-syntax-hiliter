@@ -65,8 +65,8 @@ class Admin extends Base {
 	/**
 	 * Lines of the preview snippet drawn as highlighted.
 	 *
-	 * Written as the expression an author would type; `Snippet::parse_line_ranges()`
-	 * reads it and `Renderer::compact_line_ranges()` writes it back.
+	 * Written as the expression an author would type; `Snippet` reads it and
+	 * `Renderer::compact_line_ranges()` writes it back.
 	 *
 	 * @var string
 	 */
@@ -702,10 +702,11 @@ PREVIEW;
 		return Renderer::get_instance()->render_snippet(
 			new Snippet(
 				$code,
-				static::_PREVIEW_LANGUAGE,
-				$show_line_numbers,
-				1,
-				Snippet::parse_line_ranges( static::_PREVIEW_HIGHLIGHT )
+				[
+					'language'  => static::_PREVIEW_LANGUAGE,
+					'highlight' => static::_PREVIEW_HIGHLIGHT,
+				],
+				$show_line_numbers
 			)
 		);
 

@@ -117,7 +117,7 @@ class Renderer {
 		}
 
 		if ( ! empty( $snippet->highlight_lines ) ) {
-			$attributes['data-line'] = static::compact_line_ranges( $snippet->highlight_lines );
+			$attributes['data-line'] = $this->compact_line_ranges( $snippet->highlight_lines );
 		}
 
 		// Opt out of the output buffering page optimizers, which run beyond any filter this
@@ -289,13 +289,22 @@ class Renderer {
 	 *
 	 * `[ 2, 4, 5, 6 ]` becomes `"2,4-6"`.
 	 *
-	 * @param array $lines Sorted, unique list of line numbers.
+	 * @param array $lines List of line numbers, in any order.
 	 *
 	 * @return string
 	 */
-	public static function compact_line_ranges( array $lines ): string {
+	public function compact_line_ranges( array $lines ): string {
 
-		$lines = Snippet::normalize_line_numbers( $lines );
+		$lines = array_filter(
+			array_map( 'intval', $lines ),
+			static function ( int $line ): bool {
+				return ( 0 < $line );
+			}
+		);
+
+		$lines = array_values( array_unique( $lines ) );
+
+		sort( $lines, SORT_NUMERIC );
 
 		if ( empty( $lines ) ) {
 			return '';
