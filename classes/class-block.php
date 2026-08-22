@@ -283,7 +283,7 @@ class Block {
 			'languages'          => Language_Registry::get_instance()->get_choices(),
 			'languageAliases'    => $this->_get_language_aliases(),
 			'noLanguage'         => Language_Registry::NO_LANGUAGE,
-			'legacyTags'         => Legacy_Map::get_tags(),
+			'legacyTags'         => Legacy_Map::get_instance()->get_tags(),
 			'genericTag'         => Legacy_Map::GENERIC_TAG,
 			'defaultLineNumbers' => Shortcode_Handler::show_line_numbers(),
 		];
@@ -305,7 +305,7 @@ class Block {
 
 		// The plugin's own legacy tags go on top of the highlighter's aliases, so a tag this
 		// plugin has always owned keeps its meaning: `text` means "show it, do not highlight it".
-		$aliases = array_merge( $registry->get_aliases(), Legacy_Map::get_language_map() );
+		$aliases = array_merge( $registry->get_aliases(), Legacy_Map::get_instance()->get_language_map() );
 		$map     = [];
 
 		foreach ( $aliases as $alias => $id ) {

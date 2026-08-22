@@ -7,6 +7,8 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+
 /**
  * The theme catalogue.
  *
@@ -14,6 +16,8 @@ namespace iG\Syntax_Hiliter;
  * this is the only one that knows the themes come from two directories.
  */
 class Themes {
+
+	use Singleton;
 
 	/**
 	 * Path of the extra theme collection, relative to the assets directory.
@@ -65,7 +69,7 @@ class Themes {
 	 *
 	 * @var array|null
 	 */
-	protected static ?array $_theme_titles = null;
+	protected ?array $_theme_titles = null;
 
 	/**
 	 * The themes on disk, once they have been read in this request.
@@ -74,7 +78,7 @@ class Themes {
 	 *
 	 * @var array|null
 	 */
-	protected static ?array $_themes = null;
+	protected ?array $_themes = null;
 
 	/**
 	 * Method to settle which theme is actually loaded for a stored setting value.
@@ -87,13 +91,13 @@ class Themes {
 	 *
 	 * @return string A theme slug which is on disk, or the "no theme" value.
 	 */
-	public static function resolve_theme( string $theme ): string {
+	public function resolve_theme( string $theme ): string {
 
 		if ( static::THEME_NONE === $theme ) {
 			return static::THEME_NONE;
 		}
 
-		return ( isset( static::get_themes()[ $theme ] ) ) ? $theme : static::DEFAULT_THEME;
+		return ( isset( $this->get_themes()[ $theme ] ) ) ? $theme : static::DEFAULT_THEME;
 
 	}
 
@@ -105,13 +109,13 @@ class Themes {
 	 *
 	 * @return array Directory relative to the assets directory, to slug to title.
 	 */
-	protected static function _get_theme_titles(): array {
+	protected function _get_theme_titles(): array {
 
-		if ( is_array( static::$_theme_titles ) ) {
-			return static::$_theme_titles;
+		if ( is_array( $this->_theme_titles ) ) {
+			return $this->_theme_titles;
 		}
 
-		static::$_theme_titles = [
+		$this->_theme_titles = [
 
 			Asset_Manager::LIBRARY_PATH . '/themes' => [
 				'prism'                => 'Prism',
@@ -164,7 +168,7 @@ class Themes {
 
 		];
 
-		return static::$_theme_titles;
+		return $this->_theme_titles;
 
 	}
 
@@ -179,9 +183,9 @@ class Themes {
 	 * @return string Path relative to the assets directory, or an empty string for a theme the
 	 *                plugin does not ship.
 	 */
-	public static function get_theme_file( string $slug ): string {
+	public function get_theme_file( string $slug ): string {
 
-		foreach ( static::_get_theme_titles() as $directory => $titles ) {
+		foreach ( $this->_get_theme_titles() as $directory => $titles ) {
 
 			if ( ! isset( $titles[ $slug ] ) ) {
 				continue;
@@ -203,15 +207,15 @@ class Themes {
 	 *
 	 * @return array Theme file base name to human readable title.
 	 */
-	public static function build_themes(): array {
+	public function build_themes(): array {
 
 		$themes = [];
 
-		foreach ( static::_get_theme_titles() as $titles ) {
+		foreach ( $this->_get_theme_titles() as $titles ) {
 
 			foreach ( $titles as $slug => $title ) {
 
-				if ( ! is_readable( Helper::get_asset_path( static::get_theme_file( $slug ) ) ) ) {
+				if ( ! is_readable( Helper::get_asset_path( $this->get_theme_file( $slug ) ) ) ) {
 					continue;
 				}
 
@@ -227,7 +231,7 @@ class Themes {
 	/**
 	 * Method to get the themes bundled with the plugin.
 	 *
-	 * Cached in two layers: a static for this request, an option for a week.
+	 * Cached in two layers: a property for this request, an option for a week.
 	 * `$force_rebuild` is a yes/no string because that is what arrives over REST. An
 	 * empty list is a failure and not an answer — `Cache` writes `[]` down and hands it
 	 * back, so a deploy caught mid-rsync would otherwise be served for `_CACHE_LIFE`.
@@ -238,17 +242,17 @@ class Themes {
 	 *
 	 * @return array Theme file base name to human readable title.
 	 */
-	public static function get_themes( string $force_rebuild = 'no' ): array {
+	public function get_themes( string $force_rebuild = 'no' ): array {
 
 		$validate      = Validate::get_instance();
 		$force_rebuild = ( $validate->is_yesno( $force_rebuild ) ) ? strtolower( trim( $force_rebuild ) ) : 'no';
 
 		if ( 'yes' === $force_rebuild ) {
-			static::$_themes = null;
+			$this->_themes = null;
 		}
 
-		if ( is_array( static::$_themes ) ) {
-			return static::$_themes;
+		if ( is_array( $this->_themes ) ) {
+			return $this->_themes;
 		}
 
 		$cache = Cache::create( static::CACHE_KEY );
@@ -257,7 +261,7 @@ class Themes {
 			$cache->delete();
 		}
 
-		$themes = $cache->updates_with( [ static::class, 'build_themes' ] )
+		$themes = $cache->updates_with( [ $this, 'build_themes' ] )
 						->expires_in( static::_CACHE_LIFE )
 						->get();
 
@@ -265,7 +269,7 @@ class Themes {
 
 			$cache->delete();    // do not let an unusable answer stand for a week
 
-			$themes = static::build_themes();
+			$themes = $this->build_themes();
 
 		}
 
@@ -273,9 +277,9 @@ class Themes {
 			return [];    // nothing readable, and not memoised, so the next request asks again
 		}
 
-		static::$_themes = $themes;
+		$this->_themes = $themes;
 
-		return static::$_themes;
+		return $this->_themes;
 
 	}
 

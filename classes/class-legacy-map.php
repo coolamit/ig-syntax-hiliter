@@ -7,6 +7,8 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+
 /**
  * Single source of truth for which shortcode tags belong to this plugin.
  *
@@ -14,6 +16,8 @@ namespace iG\Syntax_Hiliter;
  * never claimed.
  */
 class Legacy_Map {
+
+	use Singleton;
 
 	/**
 	 * Filter for adding or removing claimed shortcode tags.
@@ -37,14 +41,14 @@ class Legacy_Map {
 	 *
 	 * @var array
 	 */
-	protected static array $_alternation_tags = [];
+	protected array $_alternation_tags = [];
 
 	/**
 	 * The claimed tags as a regular expression alternation.
 	 *
 	 * @var string
 	 */
-	protected static string $_alternation = '';
+	protected string $_alternation = '';
 
 	/**
 	 * Legacy tag to canonical language id.
@@ -53,7 +57,7 @@ class Legacy_Map {
 	 *
 	 * @var array
 	 */
-	protected static array $_language_map = [
+	protected array $_language_map = [
 		'actionscript'  => 'actionscript',
 		'actionscript3' => 'actionscript',
 		'apache'        => 'apacheconf',
@@ -101,10 +105,10 @@ class Legacy_Map {
 	 *
 	 * @return array Numerically indexed array of shortcode tag names.
 	 */
-	public static function get_default_tags(): array {
+	public function get_default_tags(): array {
 
 		return array_merge(
-			array_keys( static::$_language_map ),
+			array_keys( $this->_language_map ),
 			[ static::GENERIC_TAG ]
 		);
 
@@ -115,17 +119,17 @@ class Legacy_Map {
 	 *
 	 * @return array Numerically indexed array of shortcode tag names.
 	 */
-	public static function get_tags(): array {
+	public function get_tags(): array {
 
 		/**
 		 * Filters the shortcode tags claimed by the plugin.
 		 *
 		 * @param array $tags Numerically indexed array of shortcode tag names.
 		 */
-		$tags = apply_filters( static::FILTER_TAGS, static::get_default_tags() );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
+		$tags = apply_filters( static::FILTER_TAGS, $this->get_default_tags() );    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- Hook name is the prefixed class constant above.
 
 		if ( ! is_array( $tags ) ) {
-			return static::get_default_tags();
+			return $this->get_default_tags();
 		}
 
 		$tags = array_filter(
@@ -154,13 +158,13 @@ class Legacy_Map {
 	 * @return string|null The code with every claimed tag in it escaped, or NULL when PCRE
 	 *                     gave up on it.
 	 */
-	public static function escape_tags( string $code ): ?string {
+	public function escape_tags( string $code ): ?string {
 
 		if ( ! str_contains( $code, '[' ) ) {
 			return $code;
 		}
 
-		$tags = static::_get_tag_alternation();
+		$tags = $this->_get_tag_alternation();
 
 		if ( empty( $tags ) ) {
 			return $code;
@@ -184,20 +188,20 @@ class Legacy_Map {
 	/**
 	 * Method to read an escaped tag inside a snippet back as the text it stands for.
 	 *
-	 * The mirror of `self::escape_tags()`, called only on the display path and on the
+	 * The mirror of `escape_tags()`, called only on the display path and on the
 	 * editor's shortcode to block conversion; stored content is never touched.
 	 *
 	 * @param string $code Source code, as the matcher found it.
 	 *
 	 * @return string The code with one pair of brackets taken off every escaped tag.
 	 */
-	public static function unescape_tags( string $code ): string {
+	public function unescape_tags( string $code ): string {
 
 		if ( ! str_contains( $code, '[[' ) ) {
 			return $code;
 		}
 
-		$tags = static::_get_tag_alternation();
+		$tags = $this->_get_tag_alternation();
 
 		if ( empty( $tags ) ) {
 			return $code;
@@ -223,8 +227,8 @@ class Legacy_Map {
 	 *
 	 * @return array Map of legacy tag name to canonical language id.
 	 */
-	public static function get_language_map(): array {
-		return static::$_language_map;
+	public function get_language_map(): array {
+		return $this->_language_map;
 	}
 
 	/**
@@ -234,11 +238,11 @@ class Legacy_Map {
 	 *
 	 * @return string|null Canonical language id, or NULL when the tag is not ours.
 	 */
-	public static function to_language_id( string $tag ): ?string {
+	public function to_language_id( string $tag ): ?string {
 
 		$tag = strtolower( trim( $tag ) );
 
-		return static::$_language_map[ $tag ] ?? null;
+		return $this->_language_map[ $tag ] ?? null;
 
 	}
 
@@ -248,17 +252,17 @@ class Legacy_Map {
 	 * @return string Pattern fragment for a `/` delimited pattern, or an empty string when the
 	 *                plugin claims no tags.
 	 */
-	protected static function _get_tag_alternation(): string {
+	protected function _get_tag_alternation(): string {
 
-		$tags = static::get_tags();
+		$tags = $this->get_tags();
 
-		if ( $tags === static::$_alternation_tags && ! empty( static::$_alternation ) ) {
-			return static::$_alternation;
+		if ( $tags === $this->_alternation_tags && ! empty( $this->_alternation ) ) {
+			return $this->_alternation;
 		}
 
-		static::$_alternation_tags = $tags;
+		$this->_alternation_tags = $tags;
 
-		static::$_alternation = ( empty( $tags ) ) ? '' : implode(
+		$this->_alternation = ( empty( $tags ) ) ? '' : implode(
 			'|',
 			array_map(
 				static function ( $tag ) {
@@ -268,7 +272,7 @@ class Legacy_Map {
 			)
 		);
 
-		return static::$_alternation;
+		return $this->_alternation;
 
 	}
 

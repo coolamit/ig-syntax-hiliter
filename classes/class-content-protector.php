@@ -830,7 +830,7 @@ class Content_Protector {
 	 */
 	protected function _get_shortcode_pattern(): string {
 
-		$tags = Legacy_Map::get_tags();
+		$tags = Legacy_Map::get_instance()->get_tags();
 
 		if ( $tags === $this->_tags && ! empty( $this->_pattern ) ) {
 			return $this->_pattern;

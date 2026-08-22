@@ -82,7 +82,7 @@ class Legacy_Map_Test extends TestCase {
 	public function it_claims_exactly_the_shipped_tags(): void {
 
 		$expected = array_merge( self::_SHIPPED_TAGS, self::_SHIPPED_ALIASES, [ 'sourcecode' ] );
-		$actual   = Legacy_Map::get_default_tags();
+		$actual   = Legacy_Map::get_instance()->get_default_tags();
 
 		sort( $expected );
 		sort( $actual );
@@ -100,7 +100,7 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function it_matches_a_tag_case_insensitively_and_through_stray_whitespace(): void {
 
-		$this->assertSame( 'php', Legacy_Map::to_language_id( '  PhP ' ) );
+		$this->assertSame( 'php', Legacy_Map::get_instance()->to_language_id( '  PhP ' ) );
 
 	}
 
@@ -115,8 +115,8 @@ class Legacy_Map_Test extends TestCase {
 		// The value and not only the constant: `language-none` is the highlighter's own no-highlight convention.
 		$this->assertSame( 'none', Language_Registry::NO_LANGUAGE );
 
-		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'code' ) );
-		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::to_language_id( 'text' ) );
+		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::get_instance()->to_language_id( 'code' ) );
+		$this->assertSame( Language_Registry::NO_LANGUAGE, Legacy_Map::get_instance()->to_language_id( 'text' ) );
 
 	}
 
@@ -153,7 +153,7 @@ class Legacy_Map_Test extends TestCase {
 		];
 
 		foreach ( $expected as $tag => $language ) {
-			$this->assertSame( $language, Legacy_Map::to_language_id( $tag ) );
+			$this->assertSame( $language, Legacy_Map::get_instance()->to_language_id( $tag ) );
 		}
 
 	}
@@ -180,7 +180,7 @@ class Legacy_Map_Test extends TestCase {
 
 		$this->assertNotEmpty( $registry->get_languages(), 'The bundled language manifest could not be read.' );
 
-		foreach ( Legacy_Map::get_language_map() as $tag => $language ) {
+		foreach ( Legacy_Map::get_instance()->get_language_map() as $tag => $language ) {
 
 			if ( Language_Registry::NO_LANGUAGE === $language ) {
 				continue;
@@ -207,7 +207,7 @@ class Legacy_Map_Test extends TestCase {
 
 		$code = "[sourcecode language=\"php\"]\n[php]echo 1;[/php]\n[/sourcecode]";
 
-		$escaped = Legacy_Map::escape_tags( $code );
+		$escaped = Legacy_Map::get_instance()->escape_tags( $code );
 
 		$this->assertSame(
 			"[[sourcecode language=\"php\"]]\n[[php]]echo 1;[[/php]]\n[[/sourcecode]]",
@@ -215,7 +215,7 @@ class Legacy_Map_Test extends TestCase {
 			'Every tag in the code has to be doubled, opening and closing alike.'
 		);
 
-		$this->assertSame( $code, Legacy_Map::unescape_tags( (string) $escaped ) );
+		$this->assertSame( $code, Legacy_Map::get_instance()->unescape_tags( (string) $escaped ) );
 
 	}
 
@@ -229,10 +229,10 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function it_gives_an_already_escaped_tag_one_more_level(): void {
 
-		$escaped = Legacy_Map::escape_tags( 'a [[/php]] b' );
+		$escaped = Legacy_Map::get_instance()->escape_tags( 'a [[/php]] b' );
 
 		$this->assertSame( 'a [[[/php]]] b', $escaped );
-		$this->assertSame( 'a [[/php]] b', Legacy_Map::unescape_tags( (string) $escaped ) );
+		$this->assertSame( 'a [[/php]] b', Legacy_Map::get_instance()->unescape_tags( (string) $escaped ) );
 
 	}
 
@@ -248,7 +248,7 @@ class Legacy_Map_Test extends TestCase {
 
 		$code = '[[php]echo 1;[/php]]';
 
-		$this->assertSame( $code, Legacy_Map::unescape_tags( (string) Legacy_Map::escape_tags( $code ) ) );
+		$this->assertSame( $code, Legacy_Map::get_instance()->unescape_tags( (string) Legacy_Map::get_instance()->escape_tags( $code ) ) );
 
 	}
 
@@ -262,9 +262,9 @@ class Legacy_Map_Test extends TestCase {
 	 */
 	public function it_leaves_a_tag_which_is_not_ours_alone(): void {
 
-		$this->assertSame( '[email]x[/email]', Legacy_Map::escape_tags( '[email]x[/email]' ) );
-		$this->assertSame( '[[email]]', Legacy_Map::unescape_tags( '[[email]]' ) );
-		$this->assertSame( '[phpx] and [php-doc]', Legacy_Map::escape_tags( '[phpx] and [php-doc]' ) );
+		$this->assertSame( '[email]x[/email]', Legacy_Map::get_instance()->escape_tags( '[email]x[/email]' ) );
+		$this->assertSame( '[[email]]', Legacy_Map::get_instance()->unescape_tags( '[[email]]' ) );
+		$this->assertSame( '[phpx] and [php-doc]', Legacy_Map::get_instance()->escape_tags( '[phpx] and [php-doc]' ) );
 
 	}
 
@@ -280,8 +280,8 @@ class Legacy_Map_Test extends TestCase {
 
 		$code = "function f() {\n\treturn 1;\n}";
 
-		$this->assertSame( $code, Legacy_Map::escape_tags( $code ) );
-		$this->assertSame( $code, Legacy_Map::unescape_tags( $code ) );
+		$this->assertSame( $code, Legacy_Map::get_instance()->escape_tags( $code ) );
+		$this->assertSame( $code, Legacy_Map::get_instance()->unescape_tags( $code ) );
 
 	}
 

@@ -261,7 +261,7 @@ class Renderer {
 			return Language_Registry::NO_LANGUAGE;
 		}
 
-		$mapped = Legacy_Map::to_language_id( $language );
+		$mapped = Legacy_Map::get_instance()->to_language_id( $language );
 
 		if ( Language_Registry::NO_LANGUAGE === $mapped ) {
 			return Language_Registry::NO_LANGUAGE;

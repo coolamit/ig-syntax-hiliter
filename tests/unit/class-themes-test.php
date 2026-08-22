@@ -28,7 +28,7 @@ class Themes_Test extends TestCase {
 	 */
 	protected function _get_declared_themes(): array {
 
-		return (array) ( new ReflectionMethod( Themes::class, '_get_theme_titles' ) )->invoke( null );
+		return (array) ( new ReflectionMethod( Themes::class, '_get_theme_titles' ) )->invoke( Themes::get_instance() );
 
 	}
 
@@ -95,8 +95,8 @@ class Themes_Test extends TestCase {
 	 */
 	public function it_gives_an_unknown_theme_no_file(): void {
 
-		$this->assertSame( '', Themes::get_theme_file( 'prism-not-a-theme' ) );
-		$this->assertSame( '', Themes::get_theme_file( '' ) );
+		$this->assertSame( '', Themes::get_instance()->get_theme_file( 'prism-not-a-theme' ) );
+		$this->assertSame( '', Themes::get_instance()->get_theme_file( '' ) );
 
 	}
 

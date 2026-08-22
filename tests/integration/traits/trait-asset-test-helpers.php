@@ -249,7 +249,7 @@ trait Asset_Test_Helpers {
 	 */
 	protected function _forget_themes(): void {
 
-		( new ReflectionProperty( Themes::class, '_themes' ) )->setValue( null, null );
+		( new ReflectionProperty( Themes::class, '_themes' ) )->setValue( Themes::get_instance(), null );
 		( new ReflectionProperty( Admin::class, '_settings_schema' ) )->setValue( null, null );
 
 	}

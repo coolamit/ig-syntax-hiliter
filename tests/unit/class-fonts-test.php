@@ -42,7 +42,7 @@ class Fonts_Test extends TestCase {
 	 */
 	protected function _get_declared_fonts(): array {
 
-		return (array) ( new ReflectionMethod( Fonts::class, '_get_font_titles' ) )->invoke( null );
+		return (array) ( new ReflectionMethod( Fonts::class, '_get_font_titles' ) )->invoke( Fonts::get_instance() );
 
 	}
 
@@ -63,7 +63,7 @@ class Fonts_Test extends TestCase {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
-			if ( ! str_contains( Fonts::get_font_css( $slug ), '--igsh-code-ligatures' ) ) {
+			if ( ! str_contains( Fonts::get_instance()->get_font_css( $slug ), '--igsh-code-ligatures' ) ) {
 				continue;
 			}
 
@@ -93,7 +93,7 @@ class Fonts_Test extends TestCase {
 
 		foreach ( array_keys( $this->_get_declared_fonts() ) as $slug ) {
 
-			$css       = Fonts::get_font_css( $slug );
+			$css       = Fonts::get_instance()->get_font_css( $slug );
 			$ligatures = in_array( $slug, static::_FONTS_WITH_LIGATURES, true );
 
 			if ( $ligatures ) {
@@ -194,16 +194,16 @@ class Fonts_Test extends TestCase {
 	 */
 	public function it_asks_for_ligatures_on_the_front_end_only(): void {
 
-		foreach ( Fonts::get_fonts() as $slug => $title ) {
+		foreach ( Fonts::get_instance()->get_fonts() as $slug => $title ) {
 
 			$needle = sprintf( '"%s", %s', $title, Fonts::FONT_STACK );
 
-			$this->assertStringContainsString( $needle, Fonts::get_font_css( $slug ) );
-			$this->assertStringContainsString( $needle, Fonts::get_editor_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Fonts::get_instance()->get_font_css( $slug ) );
+			$this->assertStringContainsString( $needle, Fonts::get_instance()->get_editor_font_css( $slug ) );
 
 			$this->assertStringNotContainsString(
 				'ligatures',
-				Fonts::get_editor_font_css( $slug ),
+				Fonts::get_instance()->get_editor_font_css( $slug ),
 				sprintf( 'The editor must say nothing about ligatures, and it does for %s.', $slug )
 			);
 
@@ -212,7 +212,7 @@ class Fonts_Test extends TestCase {
 		// The control: the loop above would still pass if the front end stopped asking too.
 		$this->assertStringContainsString(
 			'--igsh-code-ligatures',
-			Fonts::get_font_css( 'fira-code' ),
+			Fonts::get_instance()->get_font_css( 'fira-code' ),
 			'The front end still asks for ligatures where the family has them.'
 		);
 

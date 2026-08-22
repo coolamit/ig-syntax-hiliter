@@ -77,7 +77,7 @@ class Themes_Test extends WP_UnitTestCase {
 	 */
 	protected function _get_declared_themes(): array {
 
-		return (array) ( new ReflectionMethod( Themes::class, '_get_theme_titles' ) )->invoke( null );
+		return (array) ( new ReflectionMethod( Themes::class, '_get_theme_titles' ) )->invoke( Themes::get_instance() );
 
 	}
 
@@ -93,7 +93,7 @@ class Themes_Test extends WP_UnitTestCase {
 	public function it_keeps_every_declared_theme_on_disk(): void {
 
 		$declared = $this->_get_declared_themes();
-		$offered  = Themes::get_themes();
+		$offered  = Themes::get_instance()->get_themes();
 
 		$this->assertNotEmpty( $declared, 'The plugin declares at least one theme.' );
 
@@ -126,7 +126,7 @@ class Themes_Test extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey(
 			static::_DOTTED_SLUG,
-			Themes::get_themes(),
+			Themes::get_instance()->get_themes(),
 			'The dotted slug is a theme the plugin ships.'
 		);
 
@@ -135,7 +135,7 @@ class Themes_Test extends WP_UnitTestCase {
 
 		$this->assertSame(
 			'lib/prism-themes/' . static::_DOTTED_SLUG . '.min.css',
-			Themes::get_theme_file( static::_DOTTED_SLUG )
+			Themes::get_instance()->get_theme_file( static::_DOTTED_SLUG )
 		);
 
 	}
@@ -151,19 +151,19 @@ class Themes_Test extends WP_UnitTestCase {
 	 */
 	public function it_caches_the_theme_list_and_goes_back_to_the_disk_on_a_forced_rebuild(): void {
 
-		$real = Themes::build_themes();
+		$real = Themes::get_instance()->build_themes();
 
 		$this->_plant_cached_themes( [ 'prism-not-a-theme' => 'Planted' ] );
 
 		$this->assertSame(
 			[ 'prism-not-a-theme' => 'Planted' ],
-			Themes::get_themes(),
+			Themes::get_instance()->get_themes(),
 			'The cached list is what a caller gets, so the disk is not read again.'
 		);
 
 		$this->assertSame(
 			$real,
-			Themes::get_themes( 'yes' ),
+			Themes::get_instance()->get_themes( 'yes' ),
 			'A forced rebuild reads the disk and answers with what is really there.'
 		);
 
@@ -189,8 +189,8 @@ class Themes_Test extends WP_UnitTestCase {
 		$this->_plant_cached_themes( [] );
 
 		$this->assertSame(
-			Themes::build_themes(),
-			Themes::get_themes(),
+			Themes::get_instance()->build_themes(),
+			Themes::get_instance()->get_themes(),
 			'An empty cached list is not an answer, so the disk is read again.'
 		);
 
@@ -219,7 +219,7 @@ class Themes_Test extends WP_UnitTestCase {
 
 			$this->assertSame(
 				$planted,
-				Themes::get_themes( $value ),
+				Themes::get_instance()->get_themes( $value ),
 				sprintf( '"%s" is not the word yes and rebuilt the list anyway.', $value )
 			);
 

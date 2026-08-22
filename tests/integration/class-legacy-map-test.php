@@ -75,7 +75,7 @@ class Legacy_Map_Test extends WP_UnitTestCase {
 		$this->assertStringContainsString( $content, $this->_filter( 'the_excerpt', $content ) );
 		$this->assertSame( wp_slash( $content ), $this->_filter( 'content_save_pre', wp_slash( $content ) ) );
 
-		$this->assertNotContains( 'email', Legacy_Map::get_tags() );
+		$this->assertNotContains( 'email', Legacy_Map::get_instance()->get_tags() );
 		$this->assertArrayNotHasKey( 'email', $GLOBALS['shortcode_tags'] );
 
 		$generic = $this->_filter( 'the_content', '[sourcecode language="email"]a@b.com[/sourcecode]' );
@@ -97,7 +97,7 @@ class Legacy_Map_Test extends WP_UnitTestCase {
 
 		add_filter( Legacy_Map::FILTER_TAGS, [ $this, 'claim_unshipped_tag' ] );
 
-		$this->assertContains( static::_UNSHIPPED_TAG, Legacy_Map::get_tags() );
+		$this->assertContains( static::_UNSHIPPED_TAG, Legacy_Map::get_instance()->get_tags() );
 
 		$output = $this->_filter( 'the_content', sprintf( '[%1$s]xyz[/%1$s]', static::_UNSHIPPED_TAG ) );
 

@@ -986,7 +986,7 @@ class Asset_Manager_Test extends WP_UnitTestCase {
 		$style = wp_styles()->registered['ig-syntax-hiliter-font'] ?? null;
 
 		$this->assertNotNull( $style, 'The webfont stylesheet is registered.' );
-		$this->assertSame( Fonts::get_font_url( 'jetbrains-mono' ), (string) $style->src );
+		$this->assertSame( Fonts::get_instance()->get_font_url( 'jetbrains-mono' ), (string) $style->src );
 
 		// No version on a URL which belongs to somebody else: `wp_enqueue_style()` is passed NULL.
 		$this->assertStringNotContainsString( 'ver=', (string) $style->src );
@@ -1016,8 +1016,8 @@ class Asset_Manager_Test extends WP_UnitTestCase {
 	 */
 	public function it_loads_nothing_for_a_font_this_plugin_does_not_offer(): void {
 
-		$this->assertSame( '', Fonts::get_font_url( 'comic-sans-ms' ) );
-		$this->assertSame( '', Fonts::get_font_css( 'comic-sans-ms' ) );
+		$this->assertSame( '', Fonts::get_instance()->get_font_url( 'comic-sans-ms' ) );
+		$this->assertSame( '', Fonts::get_instance()->get_font_css( 'comic-sans-ms' ) );
 
 		Option::get_instance()->save( 'font', 'comic-sans-ms' );
 

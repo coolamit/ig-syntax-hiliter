@@ -366,7 +366,7 @@ class Admin_Test extends WP_UnitTestCase {
 		$this->assertSame( Themes::THEME_NONE, $slugs[0] ?? '', 'The "no theme" choice is not at the top of the dropdown.' );
 
 		// Nothing was dropped on the way through the sort.
-		$this->assertCount( count( Themes::get_themes() ) + 1, $choices );
+		$this->assertCount( count( Themes::get_instance()->get_themes() ) + 1, $choices );
 
 		$titles = array_values( $choices );
 
@@ -1412,7 +1412,7 @@ class Admin_Test extends WP_UnitTestCase {
 			'A font in both groups would be offered twice.'
 		);
 
-		$offered = array_keys( Fonts::get_fonts() );
+		$offered = array_keys( Fonts::get_instance()->get_fonts() );
 
 		sort( $offered );
 		sort( $listed );

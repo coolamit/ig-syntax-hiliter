@@ -44,7 +44,7 @@ class Helper_Test extends WP_UnitTestCase {
 	 */
 	public function it_builds_cores_pattern_with_one_addition(): void {
 
-		$tags = Legacy_Map::get_tags();
+		$tags = Legacy_Map::get_instance()->get_tags();
 		$core = get_shortcode_regex( $tags );
 		$ours = Helper::get_shortcode_pattern( $tags );
 

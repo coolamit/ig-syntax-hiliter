@@ -240,7 +240,7 @@ class Admin extends Base {
 	 */
 	public static function get_theme_choices(): array {
 
-		$themes = Themes::get_themes();
+		$themes = Themes::get_instance()->get_themes();
 
 		uasort( $themes, 'strnatcasecmp' );
 
@@ -265,7 +265,7 @@ class Admin extends Base {
 
 		foreach ( array_keys( static::get_theme_choices() ) as $slug ) {
 
-			$file = Themes::get_theme_file( $slug );
+			$file = Themes::get_instance()->get_theme_file( $slug );
 
 			$urls[ $slug ] = ( empty( $file ) ) ? '' : Helper::get_asset_url( $file );
 
@@ -285,7 +285,7 @@ class Admin extends Base {
 	 */
 	public static function get_font_choices(): array {
 
-		$fonts = Fonts::get_fonts();
+		$fonts = Fonts::get_instance()->get_fonts();
 
 		uasort( $fonts, 'strnatcasecmp' );
 
@@ -321,7 +321,7 @@ class Admin extends Base {
 				continue;    // not a font, and it belongs above both groups
 			}
 
-			$groups[ Fonts::has_ligatures( $slug ) ? $with : $without ][] = $slug;
+			$groups[ Fonts::get_instance()->has_ligatures( $slug ) ? $with : $without ][] = $slug;
 
 		}
 
@@ -344,8 +344,8 @@ class Admin extends Base {
 		foreach ( array_keys( static::get_font_choices() ) as $slug ) {
 
 			$fonts[ $slug ] = [
-				'url' => Fonts::get_font_url( $slug ),
-				'css' => Fonts::get_font_css( $slug ),
+				'url' => Fonts::get_instance()->get_font_url( $slug ),
+				'css' => Fonts::get_instance()->get_font_css( $slug ),
 			];
 
 		}
@@ -411,7 +411,7 @@ class Admin extends Base {
 	 */
 	public function refresh_themes(): WP_REST_Response {
 
-		Themes::get_themes( 'yes' );
+		Themes::get_instance()->get_themes( 'yes' );
 
 		// the schema was built for this request before the list changed under it
 		static::$_settings_schema = null;

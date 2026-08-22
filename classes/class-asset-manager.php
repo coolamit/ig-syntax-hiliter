@@ -333,13 +333,13 @@ class Asset_Manager {
 
 		$theme = $theme ?? Shortcode_Handler::get_plugin_option( 'theme', Themes::DEFAULT_THEME );
 
-		$theme = Themes::resolve_theme( $theme );
+		$theme = Themes::get_instance()->resolve_theme( $theme );
 
 		if ( Themes::THEME_NONE !== $theme ) {
 
 			wp_enqueue_style(
 				static::_handle( 'theme' ),
-				Helper::get_asset_url( Themes::get_theme_file( $theme ) ),
+				Helper::get_asset_url( Themes::get_instance()->get_theme_file( $theme ) ),
 				[],
 				static::_get_version()
 			);
@@ -366,7 +366,7 @@ class Asset_Manager {
 	 */
 	protected function _enqueue_font( string $font ): void {
 
-		$font = Fonts::resolve_font( $font );
+		$font = Fonts::get_instance()->resolve_font( $font );
 
 		if ( Fonts::FONT_NONE === $font ) {
 			return;
@@ -374,7 +374,7 @@ class Asset_Manager {
 
 		wp_enqueue_style(
 			static::_handle( 'font' ),
-			Fonts::get_font_url( $font ),
+			Fonts::get_instance()->get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- This URL is not this plugin's.
 		);
@@ -385,7 +385,7 @@ class Asset_Manager {
 
 		$this->_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'chrome' ), Fonts::get_font_css( $font ) );
+		wp_add_inline_style( static::_handle( 'chrome' ), Fonts::get_instance()->get_font_css( $font ) );
 
 	}
 
@@ -403,7 +403,7 @@ class Asset_Manager {
 	 */
 	public function enqueue_for_editor( string $font ): void {
 
-		$font = Fonts::resolve_font( $font );
+		$font = Fonts::get_instance()->resolve_font( $font );
 
 		if ( Fonts::FONT_NONE === $font ) {
 			return;
@@ -411,7 +411,7 @@ class Asset_Manager {
 
 		wp_enqueue_style(
 			static::_handle( 'editor-font' ),
-			Fonts::get_font_url( $font ),
+			Fonts::get_instance()->get_font_url( $font ),
 			[],
 			null  // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- This URL is not this plugin's.
 		);
@@ -422,7 +422,7 @@ class Asset_Manager {
 
 		$this->_editor_font_styled = true;
 
-		wp_add_inline_style( static::_handle( 'editor-font' ), Fonts::get_editor_font_css( $font ) );
+		wp_add_inline_style( static::_handle( 'editor-font' ), Fonts::get_instance()->get_editor_font_css( $font ) );
 
 	}
 

@@ -7,6 +7,8 @@
 
 namespace iG\Syntax_Hiliter;
 
+use iG\Syntax_Hiliter\Traits\Singleton;
+
 /**
  * The font catalogue.
  *
@@ -15,6 +17,8 @@ namespace iG\Syntax_Hiliter;
  * settings screen's decision.
  */
 class Fonts {
+
+	use Singleton;
 
 	/**
 	 * Font setting value which means "load no webfont at all".
@@ -57,8 +61,8 @@ class Fonts {
 	 *
 	 * @return string A font slug this plugin offers, or the "no font" value.
 	 */
-	public static function resolve_font( string $font ): string {
-		return ( isset( static::_get_font_titles()[ $font ] ) ) ? $font : static::FONT_NONE;
+	public function resolve_font( string $font ): string {
+		return ( isset( $this->_get_font_titles()[ $font ] ) ) ? $font : static::FONT_NONE;
 	}
 
 	/**
@@ -72,7 +76,7 @@ class Fonts {
 	 *
 	 * @return array Font slug to title, weight and whether it carries code ligatures.
 	 */
-	protected static function _get_font_titles(): array {
+	protected function _get_font_titles(): array {
 
 		return [
 			'azeret-mono'       => [
@@ -161,11 +165,11 @@ class Fonts {
 	 *
 	 * @return array Font slug to human readable title.
 	 */
-	public static function get_fonts(): array {
+	public function get_fonts(): array {
 
 		return array_map(
 			static fn ( array $font ): string => $font['title'],
-			static::_get_font_titles()
+			$this->_get_font_titles()
 		);
 
 	}
@@ -180,8 +184,8 @@ class Fonts {
 	 *
 	 * @return bool FALSE for a font this plugin does not offer, which has no ligatures either.
 	 */
-	public static function has_ligatures( string $slug ): bool {
-		return (bool) ( static::_get_font_titles()[ $slug ]['ligatures'] ?? false );
+	public function has_ligatures( string $slug ): bool {
+		return (bool) ( $this->_get_font_titles()[ $slug ]['ligatures'] ?? false );
 	}
 
 	/**
@@ -195,9 +199,9 @@ class Fonts {
 	 *
 	 * @return string URL, or an empty string where no font is to be loaded.
 	 */
-	public static function get_font_url( string $slug ): string {
+	public function get_font_url( string $slug ): string {
 
-		$fonts = static::_get_font_titles();
+		$fonts = $this->_get_font_titles();
 
 		if ( ! isset( $fonts[ $slug ] ) ) {
 			return '';
@@ -224,9 +228,9 @@ class Fonts {
 	 *
 	 * @return string CSS, or an empty string where no font is to be loaded.
 	 */
-	public static function get_font_css( string $slug ): string {
+	public function get_font_css( string $slug ): string {
 
-		$declarations = static::_get_font_declarations( $slug );
+		$declarations = $this->_get_font_declarations( $slug );
 
 		if ( empty( $declarations ) ) {
 			return '';
@@ -247,9 +251,9 @@ class Fonts {
 	 *
 	 * @return string Declarations, or an empty string for a font this plugin does not offer.
 	 */
-	protected static function _get_font_declarations( string $slug ): string {
+	protected function _get_font_declarations( string $slug ): string {
 
-		$fonts = static::_get_font_titles();
+		$fonts = $this->_get_font_titles();
 
 		if ( ! isset( $fonts[ $slug ] ) ) {
 			return '';
@@ -281,9 +285,9 @@ class Fonts {
 	 *
 	 * @return string CSS, or an empty string where no font is to be loaded.
 	 */
-	public static function get_editor_font_css( string $slug ): string {
+	public function get_editor_font_css( string $slug ): string {
 
-		$fonts = static::_get_font_titles();
+		$fonts = $this->_get_font_titles();
 
 		if ( ! isset( $fonts[ $slug ] ) ) {
 			return '';

@@ -452,7 +452,7 @@ class Block_Converter {
 	 */
 	protected static function _get_shortcode_ranges( string $content, array $delimiters ): ?array {
 
-		$tags = Legacy_Map::get_tags();
+		$tags = Legacy_Map::get_instance()->get_tags();
 
 		if ( empty( $tags ) || ! str_contains( $content, '[' ) ) {
 			return [];
@@ -654,7 +654,7 @@ class Block_Converter {
 
 		// A shortcode ends at its own closing tag, so this plugin's tags are escaped first
 		// — see `Legacy_Map::escape_tags()`. NULL only where the escape itself failed.
-		$code = Legacy_Map::escape_tags( $code );
+		$code = Legacy_Map::get_instance()->escape_tags( $code );
 
 		if ( is_null( $code ) ) {
 			return null;

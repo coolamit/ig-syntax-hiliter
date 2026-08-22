@@ -698,7 +698,7 @@ class Block_Test extends WP_UnitTestCase {
 
 		$registry = Language_Registry::get_instance();
 
-		foreach ( Legacy_Map::get_language_map() as $tag => $id ) {
+		foreach ( Legacy_Map::get_instance()->get_language_map() as $tag => $id ) {
 
 			if ( Language_Registry::NO_LANGUAGE === $id ) {
 				continue;
@@ -804,12 +804,12 @@ class Block_Test extends WP_UnitTestCase {
 			$style = wp_styles()->registered['ig-syntax-hiliter-editor-font'] ?? null;
 
 			$this->assertNotNull( $style, 'The webfont stylesheet is registered for the editor.' );
-			$this->assertSame( Fonts::get_font_url( 'fira-code' ), (string) $style->src );
+			$this->assertSame( Fonts::get_instance()->get_font_url( 'fira-code' ), (string) $style->src );
 
 			$rules = $this->_editor_font_rules();
 
 			$this->assertSame(
-				Fonts::get_editor_font_css( 'fira-code' ),
+				Fonts::get_instance()->get_editor_font_css( 'fira-code' ),
 				$rules,
 				'The rule is added once, however many times the hook fires.'
 			);

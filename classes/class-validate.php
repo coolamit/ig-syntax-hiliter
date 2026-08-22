@@ -143,11 +143,11 @@ class Validate {
 
 		// NULL means the list is resolved here, from the same source the choices are offered from
 		if ( 'theme' === $name ) {
-			return array_merge( array_keys( Themes::get_themes() ), [ Themes::THEME_NONE ] );
+			return array_merge( array_keys( Themes::get_instance()->get_themes() ), [ Themes::THEME_NONE ] );
 		}
 
 		if ( 'font' === $name ) {
-			return array_merge( array_keys( Fonts::get_fonts() ), [ Fonts::FONT_NONE ] );
+			return array_merge( array_keys( Fonts::get_instance()->get_fonts() ), [ Fonts::FONT_NONE ] );
 		}
 
 		return [];    // declared as unfixed with nothing here able to resolve it, so nothing is accepted

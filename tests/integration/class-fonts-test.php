@@ -46,8 +46,8 @@ class Fonts_Test extends WP_UnitTestCase {
 
 		foreach ( array_keys( $choices ) as $slug ) {
 
-			$url = Fonts::get_font_url( $slug );
-			$css = Fonts::get_font_css( $slug );
+			$url = Fonts::get_instance()->get_font_url( $slug );
+			$css = Fonts::get_instance()->get_font_css( $slug );
 
 			if ( Fonts::FONT_NONE === $slug ) {
 

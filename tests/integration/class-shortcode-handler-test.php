@@ -122,7 +122,7 @@ class Shortcode_Handler_Test extends WP_UnitTestCase {
 
 		$cases = [];
 
-		foreach ( Legacy_Map::get_language_map() as $tag => $language ) {
+		foreach ( Legacy_Map::get_instance()->get_language_map() as $tag => $language ) {
 			$cases[ $tag ] = [ $tag, $language ];
 		}
 

@@ -281,7 +281,7 @@ class Shortcode_Handler {
 			return $tags;
 		}
 
-		return array_values( array_unique( array_merge( $tags, Legacy_Map::get_tags() ) ) );
+		return array_values( array_unique( array_merge( $tags, Legacy_Map::get_instance()->get_tags() ) ) );
 
 	}
 
@@ -300,7 +300,7 @@ class Shortcode_Handler {
 	 */
 	public static function build_snippet( string $tag, array|string $atts, string $code ): Snippet {
 
-		$code = Legacy_Map::unescape_tags( $code );
+		$code = Legacy_Map::get_instance()->unescape_tags( $code );
 		$atts = ( is_string( $atts ) ) ? shortcode_parse_atts( $atts ) : $atts;
 		$atts = ( is_array( $atts ) ) ? $atts : [];
 
